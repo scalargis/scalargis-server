@@ -32,13 +32,13 @@ Criar a base de dados através do pgAdim e instalar nela a extensão Postgis
 
 ##### Windows 
 > (venv) set FLASK_APP=app.main  
-> (venv) set PYTHONPATH=\<path>\scalargis-server\web  
+> (venv) set PYTHONPATH=&#92;<em>path</em>\scalargis-server\web  
 > (venv) cd web  
 > (venv) flask init-db
 
 ##### Linux
 > (venv) export FLASK_APP=app.main  
-> (venv) export PYTHONPATH=/<path>/scalargis-server/web    
+> (venv) export PYTHONPATH=/<em>path</em>/scalargis-server/web    
 > (venv) cd web  
 > (venv) flask init-db    
 
@@ -52,12 +52,12 @@ Criar a base de dados através do pgAdim e instalar nela a extensão Postgis
 ### Executar app
 
 ##### Windows 
-> (venv) set PYTHONPATH=\<path>\scalargis-server\web;\<path\>\scalargis-server\web\app   
+> (venv) set PYTHONPATH=&#92;<em>path</em>\scalargis-server\web;&#92;<em>path</em>\scalargis-server\web\app   
 > (venv) cd web\app  
 > (venv) python main.py
 
 ##### Linux
-> (venv) export PYTHONPATH=/<path>/scalargis-server/web:/<path>/scalargis-server/web/app  
+> (venv) export PYTHONPATH=/<em>path</em>/scalargis-server/web:/<em>path</em>/scalargis-server/web/app  
 > (venv) cd web/app  
 > (venv) python main.py
 
@@ -90,7 +90,7 @@ Copiar o ficheiro .env.example para .env e alterar os valores das seguintes vari
 ### Criar symlink para directoria build do projecto cliente no projecto principal
 
 ##### Windows
-> mklink /D \<path>\scalargis-server\web\app\static\frontend \<path\>\scalargis-client\frontend\build
+> mklink /D &#92;<em>path</em>\scalargis-server\web\app\static\frontend &#92;<em>path</em>\scalargis-client\frontend\build
 
 #### Linux
-> ln -s /<path>/scalargis-client/frontend/build /<path>/scalargis-server/static/frontend
+> ln -s /<em>path</em>/scalargis-client/frontend/build /<em>path</em>/scalargis-server/static/frontend
