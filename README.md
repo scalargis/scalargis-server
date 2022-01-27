@@ -38,27 +38,26 @@ Criar a base de dados através do pgAdim e instalar nela a extensão Postgis
 
 ##### Linux
 > (venv) export FLASK_APP=app.main  
-> (venv) export PYTHONPATH=/<path>/webig_app/web  
+> (venv) export PYTHONPATH=/<path>/scalargis-server/web  
 > (venv) cd web  
 > (venv) flask init-db  
 
 ### Instalar dependências
 > npm install
 > bower install
-> node_modules\.bin\gulp build
 
 ### Bundle javascript files
-> yarn webpack --mode production
+> node_modules\.bin\gulp build
 
 ### Executar app
 
 ##### Windows 
-> (venv) set PYTHONPATH=\<path\>\websig_app\web;\<path\>\websig_app\web\app   
+> (venv) set PYTHONPATH=\<path>\scalargis-server\web;\<path\>\scalargis-server\web\app   
 > (venv) cd web\app  
 > (venv) python main.py
 
 ##### Linux
-> (venv) export PYTHONPATH=\<path\>/webig_app/web:\<path\>/webig_app/web/app  
+> (venv) export PYTHONPATH=/<path>/scalargis-server/web:/<path>/scalargis-server/web/app  
 > (venv) cd web/app  
 > (venv) python main.py
 
@@ -66,23 +65,23 @@ Criar a base de dados através do pgAdim e instalar nela a extensão Postgis
 
 Instalar repositório de aplicação cliente fora do projecto principal  
 
-> git clone https://gitlab.wkt.pt/DGT/websig_client.git
+> git clone https://github.com/ricardogsena/scalargis-client.git
 
-> cd websig_client
+> cd scalargis-client
 
-> npm install
+> yarn
 
 ##### Adicionar projecto(s) de plugin(s) (opcional)
-> cd src/plugins  
-> git submodule add -f -b master https://gitlab.wkt.pt/DGT/websig_client_plugin_toc.git TOC  
+> cd frontend/src/components  
+> git submodule add -f -b master https://github.com/ricardogsena/scalargis-client-plugin-toc.git TOC  
 
 ##### Editar configurações utilizadas no build (opcional)
 Editar ficheiro package.json e definir:  
-`"homepage": "static/client"`
+`"homepage": "static/frontend"`
 
 Copiar o ficheiro .env.example para .env e alterar os valores das seguintes variáveis:  
-`REACT_APP_BASE_URL="/static/client/"`    
-`REACT_APP_CONFIG_URL="/static/client/config.example.json"`
+`REACT_APP_BASE_URL="/static/frontend/"`    
+`REACT_APP_CONFIG_URL="/static/frontend/config.example.json"`
 `REACT_APP_MAP_PROXY="/map/proxy?url="`
 
 ##### Executar o build
@@ -91,7 +90,7 @@ Copiar o ficheiro .env.example para .env e alterar os valores das seguintes vari
 ### Criar symlink para directoria build do projecto cliente no projecto principal
 
 ##### Windows
-> mklink /D \<path\>\websig_app\web\app\static\client \<path\>\websig_client\build
+> mklink /D \<path>\scalargis-server\web\app\static\frontend \<path\>\scalargis-client\frontend\build
 
 #### Linux
-> ln -s \<path\>/websig_client/build \<path\>/websig_app/static/client
+> ln -s /<path>/scalargis-client/frontend/build /<path>/scalargis-server/static/frontend
