@@ -1,0 +1,92 @@
+{% from "_custom_macros.html" import render_pagination_summary, render_pagination %}
+
+{% if pagination %}
+<div class="row">
+    <div class="col-md-12">
+        <div class="dataTables_info" id="dataTables-example_info" role="status" aria-live="polite" style="text-align: center">
+            {{ render_pagination_summary(pagination) }}
+        </div>
+    </div>
+</div>
+{% if pagination.has_next or pagination.has_prev %}
+<div class="row">
+    <div class="col-md-12">
+        <div class="dataTables_paginate paging_simple_numbers" style="text-align: center">
+            {{ render_pagination(pagination) }}
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endif %}
+
+<table class="table table-bordered table-striped">
+  <tbody>
+    {% for rec in records %}
+      <tr>
+          <td>
+              <a href="#" class="a-record road-record" data-road-id="{{rec.id}}">{{ rec.name }}</a>
+
+              {% if rec.freguesias|length == 1 %}
+                <div>
+                {% for freg in rec.freguesias %}
+                    <div>Freguesia: {{ freg.name }}</div>
+                {% endfor %}
+                </div>
+              {% elif rec.freguesias|length > 1 %}
+                <div>
+                    <div>Freguesias:</div>
+                {% for freg in rec.freguesias %}
+                    <div>{{ freg.name }}</div>
+                {% endfor %}
+                </div>
+              {% endif %}
+
+              {% if rec.postal_codes|length == 1 %}
+                <div>
+                {% for cp in rec.postal_codes %}
+                    <div>Código Postal: {{ cp.cp }}</div>
+                {% endfor %}
+                </div>
+              {% elif rec.postal_codes|length > 1 %}
+                <div>
+                    <div>Códigos Postais:</div>
+                {% for cp in rec.postal_codes %}
+                    <div>{{ cp.cp }}</div>
+                {% endfor %}
+                </div>
+              {% endif %}
+
+              {% if rec.locators |length > 0 %}
+                <div>
+                    {% if rec.locators |length > 1 %}
+                    <span>Números: </span>
+                    {% else %}
+                    <span>Número: </span>
+                    {% endif %}
+                    {% for lc in rec.locators %}
+                    <span> <a href="" class="road-locator-record" data-road-id="{{rec.id}}" data-road-locator-id="{{lc.id}}">{{ lc.locator }}</a> </span>
+                    {% endfor %}
+                </div>
+              {% endif %}
+          </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+{% if pagination and (pagination.has_next  or pagination.has_prev) %}
+<div class="row">
+    <div class="col-md-12">
+        <div class="dataTables_info" id="dataTables-example_info" role="status" aria-live="polite" style="text-align: center">
+            {{ render_pagination_summary(pagination) }}
+        </div>
+    </div>
+</div>
+<div class="row">
+    <div class="col-md-12">
+        <div class="dataTables_paginate paging_simple_numbers" style="text-align: center">
+            {{ render_pagination(pagination) }}
+        </div>
+    </div>
+</div>
+{% endif %}

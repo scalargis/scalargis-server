@@ -1,0 +1,356 @@
+<input id="map_id" type="hidden" value="{{ map.id }}" />
+<input id="app_root" type="hidden" value="{{ script_root }}" />
+{% if auth_token %}
+<input id="auth_token" type="hidden" value="{{ auth_token }}" />
+{% endif %}
+<input id="show_widget" type="hidden" value="{{ show_widget or ''}}" />
+<input id="show_layers" type="hidden" value="{{ show_layers or ''}}" />
+<input id="url_params" type="hidden" value="{{ url_param_qy }}" />
+
+<div id="map"></div>
+
+<!-- Left Menu (Default) -->
+<div>
+    <ul class="menu">
+      {% for widget in widgets if widget.codigo == 'home' %}
+      <li title="{{ widget.titulo or 'Menu' }}">
+          <a href="#" class="menu-button home" data-target=".home">
+              <i class="fa {{ widget.icon_css_class or 'fa-bars' }}"></i>
+          </a>
+      </li>
+      {% endfor %}
+      {% for widget in widgets if widget.target == 'menu' and widget.codigo != 'home'  %}
+        {% if widget.codigo == 'catalog' %}
+           {%if catalogos|length > 0 %}
+             <li title="{{ widget.titulo }}">
+                 <a href="#" class="menu-button {{ widget.codigo }}" data-target=".{{ widget.codigo }}" data-action="{{ url_for(widget.action) if widget.action != None else '' }}">
+                    <i class="fa {{ widget.icon_css_class }}"></i>
+                 </a>
+             </li>
+           {% endif %}
+        {% elif widget.codigo == 'print' %}
+           {% if tipos_plantas|length > 0 or map.plantas|length > 0 %}
+             <li title="{{ widget.titulo }}">
+                 <a href="#" class="menu-button {{ widget.codigo }}" data-target=".{{ widget.codigo }}" data-action="{{ url_for(widget.action) if widget.action != None else '' }}">
+                    <i class="fa {{ widget.icon_css_class }}"></i>
+                 </a>
+             </li>
+           {% endif %}
+        {% elif widget.parent is none %}
+            <li title="{{ widget.titulo }}">
+                <a href="#" class="menu-button {{ widget.codigo }}" data-target=".{{ widget.codigo }}" data-action="{{ url_for(widget.action) if widget.action != None else '' }}">
+                    <i class="fa {{ widget.icon_css_class }}"></i>
+                </a>
+            </li>
+        {% endif %}
+      {% endfor %}
+    </ul>
+
+    {% for widget in widgets if widget.codigo == 'home' %}
+    <ul class="menu-bar-widget menu-bar home">
+        <div class="menu-bar-heading">
+            <a href="#" class="">Menu</a>
+        </div>
+        <div class="menu-bar-body">
+            <div id="menuPanel">
+                <div class="menu-control">
+                    <ul class="menu-list">
+                        {% for widget in widgets if widget.target == 'menu' and widget.codigo != 'home'  %}
+                            {% if widget.codigo == 'catalog' %}
+                               {%if catalogos|length > 0 %}
+                                <li>
+                                    <div class="thumbnail {{ widget.codigo }}">
+                                        <a href="#" class="menu-button-link" data-target=".{{ widget.codigo }}" data-action="{{ url_for(widget.action) if widget.action != None else '' }}"><i class="fa {{ widget.icon_css_class }} fa-3x"></i></a>
+                                        <div class="caption"><a href="#" class="menu-button-link" data-target=".{{ widget.codigo }}">{{ widget.titulo }}</a></div>
+                                    </div>
+                                </li>
+                               {% endif %}
+                            {% elif widget.codigo == 'print' %}
+                               {% if tipos_plantas|length > 0 or map.plantas|length > 0 %}
+                                <li>
+                                    <div class="thumbnail {{ widget.codigo }}">
+                                        <a href="#" class="menu-button-link" data-target=".{{ widget.codigo }}"><i class="fa {{ widget.icon_css_class }} fa-3x"></i></a>
+                                        <div class="caption"><a href="#" class="menu-button-link" data-target=".{{ widget.codigo }}">{{ widget.titulo }}</a></div>
+                                    </div>
+                                </li>
+                               {% endif %}
+                            {% elif widget.parent is none %}
+                                <li>
+                                    <div class="thumbnail {{ widget.codigo }}">
+                                        <a href="#" class="menu-button-link" data-target=".{{ widget.codigo }}" data-action="{{ url_for(widget.action) if widget.action != None else '' }}"><i class="fa {{ widget.icon_css_class }} fa-3x"></i></a>
+                                        <div class="caption"><a href="#" class="menu-button-link" data-target=".{{ widget.codigo }}" data-action="{{ url_for(widget.action) if widget.action != None else '' }}">{{ widget.titulo }}</a></div>
+                                    </div>
+                                </li>
+                            {% endif %}
+                        {% endfor %}
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </ul>
+    {% endfor %}
+
+    {% for widget in widgets if widget.target == 'menu' and widget.codigo != 'home'  %}
+        {% if widget.codigo == 'catalog' %}
+          {%if catalogos|length > 0 %}
+            <ul class="menu-bar-widget menu-bar {{ widget.codigo }}">
+                {% if widget.template %}
+                    {% include widget.template %}
+                {% endif %}
+            </ul>
+          {% endif %}
+        {% elif widget.codigo == 'print' %}
+           {% if tipos_plantas|length > 0 or plantas|length > 0 %}
+            <ul class="menu-bar-widget menu-bar {{ widget.codigo }}">
+                {% if widget.template %}
+                    {% include widget.template %}
+                {% endif %}
+            </ul>
+           {% endif %}
+        {% elif widget.parent is none %}
+            <ul class="menu-bar-widget menu-bar {{ widget.codigo }}">
+                {% if widget.template %}
+                    {% include widget.template %}
+                {% endif %}
+            </ul>
+        {% endif %}
+    {% endfor %}
+</div>
+<!-- End Left Menu -->
+
+<!-- Right Menu -->
+<div>
+    <ul class="menu-right">
+      {% for widget in widgets if widget.target == 'menu-right' %}
+        {% if widget.codigo == 'catalog' %}
+           {%if catalogos|length > 0 %}
+             <li title="{{ widget.titulo }}">
+                 <a href="#" class="menu-button {{ widget.codigo }}" data-target=".{{ widget.codigo }}" data-target-menu="right" data-action="{{ url_for(widget.action) if widget.action != None else '' }}">
+                    <i class="fa {{ widget.icon_css_class }}"></i>
+                 </a>
+             </li>
+           {% endif %}
+        {% elif widget.codigo == 'print' %}
+           {% if tipos_plantas|length > 0 or map.plantas|length > 0 %}
+             <li title="{{ widget.titulo }}">
+                 <a href="#" class="menu-button {{ widget.codigo }}" data-target=".{{ widget.codigo }}" data-target-menu="right" data-action="{{ url_for(widget.action) if widget.action != None else '' }}">
+                    <i class="fa {{ widget.icon_css_class }}"></i>
+                 </a>
+             </li>
+           {% endif %}
+        {% elif widget.parent is none %}
+            <li title="{{ widget.titulo }}">
+                <a href="#" class="menu-button {{ widget.codigo }} {{ 'active' if loop.index == 1 else '' }}" data-target=".{{ widget.codigo }}" data-target-menu="right" data-action="{{ url_for(widget.action) if widget.action != None else '' }}">
+                    <i class="fa {{ widget.icon_css_class }}"></i>
+                </a>
+            </li>
+        {% endif %}
+      {% endfor %}
+    </ul>
+
+    {% for widget in widgets if widget.target == 'menu-right' %}
+        {% if widget.codigo == 'catalog' %}
+          {%if catalogos|length > 0 %}
+            <ul class="menu-bar-widget menu-bar-right {{ widget.codigo }}">
+                {% if widget.template %}
+                    {% include widget.template %}
+                {% endif %}
+            </ul>
+          {% endif %}
+        {% elif widget.codigo == 'print' %}
+           {% if tipos_plantas|length > 0 or plantas|length > 0 %}
+            <ul class="menu-bar-widget menu-bar-right {{ widget.codigo }}">
+                {% if widget.template %}
+                    {% include widget.template %}
+                {% endif %}
+            </ul>
+           {% endif %}
+        {% elif widget.parent is none %}
+            <ul class="menu-bar-widget menu-bar-right {{ widget.codigo }} {{ 'open' if loop.index == 1 else '' }}">
+                {% if widget.template %}
+                    {% include widget.template %}
+                {% endif %}
+            </ul>
+        {% endif %}
+    {% endfor %}
+</div>
+<!-- End Right Menu -->
+
+<div id="map-navbar-container">
+
+    <div class="stack stack-right">
+        <div class="row box-shadow">
+            <div class="col">
+                <div class="MapSearchBar">
+                    <div class="form-group">
+                        <div class="input-group">
+                            <input id="searchbox" class="search-input" placeholder="Pesquisa de locais ..." type="text" style="text-overflow:ellipsis;" value="" class="form-control">
+                            <div class="input-group-addon">
+                                <span id="searchicon" class="search-button fa"></span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% if show_login %}
+            <div class="col">
+                <a class="login" href="#" data-target="#user-info-container">Login</a>
+            </div>
+            {% endif %}
+            {% if (map.show_help or map.show_credits or map.show_contact) %}
+            <div class="col">
+                <a class="menu menu-info" href="#" data-target="#menu-info-container">Menu</a>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+
+<div id="map-toolbar-container">
+    <div class="stack stack-right">
+        {% for widget in widgets if widget.codigo == 'zoom_in_out' %}
+        <div class="row">
+            <div class="col col-right">
+                <div id="zoomPanel" class="col-panel"></div>
+            </div>
+        </div>
+        {% endfor %}
+
+        {% for widget in widgets if widget.codigo == 'zoom_previous' %}
+        <div class="row">
+            <div class="col col-right">
+                <div id="zoomPreviousPanel" class="col-panel"></div>
+            </div>
+        </div>
+        {% endfor %}
+
+        {% for widget in widgets if widget.codigo == 'zoom_extent' %}
+        <div class="row row-separator"></div>
+
+        <div class="row">
+            <div class="col col-right">
+                <div id="zoomExtentPanel" class="col-panel"></div>
+            </div>
+        </div>
+        {% endfor %}
+
+        {% for widget in widgets if widget.codigo == 'measure' %}
+        <div class="row row-separator"></div>
+
+        <div class="row">
+            <div class="col col-right">
+                <div id="measurePanel" class="col-panel"></div>
+            </div>
+        </div>
+        {% endfor %}
+
+        {% for widget in widgets if widget.codigo == 'coordinates' %}
+        <div class="row row-separator"></div>
+
+        <div class="row">
+            <div class="col col-right">
+                <div id="coordinatesPanel" class="col-panel"></div>
+            </div>
+        </div>
+        {% endfor %}
+
+        {% for widget in widgets if widget.codigo == 'feature_info' %}
+        <div class="row row-separator"></div>
+
+        <div class="row">
+            <div class="col col-right">
+                <div id="featureInfoPanel" class="col-panel"></div>
+            </div>
+        </div>
+        {% endfor %}
+
+        {% for widget in widgets if widget.codigo == 'google_streetview' %}
+        <div class="row row-separator"></div>
+
+        <div class="row">
+            <div class="col col-right">
+                <div id="googleStreetViewPanel" class="col-panel"></div>
+            </div>
+        </div>
+        {% endfor %}
+
+        {% for widget in widgets if widget.codigo == 'drawtools' %}
+        <div class="row row-separator"></div>
+
+        <div class="row">
+            <div class="col col-right">
+                <div id="drawToolsViewPanel" class="col-panel"></div>
+            </div>
+        </div>
+        {% endfor %}
+
+    </div>
+</div>
+
+
+{% if (map.show_help or map.show_credits or map.show_contact) %}
+<div id="menu-info-container">
+      <!-- Nav tabs -->
+      <ul class="nav nav-tabs" role="tablist">
+        {% if (map.show_help) %}
+        <li role="presentation" class="active"><a href="#help" aria-controls="help" role="tab" data-toggle="tab">Ajuda</a></li>
+        {% endif %}
+        {% if (map.show_credits) %}
+          {% set active = (not map.show_help) %}
+        <li role="presentation" class="{{ 'active' if active else '' }}"><a href="#credits" aria-controls="credits" role="tab" data-toggle="tab">Créditos</a></li>
+        {% endif %}
+        {% if (map.show_contact) %}
+          {% set active = (not (map.show_help or map.show_credits)) %}
+        <li role="presentation" class="{{ 'active' if active else '' }}"><a href="#contact" aria-controls="contact" role="tab" data-toggle="tab">Contacto</a></li>
+        {% endif %}
+      </ul>
+
+      <!-- Tab panes -->
+      <div class="tab-content">
+        {% if (map.show_help) %}
+        <div role="tabpanel" class="tab-pane active" id="help">
+            {% if map.help_html %}
+                {{ (map.help_html or '')|safe }}
+            {% else %}
+                {% include 'map/_help_html.html' %}
+            {% endif %}
+        </div>
+        {% endif %}
+        {% if (map.show_credits) %}
+        {% set active = (not map.show_help) %}
+        <div role="tabpanel" class="tab-pane {{ 'active' if active else '' }}" id="credits">
+            {% if map.credits_html %}
+                {{ (map.credits_html or '')|safe }}
+            {% else %}
+                {% include credits_template or 'map/_credits_html.html' %}
+            {% endif %}
+        </div>
+        {% endif %}
+        {% if (map.show_contact) %}
+        {% set active = (not (map.show_help or map.show_credits)) %}
+        <div role="tabpanel" class="tab-pane {{ 'active' if active else '' }}" id="contact">
+            {% include 'map/_user_info_contact.html' %}
+        </div>
+        {% endif %}
+      </div>
+</div>
+{% endif %}
+
+<div id="user-info-container">
+    {% include 'map/_user_info.html' %}
+</div>
+
+<div class="map-coordsys-control">
+</div>
+
+<div class="basemaps-map-control">
+</div>
+
+<div class="scale-controls">
+    <div class="scale-control-selector dropup">
+        <span class="caret"></span>
+    </div>
+    <div class="numericscale-control-container item" data-name="numeric_scale"></div>
+    <div class="scaleline-control item" data-name="scaleline"></div>
+</div>

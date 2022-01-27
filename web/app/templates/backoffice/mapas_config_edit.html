@@ -1,0 +1,117 @@
+{% extends "backoffice/_layout.html" %}
+
+{% block content %}
+<div class="row">
+    <div class="col-lg-12">
+        <h1 class="page-header">Mapas<i class="fa fa-long-arrow-right  fa-fw" aria-hidden="true"></i>Configurações->Edição</h1>
+    </div>
+    <!-- /.col-lg-12 -->
+</div>
+
+<div class="module-content">
+    <form method="post" id="formMapaConfig" name="formMapaConfig">
+        {% with messages = get_flashed_messages() %}
+           {% if messages %}
+           <div class="alert alert-success alert-dismissible" role="alert">
+              <a class="close" data-dismiss="alert">×</a>
+              {% for message in messages %}
+                 {{ message }}
+              {% endfor %}
+           </div>
+           {% endif %}
+        {% endwith %}
+
+        {% if error %}
+           <div class="alert alert-danger alert-dismissible" role="alert">
+              <a class="close" data-dismiss="alert">×</a>
+              <h4 class="alert-heading">Erros:</h4>
+              <ul>
+             {% for field in form if field.widget.input_type != 'hidden' %}
+               {% if field.errors %}
+                  <li><strong>{{ field.label.text }}</strong>:{% for error in field.errors %} {{ error }}.{% endfor %}</li>
+               {% endif %}
+             {% endfor %}
+              </ul>
+           </div>
+        {% endif %}
+
+        {{ form.csrf_token }}
+
+        <fieldset>
+            <!--
+            <legend>Edição de Definição de Mapa</legend>
+            -->
+            <div class="row">
+                <div class="col-md-5">
+                    <label>Título</label>
+                    <input type="text" name="titulo" id="titulo" class="form-control input-block-level" value="{{ form.titulo.data or '' }}">
+                </div>
+                <div class="col-md-7">
+                    <label>Descrição</label>
+                    <input type="text" name="descricao" id="descricao" class="form-control input-block-level" value="{{ form.descricao.data or '' }}">
+                </div>
+            </div>
+            <div class="row">
+                 <div class="col-md-12{% if form.configuracao.errors %} has-error{% endif %}">
+                    <div style="height: 400px">
+                        <label for="configuracao">Configuração</label>
+                        <textarea name="configuracao" id="configuracao" class="form-control input-block-level" rows="15">{{ form.configuracao.data or '' }}</textarea>
+                    </div>
+                </div>
+            </div>
+
+            {% if record.id and record.mapas %}
+            <div class="widget-head">
+                <h5>Mapas</h5>
+            </div>
+            <table class="table table-condensed table-striped table-hover">
+                <thead>
+                <tr>
+                    <th>Id</th>
+                    <th>Título</th>
+                    <th>Descrição</th>
+                </tr>
+                </thead>
+                <tbody>
+                    {% for mapa in record.mapas %}
+                    <tr>
+                        <td style="width: 50px">{{ mapa.id }}</td>
+                        <td>{{ mapa.titulo or '' }}</td>
+                        <td>{{ mapa.descricao or '' }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+            <br />
+            {% endif %}
+
+            <div class="row">
+                <div class="col-md-12" style="text-align: right">
+                    <button type="button" class="btn btn-default" onclick="location.href='{{ url_for('backoffice.mapas_config') }}'" >Voltar</button>
+                    <button type="submit" class="btn btn-primary">Gravar</button>
+                </div>
+            </div>
+
+            <br />
+        </fieldset>
+
+    </form>
+</div>
+{% endblock %}
+
+{% block post_script %}
+<script type="text/javascript">
+    $(function () {
+
+      var myCodeMirror = CodeMirror.fromTextArea(document.getElementById('configuracao'), {
+        //mode: "javascript",
+        lineNumbers: true,
+        matchBrackets: true,
+        continueComments: "Enter",
+        extraKeys: {"Ctrl-Q": "toggleComment"}
+      });
+
+    });
+</script>
+{% endblock %}

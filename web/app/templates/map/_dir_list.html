@@ -1,0 +1,18 @@
+<ol class="dirtree">
+{% for item in dir.children|sort(attribute='type', reverse = True) recursive %}
+    {% if item and item.type %}
+    <li>
+        {% if item.type == 'folder' %}
+            <i class="fa fa-plus" aria-hidden="true"></i><label for="{{ item.folder_id }}">{{ item.name }}</label> <input type="checkbox" checked id="{{ item.folder_id }}" />
+        {% else %}
+            <li class="file">
+                <i class="fa fa-file" aria-hidden="true"></i><a target="_blank" href="{{ item.url }}">{{ item.name }}</a>
+            </li>
+        {% endif %}
+        {% if item.children %}
+            <ol>{{ loop(item.children) }}</ol>
+        {% endif %}
+    </li>
+    {% endif %}
+{% endfor %}
+</ol>

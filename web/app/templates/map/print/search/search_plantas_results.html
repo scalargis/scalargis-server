@@ -1,0 +1,69 @@
+{% from "_custom_macros.html" import render_pagination_summary, render_pagination %}
+
+{% if pagination %}
+<div class="row">
+    <div class="col-md-12">
+        <div class="dataTables_info" id="dataTables-example_info" role="status" aria-live="polite" style="text-align: center">
+            {{ render_pagination_summary(pagination) }}
+        </div>
+    </div>
+</div>
+{% if pagination.has_next or pagination.has_prev %}
+<div class="row">
+    <div class="col-md-12">
+        <div class="dataTables_paginate paging_simple_numbers" style="text-align: center">
+            {{ render_pagination(pagination) }}
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endif %}
+
+<table class="table table-bordered table-striped">
+  <tbody>
+    {% for rec in records %}
+      <tr>
+          <td>
+              {% if (rec.geom_wkt or '')|length > 0 %}
+                <a href="#" class="a-record" data-record-id="{{rec.id}}">{{ rec.numero_emissao or '[Sem número]' }}</a>
+              {% else %}
+                <span class="a-record" data-record-id="{{rec.id}}" style="text-decoration: underline;">{{ rec.numero_emissao or '[Sem número]' }}</span>
+              {% endif %}
+              <div>
+                  <div class="col-md-5">Numero: {{ rec.numero_emissao or '' }}</div>
+                  <div class="col-md-7">Data: {{ rec.data_emissao|datetimefilter or '' }}</div>
+              </div>
+              <div>NIF: {{ rec.nif or '' }}</div>
+              <div>Nome: {{ rec.requerente or '' }}</div>
+              <div class="collapse" id="plantaExtraInfo{{loop.index}}">
+                  <div>Planta: {{ rec.planta or '' }}</div>
+                  <div>Tipo: {{ rec.tipo or '' }}</div>
+                  <div>Escala: {{ '1:' + rec.escala|string if rec.escala else '' }}</div>
+              </div>
+              <div class="text-right">
+                    <a data-toggle="collapse" href="#plantaExtraInfo{{loop.index}}" aria-expanded="false" aria-controls="plantaExtraInfo">
+                      + Info
+                    </a>
+              </div>
+          </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+{% if pagination and (pagination.has_next  or pagination.has_prev) %}
+<div class="row">
+    <div class="col-md-12">
+        <div class="dataTables_info" id="dataTables-example_info" role="status" aria-live="polite" style="text-align: center">
+            {{ render_pagination_summary(pagination) }}
+        </div>
+    </div>
+</div>
+<div class="row">
+    <div class="col-md-12">
+        <div class="dataTables_paginate paging_simple_numbers" style="text-align: center">
+            {{ render_pagination(pagination) }}
+        </div>
+    </div>
+</div>
+{% endif %}

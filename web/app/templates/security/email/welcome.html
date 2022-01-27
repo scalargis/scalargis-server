@@ -1,0 +1,7 @@
+<p>Bem-vindo {{ user.email }}!</p>
+
+{% if security.confirmable %}
+<p>Pode confirmar o seu email através da seguinte ligação:</p>
+
+<p><a href="{{ confirmation_link }}">Confirmar o seu registo</a></p>
+{% endif %}

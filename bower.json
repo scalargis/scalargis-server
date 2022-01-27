@@ -1,0 +1,51 @@
+{
+  "name": "wktapp",
+  "description": "",
+  "main": "index.js",
+  "authors": [
+    "ricardogsena <ricardogsena@gmail.com>"
+  ],
+  "license": "ISC",
+  "homepage": "",
+  "ignore": [
+    "**/.*",
+    "node_modules",
+    "bower_components",
+    "test",
+    "tests"
+  ],
+  "dependencies": {
+    "bootstrap": "^3.3.7",
+    "openlayers": "https://github.com/openlayers/ol3/releases/download/v3.20.1/v3.20.1-dist.zip",
+    "proj4": "~2",
+    "datatables": "~1.10.4",
+    "datatables-plugins": "~1.0.1",
+    "flot": "~0.8.3",
+    "font-awesome": "~4.7.0",
+    "holderjs": "~2.4.1",
+    "metisMenu": "~1.1.3",
+    "morrisjs": "~0.5.1",
+    "datatables-responsive": "1.0.6",
+    "bootstrap-social": "~5.1.0",
+    "flot.tooltip": "~0.8.4",
+    "bootstrap-select": "~1.10.0",
+    "moment": "2.14.1",
+    "moment-timezone": "0.5.5",
+    "bootstrap-multiselect": "https://github.com/davidstutz/bootstrap-multiselect/archive/master.zip",
+    "bootstrap-datetimepicker": "https://github.com/Eonasdan/tempus-dominus/archive/refs/tags/4.17.42.zip",
+    "d3": "4.2.8",
+    "jspanel3": "3.9.2",
+    "pick-a-color": "1.2.3",
+    "file-saver": "2.0.2",
+    "codemirror": "5.65.1",
+    "typeahead.js": "0.10.4",
+    "purl": "https://github.com/allmarkedup/purl/archive/refs/heads/master.zip",
+    "nouislider": "https://github.com/leongersen/noUiSlider/releases/download/8.5.1/noUiSlider.8.5.1.zip",
+    "jquery-3.2.1": "jquery#3.2.1",
+    "jquery-ui-1.12.1": "jquery-ui#1.12.1"
+  },
+  "resolutions": {
+    "bootstrap": "^3.3.7",
+    "jquery": "1.9.1 - 3"
+  }
+}

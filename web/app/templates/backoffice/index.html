@@ -1,0 +1,194 @@
+{% extends "backoffice/_layout.html" %}
+
+{% block content %}
+
+<div class="row">
+    <div class="col-lg-12">
+        <h1 class="page-header">Painel de Administração</h1>
+    </div>
+    <!-- /.col-lg-12 -->
+</div>
+<!-- /.row -->
+<div class="row">
+    <div class="col-lg-3 col-md-6">
+        <div class="panel panel-primary">
+            <div class="panel-heading">
+                <div class="row">
+                    <div class="col-xs-3">
+                        <i class="fa fa-globe fa-5x"></i>
+                    </div>
+                    <div class="col-xs-9 text-right">
+                        <div class="huge">{{ estatisticas['visualizacoes'] }}</div>
+                        <div>Acesso a mapas!</div>
+                    </div>
+                </div>
+            </div>
+            <div class="panel-footer">
+                <a href="{{ url_for('backoffice.audit', tipo=tipos_stats.VisualizarMapa.value) }}">
+                    <span class="pull-left">Ver Detalhes</span>
+                    <span class="pull-right"><i class="fa fa-arrow-circle-right"></i></span>
+                </a>
+                <div class="clearfix"></div>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-3 col-md-6">
+        <div class="panel panel-green">
+            <div class="panel-heading">
+                <div class="row">
+                    <div class="col-xs-3">
+                        <i class="fa fa-file-pdf-o fa-5x"></i>
+                    </div>
+                    <div class="col-xs-9 text-right">
+                        <div class="huge">{{ estatisticas['plantas'] }}</div>
+                        <div>Plantas emitidas!</div>
+                    </div>
+                </div>
+            </div>
+            <div class="panel-footer">
+                <a href="{{ url_for('backoffice.audit', tipo=tipos_stats.EmissaoPlanta.value) }}">
+                    <span class="pull-left">Ver Detalhes</span>
+                    <span class="pull-right"><i class="fa fa-arrow-circle-right"></i></span>
+                </a>
+                <div class="clearfix"></div>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-3 col-md-6">
+        <div class="panel panel-yellow">
+            <div class="panel-heading">
+                <div class="row">
+                    <div class="col-xs-3">
+                        <i class="fa fa-clone fa-5x"></i>
+                    </div>
+                    <div class="col-xs-9 text-right">
+                        <div class="huge">{{ estatisticas['analises'] }}</div>
+                        <div>Análises ao PDM!</div>
+                    </div>
+                </div>
+            </div>
+            <div class="panel-footer">
+                <a href="{{ url_for('backoffice.audit', tipo=tipos_stats.AnalisePlano.value) }}">
+                    <span class="pull-left">Ver Detalhes</span>
+                    <span class="pull-right"><i class="fa fa-arrow-circle-right"></i></span>
+                </a>
+                <div class="clearfix"></div>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-3 col-md-6">
+        <div class="panel panel-red">
+            <div class="panel-heading">
+                <div class="row">
+                    <div class="col-xs-3">
+                        <i class="fa fa-tasks fa-5x"></i>
+                    </div>
+                    <div class="col-xs-9 text-right">
+                        <div class="huge">{{ estatisticas['total'] }}</div>
+                        <div>Total de Operações!</div>
+                    </div>
+                </div>
+            </div>
+            <div class="panel-footer">
+                <a href="{{ url_for('backoffice.audit', tipo='all') }}">
+                    <span class="pull-left">Ver Detalhes</span>
+                    <span class="pull-right"><i class="fa fa-arrow-circle-right"></i></span>
+                </a>
+                <div class="clearfix"></div>
+            </div>
+        </div>
+    </div>
+    <!--
+    <div class="col-lg-3 col-md-6">
+        <div class="panel panel-yellow">
+            <div class="panel-heading">
+                <div class="row">
+                    <div class="col-xs-3">
+                        <i class="fa fa-shopping-cart fa-5x"></i>
+                    </div>
+                    <div class="col-xs-9 text-right">
+                        <div class="huge">124</div>
+                        <div>Mensagens recebidas!</div>
+                    </div>
+                </div>
+            </div>
+            <a href="#">
+                <div class="panel-footer">
+                    <span class="pull-left">Ver Detalhes</span>
+                    <span class="pull-right"><i class="fa fa-arrow-circle-right"></i></span>
+                    <div class="clearfix"></div>
+                </div>
+            </a>
+        </div>
+    </div>
+    <div class="col-lg-3 col-md-6">
+        <div class="panel panel-red">
+            <div class="panel-heading">
+                <div class="row">
+                    <div class="col-xs-3">
+                        <i class="fa fa-support fa-5x"></i>
+                    </div>
+                    <div class="col-xs-9 text-right">
+                        <div class="huge">13</div>
+                        <div>Erros!</div>
+                    </div>
+                </div>
+            </div>
+            <a href="#">
+                <div class="panel-footer">
+                    <span class="pull-left">Ver Detalhes</span>
+                    <span class="pull-right"><i class="fa fa-arrow-circle-right"></i></span>
+                    <div class="clearfix"></div>
+                </div>
+            </a>
+        </div>
+    </div>
+    -->
+</div>
+<!-- /.row -->
+<div class="row">
+    <div class="col-lg-5">
+        <div class="panel panel-default">
+
+                <!--<i class="fa fa-bar-chart-o fa-fw"></i>-->
+                <!-- d3 stuff here  -->
+
+                <style>
+
+                .axis--x path {
+                  display: none;
+                }
+
+                .line {
+                  fill: none;
+                  stroke: steelblue;
+                  stroke-width: 1.5px;
+                }
+
+                </style>
+                <svg width="400" height="300"></svg>
+                <script type="text/javascript">
+                    rec = {{ data_graph|tojson }};
+                    //log_linechart(rec);
+                    log_barchart(rec);
+                </script>
+
+            </div>
+
+    </div>
+    <!-- /.col-lg-8 -->
+    <div class="col-lg-7">
+        <div class="panel panel-default" id="chart_line">
+                <script type="text/javascript">
+                    rec = {{ data_graph|tojson }};
+                    log_linechart(rec);
+                    //log_barchart(rec);
+                </script>
+        </div>
+        <!-- /.panel -->
+    </div>
+    <!-- /.col-lg-4 -->
+</div>
+
+<!-- /.row -->
+{% endblock %}

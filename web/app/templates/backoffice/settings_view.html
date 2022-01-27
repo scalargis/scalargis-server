@@ -1,0 +1,50 @@
+<table>
+    <thead>
+    <tr>
+       <th>Nome</th>
+       <th>Valor</th>
+    </tr>
+    </thead>
+    <tbody>
+    {% for s in settings_dir %}
+    <tr>
+        <td>{{ s.name }}</td>
+        <td>{{ s.value }}</td>
+    </tr>
+    {% endfor %}
+    </tbody>
+</table>
+
+<table>
+    <thead>
+    <tr>
+       <th>Nome</th>
+       <th>Valor</th>
+    </tr>
+    </thead>
+    <tbody>
+    {% for s in settings_config %}
+    <tr>
+        <td>{{ s.name }}</td>
+        <td>{{ s.value }}</td>
+    </tr>
+    {% endfor %}
+    </tbody>
+</table>
+
+<table>
+    <thead>
+    <tr>
+       <th>Nome</th>
+       <th>Valor</th>
+    </tr>
+    </thead>
+    <tbody>
+    {% for s in settings_app %}
+    <tr>
+        <td>{{ s.name }}</td>
+        <td>{{ s.value }}</td>
+    </tr>
+    {% endfor %}
+    </tbody>
+</table>

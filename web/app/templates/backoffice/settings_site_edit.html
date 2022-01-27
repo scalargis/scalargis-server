@@ -1,0 +1,99 @@
+{% extends "backoffice/_layout.html" %}
+
+{% block content %}
+<div class="row">
+    <div class="col-lg-12">
+        <h1 class="page-header">Definições<i class="fa fa-long-arrow-right  fa-fw" aria-hidden="true"></i>Parâmetros->Edição</h1>
+    </div>
+    <!-- /.col-lg-12 -->
+</div>
+
+<div class="module-content">
+    <form method="post" id="formSettingsSite" name="formSettingsSite">
+        {% with messages = get_flashed_messages() %}
+           {% if messages %}
+           <div class="alert alert-success alert-dismissible" role="alert">
+              <a class="close" data-dismiss="alert">×</a>
+              {% for message in messages %}
+                 {{ message }}
+              {% endfor %}
+           </div>
+           {% endif %}
+        {% endwith %}
+
+        {% if error %}
+           <div class="alert alert-danger alert-dismissible" role="alert">
+              <a class="close" data-dismiss="alert">×</a>
+              <h4 class="alert-heading">Erros:</h4>
+              <ul>
+             {% for field in form if field.widget.input_type != 'hidden' %}
+               {% if field.errors %}
+                  <li><strong>{{ field.label.text }}</strong>:{% for error in field.errors %} {{ error }}.{% endfor %}</li>
+               {% endif %}
+             {% endfor %}
+              </ul>
+           </div>
+        {% endif %}
+
+        {{ form.csrf_token }}
+
+        <fieldset>
+            <!--
+            <legend>Edição de Parâmetros do Site</legend>
+            -->
+            <div class="row">
+                <div class="col-md-4">
+                    <label>Código</label>
+                    <input type="text" name="code" id="code" class="form-control input-block-level" value="{{ form.code.data or '' }}">
+                </div>
+                <div class="col-md-6">
+                    <label>Nome</label>
+                    <input type="text" name="name" id="name" class="form-control input-block-level" value="{{ form.name.data or '' }}">
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-md-12">
+                    <label>Notas</label>
+                    <input type="text" name="notes" id="notes" class="form-control input-block-level" value="{{ form.notes.data or '' }}">
+                </div>
+            </div>
+            <div class="row">
+                 <div class="col-md-12{% if form.setting_value.errors %} has-error{% endif %}">
+                    <div style="height: 400px">
+                        <label for="setting_value">Valor do parâmetro</label>
+                        <textarea name="setting_value" id="setting_value" class="form-control input-block-level" rows="15">{{ form.setting_value.data or '' }}</textarea>
+                    </div>
+                </div>
+            </div>
+
+            <br />
+
+            <div class="row">
+                <div class="col-md-12" style="text-align: right">
+                    <button type="button" class="btn btn-default" onclick="location.href='{{ url_for('backoffice.settings_site') }}'" >Voltar</button>
+                    <button type="submit" class="btn btn-primary">Gravar</button>
+                </div>
+            </div>
+
+            <br />
+        </fieldset>
+
+    </form>
+</div>
+{% endblock %}
+
+{% block post_script %}
+<script type="text/javascript">
+    $(function () {
+
+      var myCodeMirror = CodeMirror.fromTextArea(document.getElementById('setting_value'), {
+        //mode: "javascript",
+        lineNumbers: true,
+        matchBrackets: true,
+        continueComments: "Enter",
+        extraKeys: {"Ctrl-Q": "toggleComment"}
+      });
+
+    });
+</script>
+{% endblock %}

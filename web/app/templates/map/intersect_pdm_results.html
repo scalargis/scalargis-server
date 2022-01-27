@@ -1,0 +1,278 @@
+<div class="row">
+    <div class="col-md-12">
+        <h5 class="page-header"><strong>Resultados da análise (não dispensa a consulta do PDM em vigor)</strong></h5>
+    </div>
+</div>
+
+{#
+    {% if records_ord|length > 0 %}
+        <div class="well well-sm">
+            <label><small>Exportar dados:</small></label>
+            <div class="row">
+                <div class="col-md-4 col-md-offset-1"><a href="#" target="_blank" class="btnExportIntersectPDM" data-action="{{ url_for('map.intersect_pdm_export') }}" data-format="shapefile"><i class="fa fa-file-o"></i> Shapefile</a></div>
+                <div class="col-md-3"><a href="#" target="_blank" class="btnExportIntersectPDM" data-action="{{ url_for('map.intersect_pdm_export') }}" data-format="xls"><i class="fa fa-file-excel-o"></i> Excel</a></div>
+                <div class="col-md-3"><a href="#" target="_blank" class="btnExportIntersectPDM" data-action="{{ url_for('map.intersect_pdm_export') }}" data-format="csv"><i class="fa fa-file-text-o"></i> CSV</a></div>
+            </div>
+        </div>
+    {% endif %}
+
+
+    <div class="row">
+        <div class="col-md-12">
+            <input type="checkbox" id="chkLocal" data-geom="{{ geom_ewkt }}" checked  /> Desenhar local
+        </div>
+    </div>
+#}
+
+
+<div class="row">
+    <div class="col-md-12">
+        <ul class="nav nav-list" style="font-size: smaller">
+
+
+
+        {% if records_ran|length > 0 %}
+            <li>
+                <label class="tree-toggler nav-header">Reserva Agrícola</label>
+                <ul class="nav nav-list tree">
+                    {% for rec in records_ran %}
+                    <li>
+                        <div>
+                            <input type="checkbox" class="results-pdm-geom" data-record-id="{{ rec.rowid }}" data-codigo="{{ rec.tipo }}" data-geom="{{ rec.geom_ewkt }}"  >
+                                {% if rec.g1 and rec.g1|length > 0 %}
+                                        {{ rec.g1 }}
+                                {% endif %}
+                                {% if rec.g2 and rec.g2|length > 0 %}
+                                         - {{ rec.g2 }}
+                                {% endif %}
+                                {% if rec.g3 and rec.g3|length > 0 %}
+                                         - {{ rec.g3 }}
+                                {% endif %}
+                            </input>
+                        </div>
+                        {#
+                        {% if rec.dimensao == 2 %}
+                        <div class="row">
+                            <div class="col-md-5">
+                                <b>Área:</b> {{ '%0.2f' % rec.area|float }} m2
+                            </div>
+                            <div class="col-md-6">
+                                <b>Percentagem:</b> {{ '%0.2f' % rec.area_percent|float }}
+                            </div>
+                        </div>
+                        {% endif %}
+                        #}
+                    </li>
+                    {% endfor %}
+                </ul>
+            </li>
+        {% endif %}
+
+
+            <li>
+                <label>&nbsp;</label>
+            </li>
+
+
+
+        {% if records_eem|length > 0 %}
+            <li>
+             <label class="tree-toggler nav-header">Reserva Ecológica</label>
+                <ul class="nav nav-list tree">
+                    {% for rec in records_eem %}
+                    <li>
+                       <div>
+                            <input type="checkbox" class="results-pdm-geom" data-record-id="{{ rec.rowid }}" data-codigo="{{ rec.tipo }}" data-geom="{{ rec.geom_ewkt }}"  >
+                                {% if rec.g1 and rec.g1|length > 0 %}
+                                        {{ rec.g1 }}
+                                {% endif %}
+                                {% if rec.g2 and rec.g2|length > 0 %}
+                                         - {{ rec.g2 }}
+                                {% endif %}
+                                {% if rec.g3 and rec.g3|length > 0 %}
+                                         - {{ rec.g3 }}
+                                {% endif %}
+                            </input>
+                        </div>
+                        {#
+                        {% if rec.dimensao == 2 %}
+                        <div class="row">
+                            <div class="col-md-5">
+                                <b>Área:</b> {{ '%0.2f' % rec.area|float }} m2
+                            </div>
+                            <div class="col-md-6">
+                                <b>Percentagem:</b> {{ '%0.2f' % rec.area_percent|float }}
+                            </div>
+                        </div>
+                        {% endif %}
+                        #}
+                    </li>
+                    {% endfor %}
+                </ul>
+            </li>
+        {% endif %}
+
+
+            <li>
+                <label>&nbsp;</label>
+            </li>
+
+
+        {% if records_serv|length > 0 %}
+            <li>
+                <label class="tree-toggler nav-header">Servidões Administrativas</label>
+                <ul class="nav nav-list tree">
+                    {% for rec in records_serv %}
+                    <li>
+                       <div>
+                            <input type="checkbox" class="results-pdm-geom" data-record-id="{{ rec.rowid }}" data-codigo="{{ rec.tipo }}" data-geom="{{ rec.geom_ewkt }}"  >
+                                {% if rec.g1 and rec.g1|length > 0 %}
+                                        {{ rec.g1 }}
+                                {% endif %}
+                                {% if rec.g2 and rec.g2|length > 0 %}
+                                         - {{ rec.g2 }}
+                                {% endif %}
+                                {% if rec.g3 and rec.g3|length > 0 %}
+                                         - {{ rec.g3 }}
+                                {% endif %}
+                            </input>
+                        </div>
+                        {#
+                        {% if rec.dimensao == 2 %}
+                        <div class="row">
+                            <div class="col-md-5">
+                                <b>Área:</b> {{ '%0.2f' % rec.area|float }} m2
+                            </div>
+                            <div class="col-md-6">
+                                <b>Percentagem:</b> {{ '%0.2f' % rec.area_percent|float }}
+                            </div>
+                        </div>
+                        {% endif %}
+                        #}
+                    </li>
+                    {% endfor %}
+                </ul>
+              </li>
+        {% endif %}
+
+
+
+            <li>
+                <label>&nbsp;</label>
+            </li>
+
+
+        {% if records_cond|length > 0 %}
+            <li>
+                <label class="tree-toggler nav-header">Condicionamentos Especiais</label>
+                <ul class="nav nav-list tree">
+                    {% for rec in records_cond %}
+                    <li>
+                       <div>
+                            <input type="checkbox" class="results-pdm-geom" data-record-id="{{ rec.rowid }}" data-codigo="{{ rec.tipo }}" data-geom="{{ rec.geom_ewkt }}"  >
+                                {% if rec.g1 and rec.g1|length > 0 %}
+                                        {{ rec.g1 }}
+                                {% endif %}
+                                {% if rec.g2 and rec.g2|length > 0 %}
+                                         - {{ rec.g2 }}
+                                {% endif %}
+                                {% if rec.g3 and rec.g3|length > 0 %}
+                                         - {{ rec.g3 }}
+                                {% endif %}
+                            </input>
+                        </div>
+                        {#
+                        {% if rec.dimensao == 2 %}
+                        <div class="row">
+                            <div class="col-md-5">
+                                <b>Área:</b> {{ '%0.2f' % rec.area|float }} m2
+                            </div>
+                            <div class="col-md-6">
+                                <b>Percentagem:</b> {{ '%0.2f' % rec.area_percent|float }}
+                            </div>
+                        </div>
+                        {% endif %}
+                        #}
+                    </li>
+                    {% endfor %}
+                </ul>
+            </li>
+        {% endif %}
+
+
+            <li>
+                <label>&nbsp;</label>
+            </li>
+
+
+        {% if records_ord|length > 0 %}
+            <li>
+                <label class="tree-toggler nav-header">Ordenamento Síntese</label>
+                <ul class="nav nav-list tree">
+                    {% for rec in records_ord %}
+                    <li>
+                       <div>
+                            <input type="checkbox" class="results-pdm-geom" data-record-id="{{ rec.rowid }}" data-codigo="{{ rec.tipo }}" data-geom="{{ rec.geom_ewkt }}"  >
+                                {% if rec.g1 and rec.g1|length > 0 %}
+                                        {{ rec.g1 }}
+                                {% endif %}
+                                {% if rec.g2 and rec.g2|length > 0 %}
+                                         - {{ rec.g2 }}
+                                {% endif %}
+                                {% if rec.g3 and rec.g3|length > 0 %}
+                                         - {{ rec.g3 }}
+                                {% endif %}
+                            </input>
+                        </div>
+                        {#
+                        {% if rec.dimensao == 2 %}
+                        <div class="row">
+                            <div class="col-md-5">
+                                <b>Área:</b> {{ '%0.2f' % rec.area|float }} m2
+                            </div>
+                            <div class="col-md-6">
+                                <b>Percentagem:</b> {{ '%0.2f' % rec.area_percent|float }}
+                            </div>
+                        </div>
+                        {% endif %}
+                        #}
+                    </li>
+                    {% endfor %}
+                </ul>
+            </li>
+        {% endif %}
+
+        {% if records_perigosidade|length > 0 %}
+            <li>
+                <label class="tree-toggler nav-header">Perigosidade (PMDFCI)</label>
+                <ul class="nav nav-list tree">
+                    {% for rec in records_perigosidade %}
+                    <li>
+                       <div>
+                            <input type="checkbox" class="results-pdm-geom" data-record-id="{{ rec.rowid }}" data-codigo="{{ rec.tipo }}" data-geom="{{ rec.geom_ewkt }}"  >
+                                {% if rec.g1 and rec.g1|length > 0 %}
+                                        {{ rec.g1 }}
+                                {% endif %}
+                            </input>
+                        </div>
+                        {#
+                        {% if rec.dimensao == 2 %}
+                        <div class="row">
+                            <div class="col-md-5">
+                                <b>Área:</b> {{ '%0.2f' % rec.area|float }} m2
+                            </div>
+                            <div class="col-md-6">
+                                <b>Percentagem:</b> {{ '%0.2f' % rec.area_percent|float }}
+                            </div>
+                        </div>
+                        {% endif %}
+                        #}
+                    </li>
+                    {% endfor %}
+                </ul>
+            </li>
+        {% endif %}
+
+        </ul>
+    </div>
+</div>

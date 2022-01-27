@@ -1,0 +1,1 @@
+ALTER TABLE portal.widget ADD COLUMN template text;

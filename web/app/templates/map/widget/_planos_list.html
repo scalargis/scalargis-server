@@ -1,0 +1,7 @@
+<div class="menu-bar-heading">
+    <a href="#" class="">{{widget.titulo}}</a>
+</div>
+<div class="menu-bar-body">
+    <input type="hidden" class="wigdet-config" value='{{widget.config or ""}}' />
+    {{widget.html_content|safe}}
+</div>

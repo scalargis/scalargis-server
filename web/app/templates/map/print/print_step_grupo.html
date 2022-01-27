@@ -1,0 +1,149 @@
+<div class="step-back-area">
+    <a href="#" class="step-back" data-step="#print-step-0"><i class="fa fa-angle-double-left" aria-hidden="true"></i> Voltar</a>
+</div>
+
+<div class="col-md-12">
+    <h5 class="" style="padding-bottom: 5px"><strong>{{ tipo.titulo }}</strong></h5>
+</div>
+
+<div class="col-md-12">
+    <h4 class="page-header">Marcação de Local</h4>
+</div>
+
+<div class="col-md-12 text-center">
+    <div class="btn-toolbar geometry-buttons" data-multi-geom="{{'1' if tipo.multiGeom else '0'}}" {% if tipo.marcacaoLocal %} data-required-geom="1" data-required-msg="É obrigatório indicar a localização no mapa" {% endif %}>
+        <div class="btn-group" data-group="btn-geometry">
+            <button type="button" class="btn btn-default btn-small btn-geometry-draw" data-button-id="ctrlPrintCreatePoint" title="Ponto" href="#"><i class="fa fac-draw-point"></i></button>
+            <button type="button" class="btn btn-default btn-small btn-geometry-draw" data-button-id="ctrlPrintCreateLine" title="Linha" href="#"><i class="fa fac-draw-line"></i></button>
+            <button type="button" class="btn btn-default btn-small btn-geometry-draw" data-button-id="ctrlPrintCreatePolygon" title="Polígono" href="#"><i class="fa fac-draw-poly"></i></button>
+            <button type="button" class="btn btn-default btn-small btn-geometry-draw" data-button-id="ctrlPrintSelectGeometry" title="Seleccionar" href="#"><i class="fa fa-mouse-pointer"></i></button>
+            <button type="button" class="btn btn-default btn-small btn-geometry-draw" data-button-id="ctrlPrintModifyGeometry" title="Editar" href="#"><i class="fa fa-edit"></i></button>
+        </div>
+        <div class="btn-group">
+            <button type="button" class="btn btn-default btn-small" id="btnPrintClearGeometry" title="Eliminar geometria" href="#"><i class="fa fa-remove"></i></button>
+            <button type="button" class="btn btn-default btn-small" id="btnPrintZoomGeometry" title="Localizar geometria" href="#"><i class="fa fa-search-plus"></i></button>
+        </div>
+    </div>
+</div>
+
+{% if tipo.marcacaoLocal %}
+    <div class="col-md-12">
+        <div class="alert alert-info" style="padding: 3px;">
+            Deverá marcar no mapa a localização pretendida
+        </div>
+    </div>
+{% endif %}
+
+{% if tipo.identificacaoRequerente %}
+    <div class="col-md-12">
+        <h4 class="page-header">Identificação Requerente</h4>
+    </div>
+
+    <div class="col-md-12">
+        <form>
+          <fieldset>
+            {% if tipo.identificacaoCampos and 'nif' in tipo.identificacaoCampos  and tipo.identificacaoCampos.nif.active %}
+                <div class="col-md-4">
+                    <div class="form-group">
+                      <label>NIF/NIPC:</label>
+                      <input type="text" id="nif" name="nif" class="form-control" maxlength="9"
+                             {% if tipo.identificacaoCampos.nif.required %} data-required="1" data-required-msg="É obrigatório indicar o NIF/NIPC" {% endif %} />
+                    </div>
+                </div>
+            {% endif %}
+            {% if tipo.identificacaoCampos and 'nome' in tipo.identificacaoCampos and tipo.identificacaoCampos.nome.active %}
+                <div class="col-md-8">
+                    <div class="form-group">
+                    <label>Nome:</label>
+                    <input type="text" id="nome" name="nome" class="form-control"
+                           {% if tipo.identificacaoCampos.nome.required %} data-required="1" data-required-msg="É obrigatório indicar o Nome" {% endif %} />
+                    </div>
+                </div>
+            {% endif %}
+          </fieldset>
+            {% if tipo.identificacaoCampos and 'morada' in tipo.identificacaoCampos and tipo.identificacaoCampos.morada.active %}
+              <fieldset>
+                <div class="col-md-12">
+                    <div class="form-group">
+                      <label>Morada:</label>
+                      <input type="text" id="morada" name="morada" class="form-control"
+                             {% if tipo.identificacaoCampos.morada.required %} data-required="1" data-required-msg="É obrigatório indicar a Morada" {% endif %} />
+                    </div>
+                </div>
+              </fieldset>
+            {% endif %}
+          <fieldset>
+            {% if tipo.identificacaoCampos and 'codpostal' in tipo.identificacaoCampos and tipo.identificacaoCampos.codpostal.active %}
+                <div class="col-md-4">
+                    <div class="form-group">
+                      <label>Cod. Postal:</label>
+                      <input type="text" id="codpostal" name="codpostal" class="form-control"  />
+                    </div>
+                </div>
+            {% endif %}
+            {% if tipo.identificacaoCampos and 'local' in tipo.identificacaoCampos and tipo.identificacaoCampos.local.active %}
+                <div class="col-md-8">
+                    <div class="form-group">
+                      <label>Local:</label>
+                      <input type="text" id="local" name="local" class="form-control"  />
+                    </div>
+                </div>
+            {% endif %}
+          </fieldset>
+        </form>
+    </div>
+
+    <div class="col-md-12">
+        <div class="alert alert-info" style="padding: 3px;">
+            Deverá indicar os seus dados de identificação
+        </div>
+    </div>
+{% endif %}
+
+{% if tipo.finalidadeEmissao %}
+    <div class="col-md-12" style="padding-top: 10px">
+        <h4 class="page-header">Finalidade da Emissão</h4>
+    </div>
+
+    <div class="col-md-12" style="padding-top: 10px">
+      <!--<label>Finalidade:</label>-->
+      <input type="text" id="finalidadeEmissao" name="finalidadeEmissao" class="form-control" />
+    </div>
+{% endif %}
+
+{% if tipo.guiaPagamento %}
+    <div class="col-md-12" style="padding-top: 10px">
+        <h4 class="page-header">Guia de Pagamento</h4>
+    </div>
+
+    <div class="col-md-12" style="padding-top: 10px">
+      <!--<label>Finalidade:</label>-->
+      <input type="text" id="guiaPagamento" name="guiaPagamento" class="form-control" />
+    </div>
+{% endif %}
+
+<!--
+{% if layouts|length > 0 %}
+    <div class="col-md-12">
+        <h5 class="page-header">Formato</h5>
+    </div>
+
+    <div class="col-md-8" style="margin-top: 10px; margin-bottom: 10px">
+        <select id="layout" name="layout" class="form-control input-block-level">
+        {% for l in layouts %}
+            <option value="{{ l|join('|') }}">{{ l|join(' - ') }}</option>
+        {% endfor %}
+        </select>
+    </div>
+{% endif %}
+-->
+
+
+<div class="col-md-12">
+    <div id="validation" style="margin-top: 10px; display: none">
+    </div>
+</div>
+
+<div class="col-md-12" style="padding-top: 10px">
+    <button type="button" id="btnPrintGrupo" class="btn btn-primary center-block" data-action="{{ url_for('map.print_step_grupo_details') }}" data-id="{{ tipo.id }}"  >Continuar</button>
+</div>

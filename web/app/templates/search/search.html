@@ -1,0 +1,24 @@
+<head>
+    <meta charset="utf-8">
+    <link   rel="stylesheet" href="//code.jquery.com/ui/1.10.4/themes/smoothness/jquery-ui.css">
+    <script type="text/javascript" src="http://code.jquery.com/jquery-latest.js"></script>
+    <script type="text/javascript" src="http://ajax.googleapis.com/ajax/libs/jqueryui/1.8.9/jquery-ui.js"></script>
+</head>
+
+{{ form.autocomplete.label }}: {{ form.autocomplete }}
+
+<script>
+  $(function() {
+    jQuery.curCSS = function(element, prop, val) {
+        return jQuery(element).css(prop, val);
+    };
+
+    $('#autocomplete').autocomplete({
+      source: '{{ url_for("search.autocomplete") }}',
+      minLength: 2,
+      select: function( event, ui ) {
+        ui.item ? alert('Selected: ' + ui.item.value) : alert('Nothing selected, input was ' + this.value)
+      }
+    });
+  });
+</script>

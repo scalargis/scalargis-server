@@ -1,0 +1,62 @@
+{% extends "profile/_layout.html" %}
+
+{% block content %}
+<div class="row">
+    <div class="col-lg-12">
+        <h1 class="page-header">Perfil</h1>
+    </div>
+    <!-- /.col-lg-12 -->
+</div>
+
+<div id="informationDiv" >
+</div>
+
+<div class="module-content">
+</div>
+{% endblock %}
+
+{% block post_script %}
+
+<script type="text/javascript">
+(function ($) {
+    $.fn.extend({
+        //pass the options variable to the function
+        informationModal: function (options) {
+            var html = '<div class="modal fade" id="infoContainer" tabindex="-1" role="dialog" aria-hidden="true">' +
+            '<div class="modal-content">' +
+            '<div class="modal-header"><a class="close" data-dismiss="modal">×</a>' +
+            '<h3>#Heading#</h3></div><div class="modal-body">' +
+            '<div class="#MessageClass#">#Body#</div></div><div class="modal-footer">' +
+            '<a href="#" class="btn btn-primary" data-dismiss="modal" id="infoCloseButton">Fechar</a></div></div><div>';
+
+            var defaults = {
+                heading: 'Informação',
+                body: '',
+                messageClass: 'alert alert-info',
+                callback: null
+            };
+
+            $('#infoCloseButton', this).unbind();
+            $('#informationDiv').unbind();
+
+            var options = $.extend(defaults, options);
+            html = html.replace('#Heading#', options.heading).replace('#Body#', options.body).replace('#MessageClass#', options.messageClass);
+
+            $(this).html(html);
+            $("#infoContainer", this).modal('show');
+            var context = $(this);
+            $('#infoCloseButton', this).click(function () {
+                $("#infoContainer", context).modal('hide');
+
+                if (options.callback != null)
+                    options.callback();
+            });
+        }
+    });
+})(jQuery);
+</script>
+
+
+{% endblock %}
+
+

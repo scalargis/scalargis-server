@@ -1,0 +1,28 @@
+<div>
+    <div class="step-back-area">
+        <a href="#" class="step-back" data-step="#print-step-2" data-step-clear-back="true"><i class="fa fa-angle-double-left" aria-hidden="true"></i> Voltar</a>
+    </div>
+
+    <div class="alert alert-info">
+        {% if prints|length > 1 %}
+            A gerar as plantas ...
+        {% else %}
+            A gerar a planta ...
+        {% endif %}
+    </div>
+
+    {% for print in prints %}
+    <div data-id="{{print.id}}" data-download="{{ 'false' if agrupar_plantas else 'true' }}"><i class="fa printing" aria-hidden="true"></i> {{print.name}} </div>
+    {% endfor %}
+
+    <div class="col-md-12">
+        <div class="download-all hidden" style="padding: 15px; margin-bottom: 10px;">
+            {% if agrupar_plantas %}
+            <button type="button" class="btn btn-primary center-block print-download-all" data-action="{{ url_for('print.merge_pdf') }}" data-download="true"> Abrir PDF com todas as plantas</button>
+            {% else %}
+            <button type="button" class="btn btn-primary center-block print-download-all" data-action="{{ url_for('print.merge_pdf') }}"> Criar PDF com todas as plantas</button>
+            {% endif %}
+        </div>
+    </div>
+</div>
+

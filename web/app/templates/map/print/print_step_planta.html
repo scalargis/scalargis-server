@@ -1,0 +1,230 @@
+{% if showBack %}
+<div class="step-back-area">
+    <a href="#" id="btnVoltar" class="step-back" data-step="#print-step-0"><i class="fa fa-angle-double-left" aria-hidden="true"></i> Voltar</a>
+</div>
+{% endif %}
+
+<div class="col-md-12">
+    <h5 class="" style="padding-bottom: 5px"><strong>{{ planta.titulo }}</strong></h5>
+</div>
+
+<div class="col-md-12">
+    <h4 class="page-header">Marcação de Local</h4>
+</div>
+
+<div class="col-md-12 text-center">
+    <div class="btn-toolbar geometry-buttons" data-multi-geom="{{'1' if planta.multiGeom else '0'}}"  {% if planta.marcacaoLocal %} data-required-geom="1" data-required-msg="É obrigatório indicar a localização no mapa" {% endif %}>
+        <div class="btn-group" data-group="btn-geometry">
+            <button type="button" class="btn btn-default btn-small btn-geometry-draw" data-button-id="ctrlPrintCreatePoint" title="Ponto" href="#"><i class="fa fac-draw-point"></i></button>
+            <button type="button" class="btn btn-default btn-small btn-geometry-draw" data-button-id="ctrlPrintCreateLine" title="Linha" href="#"><i class="fa fac-draw-line"></i></button>
+            <button type="button" class="btn btn-default btn-small btn-geometry-draw" data-button-id="ctrlPrintCreatePolygon" title="Polígono" href="#"><i class="fa fac-draw-poly"></i></button>
+            <button type="button" class="btn btn-default btn-small btn-geometry-draw" data-button-id="ctrlPrintSelectGeometry" title="Seleccionar" href="#"><i class="fa fa-mouse-pointer"></i></button>
+            <button type="button" class="btn btn-default btn-small btn-geometry-draw" data-button-id="ctrlPrintModifyGeometry" title="Editar" href="#"><i class="fa fa-edit"></i></button>
+        </div>
+        <div class="btn-group">
+            <button type="button" class="btn btn-default btn-small" id="btnPrintClearGeometry" title="Eliminar geometria" href="#"><i class="fa fa-remove"></i></button>
+            <button type="button" class="btn btn-default btn-small" id="btnPrintZoomGeometry" title="Localizar geometria" href="#"><i class="fa fa-search-plus"></i></button>
+        </div>
+    </div>
+</div>
+
+{% if planta.marcacaoLocal %}
+    <div class="col-md-12">
+        <div class="alert alert-info" style="padding: 3px;">
+            Deverá marcar no mapa a localização pretendida
+        </div>
+    </div>
+{% endif %}
+
+{% if planta.escala is not defined or planta.escala is none  %}
+<div class="col-md-12">
+    <h4 class="page-header">Escala de Saida</h4>
+</div>
+<div class="col-md-12" style="margin-top: 10px; margin-bottom: 10px">
+
+    <ul class="nav nav-tabs">
+        {% if planta.escalasRestritas %}
+            <li class="active" >
+                <a data-toggle="pill" href="#predefscale">Predefinida</a>
+            </li>
+        {% endif %}
+        {% if planta.escalaLivre %}
+            <li {% if not planta.escalasRestritas %} class="active" {% endif %} >
+                <a data-toggle="pill" href="#userscale">Livre</a>
+            </li>
+        {% endif %}
+        {% if planta.escalaMapa %}
+            <li {% if not planta.escalasRestritas and not planta.escalaLivre %}class="active"{% endif %}>
+                <a data-toggle="pill" href="#mapscale">Mapa</a>
+            </li>
+        {% endif %}
+    </ul>
+
+    <div class="tab-content">
+        {% if planta.escalasRestritas %}
+        <div id="predefscale" class="tab-pane fade in {% if planta.escalasRestritas %}active{% endif %}">
+
+                <div class="col-md-6" style="margin-top: 10px; margin-bottom: 10px">
+                    <select id="escalaPredef" name="escalaPredef" class="form-control input-block-level">
+                        {% for i in planta.escalasRestritasLista.split(",") %}
+                            <option> 1 : {{ i }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+        </div>
+        {% endif %}
+        {% if planta.escalaLivre %}
+        <div id="userscale" class="tab-pane fade in {% if not planta.escalasRestritas %}active{% endif %}">
+            <div class="col-md-1" style="margin-top: 10px; margin-bottom: 10px"><h4>1 :</h4></div>
+            <div class="col-md-6" style="margin-top: 10px; margin-bottom: 10px">
+                <input type="text" id="escalaDenom" name="escalaDenom" class="form-control input-block-level" />
+            </div>
+        </div>
+        {% endif %}
+        {% if planta.escalaMapa %}
+        <div id="mapscale"
+             class="tab-pane fade in {% if not planta.escalasRestritas and not planta.escalaLivre %}active{% endif %}">
+            <h5>A planta será emitida em função da escala de visualização do mapa</h5>
+        </div>
+        {% endif %}
+    </div>
+
+</div>
+{% endif %}
+
+{% if layouts|length > 0 %}
+<div class="col-md-12">
+    <h4 class="page-header">Formato</h4>
+</div>
+
+<div class="col-md-8" style="margin-top: 10px; margin-bottom: 10px">
+    <select id="layout" name="layout" class="form-control input-block-level">
+    {% for l in layouts|sort(reverse=True) %}
+        <option value="{{ l|join('|') }}" {% if (l|join('|')) == layout %}selected{% endif %}>{{ l|join(' - ') }}</option>
+    {% endfor %}
+    </select>
+</div>
+{% endif %}
+
+{% if planta.identificacao %}
+    <div class="col-md-12">
+        <h4 class="page-header">Identificação Requerente</h4>
+    </div>
+
+    <div class="col-md-12">
+        <form>
+          <fieldset>
+            {% if 'nif' in planta.identificacaoCampos and planta.identificacaoCampos.nif.active %}
+                <div class="col-md-4">
+                    <div class="form-group">
+                      <label>NIF/NIPC:</label>
+                      <input type="text" id="nif" name="nif" class="form-control" maxlength="9"
+                             {% if planta.identificacaoCampos.nif.required %} data-required="1" data-required-msg="É obrigatório indicar o NIF/NIPC" {% endif %} />
+                    </div>
+                </div>
+            {% endif %}
+            {% if 'nome' in planta.identificacaoCampos and planta.identificacaoCampos.nome.active %}
+                <div class="col-md-8">
+                    <div class="form-group">
+                    <label>Nome:</label>
+                    <input type="text" id="nome" name="nome" class="form-control"
+                           {% if planta.identificacaoCampos.nome.required %} data-required="1" data-required-msg="É obrigatório indicar o Nome" {% endif %} />
+                    </div>
+                </div>
+            {% endif %}
+          </fieldset>
+            {% if 'morada' in planta.identificacaoCampos and planta.identificacaoCampos.morada.active %}
+              <fieldset>
+                <div class="col-md-12">
+                    <div class="form-group">
+                      <label>Morada:</label>
+                      <input type="text" id="morada" name="morada" class="form-control"
+                             {% if planta.identificacaoCampos.morada.required %} data-required="1" data-required-msg="É obrigatório indicar a Morada" {% endif %} />
+                    </div>
+                </div>
+              </fieldset>
+            {% endif %}
+          <fieldset>
+            {% if 'codpostal' in planta.identificacaoCampos and planta.identificacaoCampos.codpostal.active %}
+                <div class="col-md-4">
+                    <div class="form-group">
+                      <label>Cod. Postal:</label>
+                      <input type="text" id="codpostal" name="codpostal" class="form-control"  />
+                    </div>
+                </div>
+            {% endif %}
+            {% if 'local' in planta.identificacaoCampos and planta.identificacaoCampos.local.active %}
+                <div class="col-md-8">
+                    <div class="form-group">
+                      <label>Local:</label>
+                      <input type="text" id="local" name="local" class="form-control"  />
+                    </div>
+                </div>
+            {% endif %}
+          </fieldset>
+        </form>
+    </div>
+
+    <div class="col-md-12">
+        <div class="alert alert-info" style="padding: 3px;">
+            Deverá indicar os seus dados de identificação
+        </div>
+    </div>
+{% endif %}
+
+<div class="col-md-12">
+    <div id="validation" style="margin-top: 10px; display: none">
+    </div>
+</div>
+
+
+{% if planta.tituloEmissao %}
+<div class="col-md-12" style="margin-top: 10px; margin-bottom: 10px">
+    <h4 class="page-header">Título</h4>
+</div>
+<div class="col-md-12">
+    <textarea name="titulo" id="titulo" class="form-control input-block-level" rows="4"></textarea>
+</div>
+{% endif %}
+
+{% if planta.finalidadeEmissao %}
+<div class="col-md-12" style="margin-top: 10px; margin-bottom: 10px">
+    <h4 class="page-header">Finalidade da Emissão</h4>
+</div>
+<div class="col-md-12">
+  <input type="text" id="finalidadeEmissao" name="finalidadeEmissao" class="form-control input-block-level" />
+</div>
+{% endif %}
+
+{% if planta.guiaPagamento %}
+<div class="col-md-12" style="margin-top: 10px; margin-bottom: 10px">
+    <h4 class="page-header">Guia de Pagamento</h4>
+</div>
+<div class="col-md-12">
+  <input type="text" id="guiaPagamento" name="guiaPagamento" class="form-control input-block-level" />
+</div>
+{% endif %}
+
+
+{% for widget in widgets_layout %}
+    {{widget.html_content|safe}}
+{% endfor %}
+
+
+<div class="col-md-12">
+    <div class="" style="padding: 15px; margin-bottom: 10px;">
+    {% if showBack %}
+        <button type="button" id="btnPrintSingle" name="btnPrintSingle" class="btn btn-primary center-block print-single" data-id="{{ planta.id }}" data-codigo="{{ planta.codigo }}" data-titulo="{{ planta.titulo }}" data-srid="{{ planta.srid }}" data-step="#print-step-1" data-target="#print-step-2" data-url="{{ url_for('print.generate_pdf', codigo=planta.codigo) }}" data-action="{{ url_for('map.print_step_batch') }}">Imprimir</button>
+    {% else %}
+        <button type="button" id="btnPrintSingle" name="btnPrintSingle" class="btn btn-primary center-block print-single" data-id="{{ planta.id }}" data-codigo="{{ planta.codigo }}" data-titulo="{{ planta.titulo }}" data-srid="{{ planta.srid }}" data-step="#print-step-0" data-target="#print-step-1" data-url="{{ url_for('print.generate_pdf', codigo=planta.codigo) }}" data-action="{{ url_for('map.print_step_batch') }}">Imprimir</button>
+    {% endif %}
+    </div>
+</div>
+
+{% if planta.escala is not defined or planta.escala is none  %}
+<div class="col-md-12 form-check" style="margin-top: 10px; margin-bottom: 10px">
+    <input type="checkbox" id="ckbox_view_paper" name="ckbox_view_paper" class="form-check-input" href="#" layout_map_sizes_for_preview="{{ layout_map_sizes_for_preview }}"/>
+    <label class="form-check-label" for="ckbox_view_paper">Ver área de impressão no mapa</label>
+</div>
+{% endif %}

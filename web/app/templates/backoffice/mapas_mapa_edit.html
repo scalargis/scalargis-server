@@ -1,0 +1,968 @@
+{% extends "backoffice/_layout.html" %}
+
+{% block content %}
+<div class="row">
+    <div class="col-lg-12">
+        <h1 class="page-header">Mapas<i class="fa fa-long-arrow-right  fa-fw" aria-hidden="true"></i>Mapa<i class="fa fa-long-arrow-right  fa-fw" aria-hidden="true"></i>Edição</h1>
+    </div>
+    <!-- /.col-lg-12 -->
+</div>
+
+<div id="informationDiv" >
+</div>
+
+<div class="module-content">
+    <form method="post" id="formMapa" name="formMapa">
+        {% with messages = get_flashed_messages() %}
+           {% if messages %}
+           <div class="alert alert-success alert-dismissible" role="alert">
+              <a class="close" data-dismiss="alert">×</a>
+              {% for message in messages %}
+                 {{ message }}
+              {% endfor %}
+           </div>
+           {% endif %}
+        {% endwith %}
+
+        {% if error %}
+           <div class="alert alert-danger alert-dismissible" role="alert">
+              <a class="close" data-dismiss="alert">×</a>
+              <h4 class="alert-heading">Erros:</h4>
+              <ul>
+             {% if error and error.Message %}
+               <li>{{ error.Message }}</li>
+             {% endif %}
+             {% for field in form if field.widget.input_type != 'hidden' %}
+               {% if field.errors %}
+                  <li><strong>{{ field.label.text }}</strong>:{% for error in field.errors %} {{ error }}.{% endfor %}</li>
+               {% endif %}
+             {% endfor %}
+              </ul>
+           </div>
+        {% endif %}
+
+        {{ form.csrf_token }}
+
+        <fieldset>
+            <!--
+            <legend>Edição de Mapa</legend>
+            -->
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="row">
+                        <div class="col-md-4">
+                            <label>Código:</label>
+                            <input type="text" id="codigo" name="codigo" class="form-control input-block-level" value="{{ form.codigo.data or '' }}" />
+                        </div>
+                        <div class="col-md-8">
+                            <label>Título:</label>
+                            <input type="text" id="titulo" name="titulo" class="form-control input-block-level" value="{{ form.titulo.data or '' }}" />
+                        </div>
+                    </div>
+                    <div class="row">
+                         <div class="col-md-12">
+                            <label>Configuração:</label>
+                            <div class="row">
+                                <div class="col-md-10">
+                                    <select name="configuracao" id="configuracao" class="form-control">
+                                        <option value=""></option>
+                                    {% if configuracoes %}
+                                        {% for cfg in configuracoes %}
+                                            <option value="{{ cfg.id }}" {% if cfg.id == form.configuracao.data %}selected{% endif %}>{{ cfg.titulo }}</option>
+                                        {% endfor %}
+                                    {% endif %}
+                                    </select>
+                                </div>
+                                <div class="col-md-2">
+                                    <a class="btn btn-from-txt" href="#" id="btnShowConfig" data-action="{{ url_for('backoffice.mapas_config_get', id=-1) }}" title="Ver Configuração"><i class="fa fa-list"></i></a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <label>Template:</label>
+                            <select id="template" name="template" class="form-control">
+                                {% for tpl in templates %}
+                                <option value="{{ tpl.name }}" {% if tpl.name == form.template.data %}selected{% endif %}>{{ tpl.title }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label>Widget inicial:</label>
+                            <input type="text" id="shoWidget" name="showWidget" class="form-control input-block-level" value="{{ form.showWidget.data or '' }}" />
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-md-6">
+                    <div class="row">
+                        <div class="col-md-12">
+                            <label>Descrição:</label>
+                            <textarea name="descricao" id="descricao" class="form-control input-block-level" rows="4">{{ form.descricao.data or '' }}</textarea>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-1"></div>
+                        <div class="col-md-4">
+                            <label class="checkbox">
+                                <input name="portal" type="checkbox" value="{{ form.portal.data or '' }}" {% if form.portal.data %}checked{% endif %} />{{ form.portal.label.text }}
+                            </label>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="checkbox">
+                                <input name="activo" type="checkbox" value="{{ form.activo.data or '' }}" {% if form.activo.data %}checked{% endif %} />{{ form.activo.label.text }}
+                            </label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col-md-12">
+                    <div style="height: 200px">
+                        <label>Cabeçalho da Página (HTML):</label>
+                        <textarea name="headerHtml" id="headerHtml" class="form-control input-block-level" rows="8">{{ form.headerHtml.data or '' }}</textarea>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row">
+                {#
+                <div class="col-md-4">
+                    <div class="widget-head">
+                        <h5>Módulos</h5>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-10">
+                            <!--@Html.DropDownList("ddlModulos", new SelectList(ViewBag.ModuloList, "Value", "Text"), "", new { @class = "col-md-10" })-->
+                            <select id="ddlModulos" name="modulosList" class="form-control">
+                                <option value=""></option>
+                                {% for mod in modulos %}
+                                <option value="{{ mod.id }}|{{ mod.titulo }}">{{ mod.titulo }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-1">
+                            <a class="btn btn-from-txt" href="#" id="btnAddModulo"><i class="fa fa-plus"></i></a>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-10">
+                            <label>Módulos</label>
+                            <select multiple="multiple" id="lmodulos" class="form-control" >
+                            {% for item in form.ModulosList.data %}
+                                <option value="{{ item }}">{{ item.split('|')[1] }}</option>
+                            {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-2" style="padding-top: 40px; padding-left: 0px">
+                            <a href="#" class="push" id="btnRemoveModulo" data-target="#lmodulos">Remover</a>
+                            <a href="#" class="push" id="btnClearModulos"data-target="#lmodulos">Limpar</a>
+                        </div>
+                    </div>
+                </div>
+                #}
+
+                <div class="col-md-4">
+                    <div class="widget-head">
+                        <h5>Perfis</h5>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-10">
+                            <!--@Html.DropDownList("ddlRoles", new SelectList(ViewBag.RoleList, "Id", "Name"), "", new { @class = "col-md-10" })-->
+                            <select id="ddlRoles" name="rolesList" class="form-control">
+                                <option value=""></option>
+                                {% for role in roles %}
+                                <option value="{{ role.id }}|{{ role.name }}">{{ role.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-1">
+                            <a class="btn btn-from-txt" href="#" id="btnAddRole"><i class="fa fa-plus"></i></a>
+                         </div>
+                    </div>
+                     <div class="row">
+                        <div class="col-md-10">
+                            <label>Perfis:</label>
+                            <select multiple="multiple" id="lroles" class="form-control" >
+                            {% for item in form.RolesList.data %}
+                                <option value="{{ item }}">{{ item.split('|')[1] }}</option>
+                            {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-2" style="padding-top: 40px; padding-left: 0px">
+                            <a href="#" class="push" id="btnRemoveRole" data-target="#lroles">Remover</a>
+                            <a href="#" class="push" id="btnClearRoles"data-target="#lroles">Limpar</a>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-md-4">
+                    <div class="widget-head">
+                        <h5>Catálogos</h5>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-10">
+                            <select id="ddlCatalogos" name="catalogosList" class="form-control">
+                                <option value=""></option>
+                                {% for ctl in catalogos %}
+                                <option value="{{ ctl.id }}|{{ ctl.titulo }}">{{ ctl.titulo }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-1">
+                            <a class="btn  btn-from-txt" href="#" id="btnAddCatalogo"><i class="fa fa-plus"></i></a>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-10">
+                            <label>Catálogos:</label>
+                            <select multiple="multiple" id="lcatalogos" class="form-control" >
+                            {% for item in form.CatalogosList.data %}
+                                <option value="{{ item }}">{{ item.split('|')[1] }}</option>
+                            {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-2" style="padding-top: 40px; padding-left: 0px">
+                            <a href="#" class="push" id="btnRemoveCatalogo" data-target="#lcatalogos">Remover</a>
+                            <a href="#" class="push" id="btnClearCatalogos"data-target="#lcatalogos">Limpar</a>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+            <div class="row">
+                <div class="col-md-5">
+                    <div class="row">
+                        <div class="col-md-1"></div>
+                        <div class="col-md-10">
+                            <label class="checkbox">
+                                <input name="showHelp" type="checkbox" value="{{ form.showHelp.data or '' }}" {% if form.showHelp.data %}checked{% endif %} />Ajuda
+                            </label>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-12">
+                            <div style="height: 180px">
+                                <label>Hmtl de Ajuda:</label>
+                                <textarea name="helpHtml" id="helpHtml" class="form-control input-block-level" rows="4">{{ form.helpHtml.data or '' }}</textarea>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-5">
+                    <div class="row">
+                        <div class="col-md-1"></div>
+                        <div class="col-md-10">
+                            <label class="checkbox">
+                                <input name="showCredits" type="checkbox" value="{{ form.showCredits.data or '' }}" {% if form.showCredits.data %}checked{% endif %} />Créditos
+                            </label>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-12">
+                            <div style="height: 180px">
+                                <label>Hmtl dos Créditos:</label>
+                                <textarea name="creditsHtml" id="creditsHtml" class="form-control input-block-level" rows="4">{{ form.creditsHtml.data or '' }}</textarea>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-2">
+                    <div class="row">
+                        <div class="col-md-1"></div>
+                        <div class="col-md-10">
+                            <label class="checkbox">
+                                <input name="showContact" type="checkbox" value="{{ form.showContact.data or '' }}" {% if form.showContact.data %}checked{% endif %} />Contacto
+                            </label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row" style="padding-top: 20px">
+                <!--
+                <div class="col-md-12">
+                    <label>Widgets</label>
+                </div>
+                -->
+
+                <div>
+                    <!-- Nav tabs -->
+                    <ul class="nav nav-tabs" role="tablist" id="controlsTabs">
+                        <li role="presentation" class="active"><a href="#widgets" aria-controls="widgets" data-target="#widgets" role="tab" data-toggle="tab">Widgets</a></li>
+                        <li role="presentation"><a href="#scripts" aria-controls="scripts" data-target="#scripts" role="tab" data-toggle="tab">Scripts</a></li>
+                    </ul>
+
+                    <!-- Tab panes -->
+                    <div class="tab-content">
+
+                        <div role="tabpanel" class="tab-pane active" id="widgets">
+                            <div class="row" style="padding-top: 20px">
+                                <div class="col-md-5">
+                                    <label>Widgets Disponíveis</label>
+                                    <div class="panel panel-default">
+                                        <!--<div class="panel-heading">Plantas Disponíveis</div>-->
+                                        <table class="table table-striped table-hover" id="widgets-all">
+                                            <thead>
+                                            <tr>
+                                                <th>Codigo</th>
+                                                <th>Nome</th>
+                                                <th></th>
+                                            </tr>
+                                            </thead>
+                                            <tbody>
+                                                {% for widget in widgets %}
+                                                <tr>
+                                                    {% set vars = {'checked': False} %}
+                                                    {% for u in form.WidgetsList.data %}
+                                                        {% if u == widget.id|string %}
+                                                            {% if vars.update({'checked': True}) %} {% endif %}
+                                                        {% endif %}
+                                                    {% endfor %}
+                                                    <td>{{ widget.codigo or '' }}</td>
+                                                    <td>{{ widget.titulo or '' }}</td>
+                                                    <td>
+                                                        {% if vars.checked %}
+                                                            <a href="#" class="add-item" style="display: none" data-widget-id="{{ widget.id }}" data-widget-codigo="{{ widget.codigo }}" data-widget-titulo="{{ widget.titulo }}">Adicionar</a>
+                                                        {% else %}
+                                                            <a href="#" class="add-item" data-widget-id="{{ widget.id }}" data-widget-codigo="{{ widget.codigo }}" data-widget-titulo="{{ widget.titulo }}">Adicionar</a>
+                                                        {% endif %}
+                                                    </td>
+                                                </tr>
+                                                {% endfor %}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                                <div class="col-md-7">
+                                    <label>Widgets Selecionados</label>
+                                    <div class="panel panel-default">
+                                        <table class="table table-striped table-hover sortable" id="widgets-selected">
+                                            <thead>
+                                            <tr>
+                                                <th style="width: 20px"></th>
+                                                <th>Codigo</th>
+                                                <th>Nome</th>
+                                                <th></th>
+                                            </tr>
+                                            </thead>
+                                            <tbody>
+                                            {% set count = [0] %}
+                                            {% for u in form.WidgetsList.data %}
+                                                {% for widget in widgets %}
+                                                    {% set vars = {'checked': False} %}
+                                                    {% if u == widget.id|string %}
+                                                        {% if vars.update({'checked': True}) %} {% endif %}
+                                                    {% endif %}
+                                                    {% if vars.checked %}
+                                                    <tr>
+                                                        <td><input type="checkbox" class="display: hidden" name="WidgetsList-{{ count[0] }}" value="{{ widget.id }}" {% if vars.checked %}checked{% endif %}></td>
+                                                        <td>{{ widget.codigo or '' }}</td>
+                                                        <td>{{ widget.titulo or '' }}</td>
+                                                        <td><a href="#" class="remove-item" data-widget-id="{{ widget.id }}">Remover</a></td>
+                                                    </tr>
+                                                    {% if count.append(count.pop() + 1) %}{% endif %} {# increment count by 1 #}
+                                                    {% endif %}
+                                                {% endfor %}
+                                            {% endfor %}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+
+                        <div role="tabpanel" class="tab-pane" id="scripts">
+                            <div class="row" style="padding-top: 20px">
+                                <div class="col-md-12">
+                                    <div style="height: 280px">
+                                        <label>Script:</label>
+                                        <textarea name="postScript" id="postScript" class="form-control input-block-level" rows="4">{{ form.postScript.data or '' }}</textarea>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+            </div>
+
+
+            <div class="row" style="padding-top: 20px">
+                <div class="col-md-12">
+                    <label>Emissão de Plantas</label>
+
+                    <div>
+                      <!-- Nav tabs -->
+                      <ul class="nav nav-tabs" role="tablist">
+                        <li role="presentation" class="active"><a href="#grupos_plantas" aria-controls="grupos_plantas" role="tab" data-toggle="tab">Grupos</a></li>
+                        <li role="presentation"><a href="#plantas_simples" aria-controls="plantas_simples" role="tab" data-toggle="tab">Plantas</a></li>
+                      </ul>
+
+                      <!-- Tab panes -->
+                      <div class="tab-content">
+
+                        <div role="tabpanel" class="tab-pane active" id="grupos_plantas">
+
+                            <div class="row" style="padding-top: 20px">
+                                <div class="col-md-5">
+                                    <label>Grupos Disponíveis</label>
+                                    <div class="panel panel-default">
+                                        <!--<div class="panel-heading">Plantas Disponíveis</div>-->
+                                        <table class="table table-striped table-hover" id="tipos-plantas-all">
+                                            <thead>
+                                            <tr>
+                                                <th>Codigo</th>
+                                                <th>Nome</th>
+                                                <th></th>
+                                            </tr>
+                                            </thead>
+                                            <tbody>
+                                                {% for tipo in tipos_plantas %}
+                                                <tr>
+                                                    {% set vars = {'checked': False} %}
+                                                    {% for u in form.TiposPlantasList.data %}
+                                                        {% if u == tipo.id|string %}
+                                                            {% if vars.update({'checked': True}) %} {% endif %}
+                                                        {% endif %}
+                                                    {% endfor %}
+                                                    <td>{{ tipo.codigo or '' }}</td>
+                                                    <td>{{ tipo.titulo or '' }}</td>
+                                                    <td>
+                                                        {% if vars.checked %}
+                                                            <a href="#" class="add-item" style="display: none" data-tipo-planta-id="{{ tipo.id }}" data-tipo-planta-codigo="{{ tipo.codigo }}" data-tipo-planta-titulo="{{ tipo.titulo }}">Adicionar</a>
+                                                        {% else %}
+                                                            <a href="#" class="add-item" data-tipo-planta-id="{{ tipo.id }}" data-tipo-planta-codigo="{{ tipo.codigo }}" data-tipo-planta-titulo="{{ tipo.titulo }}">Adicionar</a>
+                                                        {% endif %}
+                                                    </td>
+                                                </tr>
+                                                {% endfor %}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                                <div class="col-md-7">
+                                    <label>Grupos Selecionados</label>
+                                    <div class="panel panel-default">
+                                        <table class="table table-striped table-hover sortable" id="tipos-plantas-selected">
+                                            <thead>
+                                            <tr>
+                                                <th style="width: 20px"></th>
+                                                <th>Codigo</th>
+                                                <th>Nome</th>
+                                                <th></th>
+                                            </tr>
+                                            </thead>
+                                            <tbody>
+                                            {% set count = [0] %}
+                                            {% for u in form.TiposPlantasList.data %}
+                                                {% for tipo in tipos_plantas %}
+                                                    {% set vars = {'checked': False} %}
+                                                    {% if u == tipo.id|string %}
+                                                        {% if vars.update({'checked': True}) %} {% endif %}
+                                                    {% endif %}
+                                                    {% if vars.checked %}
+                                                    <tr>
+                                                        <td><input type="checkbox" class="display: hidden" name="TiposPlantasList-{{ count[0] }}" value="{{ tipo.id }}" {% if vars.checked %}checked{% endif %}></td>
+                                                        <td>{{ tipo.codigo or '' }}</td>
+                                                        <td>{{ tipo.titulo or '' }}</td>
+                                                        <td><a href="#" class="remove-item" data-tipo-planta-id="{{ tipo.id }}">Remover</a></td>
+                                                    </tr>
+                                                    {% if count.append(count.pop() + 1) %}{% endif %} {# increment count by 1 #}
+                                                    {% endif %}
+                                                {% endfor %}
+                                            {% endfor %}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+
+                        </div>
+
+                        <div role="tabpanel" class="tab-pane" id="plantas_simples">
+
+                            <div class="row" style="padding-top: 20px">
+                                <div class="col-md-5">
+                                    <label>Plantas Disponíveis</label>
+                                    <div class="panel panel-default">
+                                        <!--<div class="panel-heading">Plantas Disponíveis</div>-->
+                                        <table class="table table-striped table-hover" id="plantas-all">
+                                            <thead>
+                                            <tr>
+                                                <th>Codigo</th>
+                                                <th>Nome</th>
+                                                <th></th>
+                                            </tr>
+                                            </thead>
+                                            <tbody>
+                                            {% for planta in plantas %}
+                                            <tr>
+                                                {% set vars = {'checked': False} %}
+                                                {% for u in form.PlantasList.data %}
+                                                    {% if u == planta.id|string %}
+                                                        {% if vars.update({'checked': True}) %} {% endif %}
+                                                    {% endif %}
+                                                {% endfor %}
+                                                <td>{{ planta.codigo or '' }}</td>
+                                                <td>{{ planta.nome or '' }}</td>
+                                                <td>
+                                                    {% if vars.checked %}
+                                                        <a href="#" class="add-item" style="display: none" data-planta-id="{{ planta.id }}" data-planta-codigo="{{ planta.codigo }}" data-planta-nome="{{ planta.nome }}">Adicionar</a>
+                                                    {% else %}
+                                                        <a href="#" class="add-item" data-planta-id="{{ planta.id }}" data-planta-codigo="{{ planta.codigo }}" data-planta-nome="{{ planta.nome }}">Adicionar</a>
+                                                    {% endif %}
+                                                </td>
+                                            </tr>
+                                            {% endfor %}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                                <div class="col-md-7">
+                                    <label>Plantas Selecionadas</label>
+                                    <div class="panel panel-default">
+                                        <!--<div class="panel-heading">Plantas Seleccionadas</div>-->
+                                        <table class="table table-striped table-hover sortable" id="plantas-selected">
+                                            <thead>
+                                            <tr>
+                                                <th style="width: 20px"></th>
+                                                <th>Codigo</th>
+                                                <th>Nome</th>
+                                                <th></th>
+                                            </tr>
+                                            </thead>
+                                            <tbody>
+                                            {% set count = [0] %}
+                                            {% for u in form.PlantasList.data %}
+                                                {% for planta in plantas %}
+                                                    {% set vars = {'checked': False} %}
+                                                    {% if u == planta.id|string %}
+                                                        {% if vars.update({'checked': True}) %} {% endif %}
+                                                    {% endif %}
+                                                    {% if vars.checked %}
+                                                    <tr>
+                                                        <td><input type="checkbox" class="display: hidden" name="PlantasList-{{ count[0] }}" value="{{ planta.id }}" {% if vars.checked %}checked{% endif %}></td>
+                                                        <td>{{ planta.codigo or '' }}</td>
+                                                        <td>{{ planta.nome or '' }}</td>
+                                                        <td><a href="#" class="remove-item" data-planta-id="{{ planta.id }}">Remover</a></td>
+                                                    </tr>
+                                                    {% if count.append(count.pop() + 1) %}{% endif %} {# increment count by 1 #}
+                                                    {% endif %}
+                                                {% endfor %}
+                                            {% endfor %}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+
+                        </div>
+
+                      </div>
+                    </div>
+                </div>
+            </div>
+
+
+            <div style="margin-bottom: 50px">
+            </div>
+
+            <div class="row">
+                <div class="col-md-12" style="text-align: right">
+                    <button type="button" class="btn btn-default" onclick="location.href='{{ url_for('backoffice.mapas_mapa') }}'" >Voltar</button>
+                    <button type="submit" class="btn btn-primary">Gravar</button>
+                </div>
+            </div>
+
+        </fieldset>
+
+        <div style="margin-bottom: 50px">
+        </div>
+
+    </form>
+</div>
+{% endblock %}
+
+{% block post_script %}
+
+<script type="text/javascript">
+(function ($) {
+    $.fn.extend({
+        //pass the options variable to the function
+        informationModal: function (options) {
+            var html = '<div class="modal fade" id="infoContainer" tabindex="-1" role="dialog" aria-hidden="true">' +
+            '<div class="modal-dialog modal-lg" role="document">' +
+            '<div class="modal-content">' +
+            '<div class="modal-header"><a class="close" data-dismiss="modal">×</a>' +
+            '<h3>#Heading#</h3></div><div class="modal-body">' +
+            '<div class="#MessageClass#">#Body#</div></div><div class="modal-footer">' +
+            '<a href="#" class="btn btn-primary" data-dismiss="modal" id="infoCloseButton">Fechar</a></div></div></div><div>';
+
+            var defaults = {
+                heading: 'Informação',
+                body: '',
+                messageClass: 'alert alert-info',
+                callback: null
+            };
+
+            $('#infoCloseButton', this).unbind();
+            $('#informationDiv').unbind();
+
+            var options = $.extend(defaults, options);
+            html = html.replace('#Heading#', options.heading).replace('#Body#', options.body).replace('#MessageClass#', options.messageClass);
+
+            $(this).html(html);
+            $("#infoContainer", this).modal('show');
+            var context = $(this);
+            $('#infoCloseButton', this).click(function () {
+                $("#infoContainer", context).modal('hide');
+
+                if (options.callback != null)
+                    options.callback();
+            });
+        }
+    });
+})(jQuery);
+</script>
+
+
+<script type="text/javascript">
+    $(function () {
+
+        var postScriptEditor;
+
+        // Load post script editor
+        function initPostScriptEditor(){
+            if(postScriptEditor instanceof CodeMirror){
+                postScriptEditor.refresh();
+            } else {
+                var el = document.getElementById('postScript');
+                postScriptEditor = CodeMirror.fromTextArea(el, {
+                    //mode: "javascript",
+                    lineNumbers: true,
+                    matchBrackets: true,
+                    continueComments: "Enter",
+                    extraKeys: {"Ctrl-Q": "toggleComment"}
+                });
+            }
+        }
+
+        CodeMirror.fromTextArea(document.getElementById('headerHtml'), {
+            mode: "htmlmixed",
+            lineNumbers: true
+        });
+
+        CodeMirror.fromTextArea(document.getElementById('helpHtml'), {
+            mode: "htmlmixed",
+            lineNumbers: true
+        });
+
+        CodeMirror.fromTextArea(document.getElementById('creditsHtml'), {
+            mode: "htmlmixed",
+            lineNumbers: true
+        });
+
+        //Form submit
+        $('form').submit(function (e) {
+            var form = this;
+
+            var index=0;
+            $('#lmodulos option').each(function () {
+                var input = $("<input>").attr("type", "hidden").attr("name", "ModulosList-" + index).val($(this).attr("value"));
+                $(form).append($(input));
+                index = index + 1;
+            });
+
+            index = 0;
+            $('#lcatalogos option').each(function () {
+                var input = $("<input>").attr("type", "hidden").attr("name", "CatalogosList-" + index).val($(this).attr("value"));
+                $(form).append($(input));
+                index = index + 1;
+            });
+
+            index = 0;
+            $('#lroles option').each(function () {
+                var input = $("<input>").attr("type", "hidden").attr("name", "RolesList-" + index).val($(this).attr("value"));
+                $(form).append($(input));
+                index = index + 1;
+            });
+        });
+
+        $("#btnShowConfig").click(function () {
+            var id = $("#configuracao").val();
+
+            if (!id) {
+                return false;
+            }
+            var url = $(this).data('action').replace('-1', id);
+
+            $.ajax({
+                url: url,
+                method: 'get',
+                dataType: 'json'
+            }).then(function(res){
+                return { result: res };
+            }).fail(function(res){
+                var err = res; //return { result: res};
+            }).always(function(jqXHR, textStatus) {
+
+                var opts = {
+                        heading: 'Configuração',
+                        body: '',
+                        messageClass: "alert alert-text"
+                    };
+
+                if (jqXHR.result) {
+                    if (jqXHR.result.Success) {
+                        opts.body = jqXHR.result.Message;
+                        opts.messageClass = 'info info-text';
+                    } else {
+                        opts.body = jqXHR.result.Message;
+                    }
+                } else {
+                    opts.body = 'Ocorre um erro ao obter a configuração.';
+                    opts.messageClass = 'info info-text';
+                }
+
+                $("#informationDiv").informationModal(opts);
+            });
+
+            return false;
+        });
+
+        //Button AddModulo event
+        $('#btnAddModulo').click(function (e) {
+            var value = $('#ddlModulos').val();
+            var text = $('#ddlModulos option:selected').text();
+            if ($("#lmodulos option[value='" + value + "']").length == 0) {
+                $('#lmodulos').append($('<option>', {
+                    value: value,
+                    text: text
+                }));
+            } else {
+                $("#btnAddModulo").tooltip({ title: 'O módulo já foi adicionado'});
+                $("#btnAddModulo").tooltip('show');
+            }
+        }).mouseout(function() {
+            $("#btnAddModulo").tooltip('destroy');
+        });
+        $('#btnRemoveModulo').click(function (e) {
+            var targetId = $(this).attr('data-target');
+            $(targetId + ' option:selected').remove();
+        });
+        $('#btnClearModulos').click(function (e) {
+            var targetId = $(this).attr('data-target');
+            $(targetId + ' option').remove();
+        });
+
+        //Button AddCatalogo event
+        $('#btnAddCatalogo').click(function (e) {
+            var value = $('#ddlCatalogos').val();
+            var text = $('#ddlCatalogos option:selected').text();
+            if ($("#lcatalogos option[value='" + value + "']").length == 0) {
+                $('#lcatalogos').append($('<option>', {
+                    value: value,
+                    text: text
+                }));
+            } else {
+                $("#btnAddCatalogo").tooltip({ title: 'O catálogo já foi adicionado'});
+                $("#btnAddCatalogo").tooltip('show');
+            }
+        }).mouseout(function() {
+            $("#btnAddCatalogo").tooltip('destroy');
+        });
+        $('#btnRemoveCatalogo').click(function (e) {
+            var targetId = $(this).attr('data-target');
+            $(targetId + ' option:selected').remove();
+        });
+        $('#btnClearCatalogos').click(function (e) {
+            var targetId = $(this).attr('data-target');
+            $(targetId + ' option').remove();
+        });
+
+        //Button AddRole event
+        $('#btnAddRole').click(function (e) {
+            var value = $('#ddlRoles').val();
+            var text = $('#ddlRoles option:selected').text();
+            if ($("#lroles option[value='" + value + "']").length == 0) {
+                $('#lroles').append($('<option>', {
+                    value: value,
+                    text: text
+                }));
+            } else {
+                $("#btnAddRole").tooltip({ title: 'O perfil já foi adicionado'});
+                $("#btnAddRole").tooltip('show');
+            }
+        }).mouseout(function() {
+            $("#btnAddRole").tooltip('destroy');
+        });
+        $('#btnRemoveRole').click(function (e) {
+            var targetId = $(this).attr('data-target');
+            $(targetId + ' option:selected').remove();
+        });
+        $('#btnClearRoles').click(function (e) {
+            var targetId = $(this).attr('data-target');
+            $(targetId + ' option').remove();
+        });
+
+        /* -- Tipos de Plantas --*/
+
+        $("tbody", "#tipos-plantas-selected").sortable({
+            items: "> tr",
+            appendTo: "parent",
+            helper: "clone",
+            stop: function( event, ui ) {
+                $("tbody tr", "#tipos-plantas-selected").each(function( index ) {
+                    console.log( index + ": " + $( this ).text() );
+                    $("input", this).attr("name", "TiposPlantasList-" + index);
+                });
+            }
+        }).disableSelection();
+
+        $("#tipos-plantas-all").on("click", ".add-item", function(e) {
+            e.preventDefault();
+
+            var id = $(this).data("tipo-planta-id");
+            var codigo = $(this).data("tipo-planta-codigo");
+            var titulo = $(this).data("tipo-planta-titulo");
+
+            var html = '<tr><td><input type="checkbox" class="display: hidden" name="TiposPlantasList-" value="' + id + '"  checked></td>';
+            html += '<td>' + codigo + '</td>';
+            html += '<td>' + titulo + '</td>';
+            html += '<td><a href="#" class="remove-item" data-tipo-planta-id="' + id + '">Remover</a></td></tr>';
+
+            if ($('#tipos-plantas-selected tbody tr:last').length > 0) {
+                $('#tipos-plantas-selected tbody tr:last').after(html);
+            } else {
+                $('#tipos-plantas-selected tbody').append(html)
+            }
+
+            $("tbody tr", "#tipos-plantas-selected").each(function( index ) {
+                console.log( index + ": " + $( this ).text() );
+                $("input", this).attr("name", "TiposPlantasList-" + index);
+            });
+
+            $(this).hide();
+        });
+
+        $("#tipos-plantas-selected").on("click", ".remove-item", function(e) {
+            e.preventDefault();
+
+            var id = $(this).data("tipo-planta-id");
+            $(this).closest('tr').remove();
+            $("a[data-tipo-planta-id=" + id +"]", "#tipos-plantas-all").show();
+        });
+
+        /* -- Plantas --*/
+        $("tbody", "#plantas-selected").sortable({
+            items: "> tr",
+            appendTo: "parent",
+            helper: "clone",
+            stop: function( event, ui ) {
+                $("tbody tr", "#plantas-selected").each(function( index ) {
+                    console.log( index + ": " + $( this ).text() );
+                    $("input", this).attr("name", "PlantasList-" + index);
+                });
+            }
+        }).disableSelection();
+
+        $("#plantas-all").on("click", ".add-item", function(e) {
+            e.preventDefault();
+
+            var id = $(this).data("planta-id");
+            var codigo = $(this).data("planta-codigo");
+            var nome = $(this).data("planta-nome");
+
+            var html = '<tr><td><input type="checkbox" class="display: hidden" name="PlantasList-" value="' + id + '"  checked></td>';
+            html += '<td>' + codigo + '</td>';
+            html += '<td>' + nome + '</td>';
+            html += '<td><a href="#" class="remove-item" data-planta-id="' + id + '">Remover</a></td></tr>';
+
+            if ($('#plantas-selected tbody tr:last').length > 0) {
+                $('#plantas-selected tbody tr:last').after(html);
+            } else {
+                $('#plantas-selected tbody').append(html)
+            }
+
+            $("tbody tr", "#plantas-selected").each(function( index ) {
+                console.log( index + ": " + $( this ).text() );
+                $("input", this).attr("name", "PlantasList-" + index);
+            });
+
+            $(this).hide();
+        });
+
+        $("#plantas-selected").on("click", ".remove-item", function(e) {
+            e.preventDefault();
+
+            var id = $(this).data("planta-id");
+            $(this).closest('tr').remove();
+            $("a[data-planta-id=" + id +"]", "#plantas-all").show();
+        });
+
+
+        /* -- Widgets --*/
+
+        $("tbody", "#widgets-selected").sortable({
+            items: "> tr",
+            appendTo: "parent",
+            helper: "clone",
+            stop: function( event, ui ) {
+                $("tbody tr", "#widgets-selected").each(function( index ) {
+                    console.log( index + ": " + $( this ).text() );
+                    $("input", this).attr("name", "WidgetsList-" + index);
+                });
+            }
+        }).disableSelection();
+
+        $("#widgets-all").on("click", ".add-item", function(e) {
+            e.preventDefault();
+
+            var id = $(this).data("widget-id");
+            var codigo = $(this).data("widget-codigo");
+            var titulo = $(this).data("widget-titulo");
+
+            var html = '<tr><td><input type="checkbox" class="display: hidden" name="WidgetsList-" value="' + id + '"  checked></td>';
+            html += '<td>' + codigo + '</td>';
+            html += '<td>' + titulo + '</td>';
+            html += '<td><a href="#" class="remove-item" data-widget-id="' + id + '">Remover</a></td></tr>';
+
+            if ($('#widgets-selected tbody tr:last').length > 0) {
+                $('#widgets-selected tbody tr:last').after(html);
+            } else {
+                $('#widgets-selected tbody').append(html)
+            }
+
+            $("tbody tr", "#widgets-selected").each(function( index ) {
+                console.log( index + ": " + $( this ).text() );
+                $("input", this).attr("name", "WidgetsList-" + index);
+            });
+
+            $(this).hide();
+        });
+
+        $("#widgets-selected").on("click", ".remove-item", function(e) {
+            e.preventDefault();
+
+            var id = $(this).data("widget-id");
+            $(this).closest('tr').remove();
+            $("a[data-widget-id=" + id +"]", "#widgets-all").show();
+        });
+
+        $(document).ready(function(){
+            // Only load editor if tab has been clicked
+            $('#controlsTabs > li > a[data-target="#scripts"]').on('shown.bs.tab', function(e){
+                initPostScriptEditor();
+            });
+        });
+
+    });
+</script>
+{% endblock %}
+
+

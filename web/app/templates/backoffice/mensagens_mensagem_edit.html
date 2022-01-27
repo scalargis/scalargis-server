@@ -1,0 +1,122 @@
+{% extends "backoffice/_layout.html" %}
+
+{% block content %}
+<div class="row">
+    <div class="col-lg-12">
+        <h1 class="page-header">Contacto->Mensagem<i class="fa fa-long-arrow-right  fa-fw" aria-hidden="true"></i>Edição</h1>
+    </div>
+    <!-- /.col-lg-12 -->
+</div>
+
+<div class="module-content">
+    <form method="post" id="formMensagem" name="formMensagem">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+           {% if messages %}
+              {% for message in messages %}
+              <div class="alert alert-{{ message[0] }} alert-dismissible" role="alert">
+                <a class="close" data-dismiss="alert">×</a>
+                {{ message[1] }}
+              </div>
+              {% endfor %}
+           {% endif %}
+        {% endwith %}
+
+        {% if error %}
+           <div class="alert alert-danger alert-dismissible" role="alert">
+              <a class="close" data-dismiss="alert">×</a>
+              <h4 class="alert-heading">Erros:</h4>
+              <ul>
+             {% for field in form if field.widget.input_type != 'hidden' %}
+               {% if field.errors %}
+                  <li><strong>{{ field.label.text }}</strong>:{% for error in field.errors %} {{ error }}.{% endfor %}</li>
+               {% endif %}
+             {% endfor %}
+              </ul>
+           </div>
+        {% endif %}
+
+        <fieldset>
+
+            <div class="row">
+                <div class="col-md-1">
+                    <label>Id</label>
+                    <input type="text" name="id" id="id" class="form-control input-block-level" value="{{ record.id }}" readonly>
+                </div>
+                <div class="col-md-4">
+                    <label>Nome</label>
+                    <input type="text" name="nome" id="nome" class="form-control input-block-level" value="{{ record.nome or '' }}" readonly>
+                </div>
+                <div class="col-md-4">
+                    <label>Email</label>
+                    <input type="text" name="email" id="email" class="form-control input-block-level" value="{{ record.email or '' }}" readonly>
+                </div>
+                <div class="col-md-3">
+                    <label>Mapa</label>
+                    {% if mapa %}
+                    <input type="text" name="mapa" id="mapa" class="form-control input-block-level" value="{{ mapa.codigo }}" readonly>
+                    {% else %}
+                    <input type="text" name="mapa" id="mapa" class="form-control input-block-level" value="" readonly>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col-md-9">
+                    <label>Mensagem</label>
+                    <textarea name="mensagem" id="mensagem" class="form-control input-block-level" rows="4" readonly>{{ record.mensagem or '' }}</textarea>
+                </div>
+                <div class="col-md-3">
+                    <div class="row">
+                        <div class="col-md-12">
+                            <label>Data de leitura</label>
+                            <input type="text" name="data_mensagem" id="data_mensagem" class="form-control input-block-level" value="{{ record.data_mensagem|datetimefilter or '' }}" readonly>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col-md-9">
+                    <label>Observações</label>
+                    <textarea name="observacoes" id="observacoes" class="form-control input-block-level" rows="4">{{ record.observacoes or '' }}</textarea>
+                </div>
+                <div class="col-md-3">
+                    <div class="row">
+                        <div class="col-md-12">
+                            <label>Data de leitura</label>
+                            <input type="text" name="checked_date" id="checked_date" class="form-control input-block-level" value="{{ record.checked_date|datetimefilter or '' }}" readonly>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-12">
+                            <label>Data de encerramento</label>
+                            <input type="text" name="closed_date" id="closed_date" class="form-control input-block-level" value="{{ record.closed_date|datetimefilter or '' }}" readonly>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <br />
+
+            <div class="row">
+                <div class="col-md-12" style="text-align: right">
+                    <button type="button" class="btn btn-default" onclick="location.href='{{ url_for('backoffice.mensagens') }}'" >Voltar</button>
+
+                    {% if not record.checked and not record.closed %}
+                        <button type="submit" name="action" class="btn btn-primary" value="check">Lida</button>
+                    {% endif %}
+                    {% if record.closed %}
+                        <button type="submit" name="action" class="btn btn-primary" value="reopen">Reabrir</button>
+                    {% else %}
+                        <button type="submit" name="action" class="btn btn-primary" value="close">Encerrada</button>
+                    {% endif %}
+                    <button type="submit" name="action" class="btn btn-primary" value="save">Gravar</button>
+                </div>
+            </div>
+
+            <br />
+        </fieldset>
+
+    </form>
+</div>
+{% endblock %}

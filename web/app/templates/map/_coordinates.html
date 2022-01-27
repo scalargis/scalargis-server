@@ -1,0 +1,31 @@
+<div>
+    <form id="TransformCoordenadas" name="TransformCoordenadas" method="POST" action="{{ url_for('map.transform') }}">
+      <fieldset>
+        <div class="col-md-12">
+            <label>Sistema de Coordenadas:</label>
+            <select id="srid" name="srid" class="form-control">
+                {% for record in coordenadas %}
+                    <option value="{{ record.srid }}">{{ record.nome }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-6">
+            <div class="form-group">
+              <label>X:</label>
+              <input type="text" id="x" name="x" class="form-control"/>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="form-group">
+              <label>Y:</label>
+              <input type="text" id="y" name="y" class="form-control"/>
+            </div>
+        </div>
+        <div class="col-md-12">
+            <button type="submit" class="btn btn-primary center-block">Localizar</button>
+        </div>
+      </fieldset>
+    </form>
+</div>
+<div id="resultsCoordenadas" class="results-area">
+</div>

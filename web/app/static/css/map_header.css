@@ -1,0 +1,65 @@
+.top-bar {
+    /*
+    height: 60px;
+    background-color: blue;
+    */
+    background: linear-gradient(to right, #052534 0%,#165474 100%);
+    background-size: cover;
+    height: 60px;
+    opacity: 1;
+    /*z-index: -1000;*/
+}
+
+#map-navbar-container {
+    position: absolute;
+    right: 0px;
+    top: 18px;
+    width: 430px;
+}
+
+.menu, .menu-bar, .menu-right, .menu-bar-right  {
+    top: 60px;
+    height: 100%;
+}
+
+.menu-bar .menu-bar-body,
+.menu-bar-right .menu-bar-body {
+    height: calc(100vh - 100px);
+    padding: 10px 10px;
+    overflow-y: auto;
+    overflow-x: hidden;
+}
+
+#map-navbar-container div.stack:first-child a {
+    display: block;
+    text-indent: -300em;
+    height: 40px;
+    width: 3em;
+    line-height: 3em;
+    text-align: center;
+    color: #72739f;
+    background: #f7f7f7;
+    position: relative;
+    border-right: 1px solid rgba(0, 0, 0, 0.05);
+    transition: background 0.1s ease-in-out;
+}
+
+#map-navbar-container .menu.menu-info {
+    top: 0px !important;
+}
+
+#menu-info-container {
+    top: 65px;
+}
+
+#user-info-container {
+    top: 65px;
+}
+
+.MapSearchBar .search-input {
+    width: 220px;
+}
+
+.MapSearchBar .tt-dropdown-menu {
+    width: 285px;
+}

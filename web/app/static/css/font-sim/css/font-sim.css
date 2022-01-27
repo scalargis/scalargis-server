@@ -1,0 +1,13 @@
+font-face {
+    font-family: 'font-sim-md';
+    src: url('../fonts/Geogtq-Md.otf');
+    src: url('../fonts/Geogtq-Md.ttf')  format('truetype');
+}
+
+@font-face {
+    font-family: 'font-sim-sb';
+    src: url('../fonts/Geogtq-Sb.otf');
+    src: url('../fonts/Geogtq-Sb.ttf')  format('truetype');
+    font-weight: normal;
+    font-style: normal;
+}

@@ -1,0 +1,9 @@
+{% if record %}
+    <div>Informação sobre o estado do pedido/participação <b>nº {{ record.id }}</b></div>
+
+    <p>
+        <i>{{ record.mensagem }}</i>
+    </p>
+{% else %}
+    <div>Pedimos desculpa, não foi possível obter dados relativos à participação.</div>
+{% endif %}

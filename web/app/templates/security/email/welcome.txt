@@ -1,0 +1,7 @@
+Bem-vindo {{ user.email }}!
+
+{% if security.confirmable %}
+Pode confirmar o seu email através da seguinte ligação:
+
+{{ confirmation_link }}
+{% endif %}

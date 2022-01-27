@@ -1,0 +1,30 @@
+<p><small>Os campos marcados com um asterisco (*) são obrigatórios</small></p>
+<form role="form" id="contact-form" data-action="{{ url_for('map.send_message', map_id = map.id ) }}">
+	<div class="form-group">
+		{% if user.is_authenticated %}
+		<input class="form-control" type="text" readonly value="{{ current_user.name or '' }}">
+		{% else %}
+		<input class="form-control" id="name" maxlength="100" name="nome" placeholder="Nome *" type="text">
+		{% endif %}
+	</div>
+
+	<div class="form-group">
+		{% if user.is_authenticated %}
+			<input class="form-control" type="text" readonly value="{{ current_user.email or '' }}">
+		{% else %}
+			<input class="form-control" id="email" name="email" type="email" placeholder="E-mail">
+		{% endif %}
+	</div>
+
+	<div class="form-group">
+		<textarea class="form-control" cols="40" id="message" name="message" placeholder="Mensagem *" rows="5"></textarea>
+	</div>
+
+    <div id="send-feedback" class="alert" style="margin-top: 10px; display: none">
+
+    </div>
+
+	<div class="form-group text-center">
+		<button type="submit" class="btn btn-primary">Enviar</button>
+	</div>
+</form>

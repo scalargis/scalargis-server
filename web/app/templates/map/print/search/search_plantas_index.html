@@ -1,0 +1,52 @@
+<form name="formSearchPlantas" id="formSearchPlantas" class="form-search" action="{{ url_for('print.search_plantas') }}" method="POST">
+    <input name="MapExtent" id="MapExtent" type="hidden" value="" />
+    <div class="panel-group" id="searchPlantas">
+        <div class="panel panel-default">
+            <div class="panel-heading">
+                <a data-toggle="collapse" data-parent="#searchPlantas" href="#searchAreaPlantas">Pesquisa Plantas</a>
+            </div>
+            <div id="searchAreaPlantas" class="panel-collapse collapse in">
+
+                <div class="panel-body" >
+                    <div style="padding-left: 2px">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <label>Número</label>
+                                <input type="text" name="Numero" class="form-control input-block-level" />
+                            </div>
+                           <div class="col-md-6">
+                                <label>Ano</label>
+                                <input type="text" name="Ano" class="form-control input-block-level" />
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <label>NIF</label>
+                                <input type="text" name="NIF" class="form-control input-block-level" />
+                            </div>
+                           <div class="col-md-6">
+                                <label>Data Emissão</label>
+                                <input type="date" name="DataEmissao" class="form-control input-block-level">
+                            </div>
+                        </div>
+                        <div class="row">
+                           <div class="col-md-offset-1 col-md-10">
+                                <label class="checkbox">
+                                    <input name="RestricaoEspacial" type="checkbox" value="true" />Área visível
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row" style="margin-bottom: 15px; margin-right: 10px">
+                    <div class="col-md-12 text-right">
+                        <button type="button" class="btn btn-clear-form">Limpar</button>
+                        <button type="submit" class="btn btn-primary">Pesquisar</button>
+                    </div>
+                </div>
+
+           </div>
+        </div>
+    </div>
+</form>

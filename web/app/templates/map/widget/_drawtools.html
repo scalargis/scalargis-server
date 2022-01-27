@@ -1,0 +1,119 @@
+<div class="menu-bar-heading">
+    <a href="#" class="">Ferramentas de Desenho</a>
+</div>
+<div class="menu-bar-body">
+
+    <div>
+
+        <div id="DrawTools" class="col-md-12">
+            <form name="DrawTools" method="POST" action="{{ url_for('map.drawtools_export') }}">
+              <fieldset>
+
+                <div class="col-md-12">
+                    <div class="btn-toolbar geometry-buttons">
+                        <div class="btn-group" data-group="btn-geometry">
+                            <button type="button" class="btn btn-default btn-small btn-geometry-draw draw-symbol" data-button-id="symbol" title="Desenhar Símbolo" href="#">
+                                <i class="fa fa-star"></i>
+                            </button>
+                            <button type="button" class="btn btn-default btn-small btn-geometry-draw draw-text" data-button-id="text" title="Desenhar Texto" href="#">
+                                <i class="fa fa-font"></i>
+                            </button>
+                            <button type="button" class="btn btn-default btn-small btn-geometry-draw draw-geom" data-button-id="point" title="Ponto" href="#">
+                                <i class="fa fac-draw-point"></i>
+                            </button>
+                            <button type="button" class="btn btn-default btn-small btn-geometry-draw draw-geom" data-button-id="line" title="Linha" href="#">
+                                <i class="fa fac-draw-line"></i>
+                            </button>
+                            <button type="button" class="btn btn-default btn-small btn-geometry-draw draw-geom" data-button-id="polygon" title="Polígono" href="#">
+                                <i class="fa fac-draw-poly"></i>
+                            </button>
+                            <button type="button" class="btn btn-default btn-small btn-geometry-draw draw-control" data-button-id="select" title="Selecionar" href="#">
+                                <i class="fa fa-mouse-pointer"></i>
+                            </button>
+                            <div class="btn btn-default btn-small sep"></div>
+                            <button type="button" class="btn btn-default btn-small btn-geometry-zoom" title="Localizar geometrias" ddata-button-id="zoom-drawtools" herf="#">
+                                <i class="fa fa-search-plus"></i>
+                            </button>
+
+                        </div>
+                    </div>
+
+                    <div class="btn-toolbar" style="padding-left: 1px">
+                        <input id="draw-stroke" type="text" value="222" name="stroke" class="pick-a-color" title="Rebordo">
+                        <input id="draw-fill" type="text" value="fff" name="fill" class="pick-a-color" title="Preenchimento">
+                        <select class="form-control" name="size" title="Escolha o tamanho do símbolo/linha"></select>
+
+                        <button type="button" class="btn btn-danger btn-small draw-action-delall" id="clearall" title="Eliminar todos os desenhos" href="#">
+                            <i class="fa fa-trash"></i>
+                        </button>
+                        <button type="button" class="btn btn-danger btn-small draw-action-del" id="clear" title="Eliminar desenho selecionado" href="#">
+                            <i class="fa fa-remove"></i>
+                        </button>
+                    </div>
+
+                    <div id="draw-stroke-options" class="hidden">
+                        <h5>Tipo de Linha</h5>
+                        <select class="form-control" name="stroke_type" title="Tipo de linha"></select>
+                    </div>
+                    <div id="draw-fill-options" class="hidden">
+                        <h5>Tipo de Preenchimento</h5>
+                        <select class="form-control" name="fill_type" title="Tipo de preenchimento"></select>
+                    </div>
+                    <div id="draw-symbol-options" class="hidden">
+                        <h5>Tipo de Símbolo</h5>
+                        <select class="form-control" name="symbol_type" title="Símbolo"></select>
+                    </div>
+                    <div id="draw-text-options" class="hidden">
+                        <h5>Tipo de Texto</h5>
+                        <select class="form-control" name="text_font" title="Escolha a fonte do texto"></select>
+                        <select class="form-control" name="text_style" title="Escolha o estilo do texto"></select>
+                        <select class="form-control" name="text_size" title="Escolha o tamanho do texto"></select><br />
+                        <input class="form-control" name="text_value" value="" />
+                    </div>
+
+                    <div>
+                        <div class="col-md-12"></div>
+                    </div>
+
+                    <br/>
+
+                    <div class="btn-toolbar export-buttons">
+                        <div class="col-md-6">
+                            <a class="btn btn-primary btn-small btn-block btn-export" data-button-id="geojson" title="Exportar GeoJSON" href="#">
+                                <i class="fa fa-fw fa-save"></i> Exportar
+                            </a>
+                        </div>
+                        <div class="col-md-6">
+                            <a class="btn btn-primary btn-small btn-block btn-import" data-button-id="geojson" title="Importat GeoJSON" href="#">
+                                <i class="fa fa-fw fa-upload"></i> Importar
+                            </a>
+                            <input class="hidden" type="file" accept="application/json" id="features-file-import">
+                        </div>
+                    </div>
+
+                    <!--
+                    <div class="btn-toolbar export-buttons">
+                        <h5>Exportar Desenhos</h5>
+                        <div class="btn-group" data-group="btn-export-group" style="margin-top: 10px">
+                            <button type="button" class="btn btn-primary btn-small btn-export" data-button-id="geojson" title="Exportar GeoJSON" href="#">
+                                <i class="fa fa-file"></i>
+                            </button>
+                            <button type="button" class="btn btn-primary btn-small btn-export" data-button-id="kml" title="Exportar KML" href="#">
+                                <i class="fa fa-file-code"></i>
+                            </button>
+                            <button type="button" class="btn btn-primary btn-small btn-export" data-button-id="shapefile" title="Exportar Shapefile" href="#">
+                                <i class="fa fa-file-archive"></i>
+                            </button>
+                            <button type="button" class="btn btn-primary btn-small btn-export" data-button-id="gml" title="Exportar GML" href="#">
+                                <i class="fa fa-file-text"></i>
+                            </button>
+                        </div>
+                    </div>
+                    -->
+
+                </div>
+              </fieldset>
+            </form>
+        </div>
+    </div>
+</div>

@@ -1,0 +1,40 @@
+{% if not config.COOKIE_CONSENT or cookies_check() %}
+        {# then user has already consented so no requirement for consent banner #}
+{% else %}
+        <div id="cookie-consent-container" role="dialog" aria-live="polite" aria-label="cookieconsent" aria-describedby="cookieconsent:desc" class="cc-window {{ config.COOKIE_CONSENT_CLASS or 'cc-banner' }}" data-cookie-name="{{ config.COOKIE_CONSENT_NAME or '' }}" data-cookie-value="{{ config.COOKIE_CONSENT_VALUE or '' }}">
+
+        <span id="cookieconsent:desc" class="cc-message">{{ config.COOKIE_CONSENT_MSG_ALERT or 'This website uses cookies to ensure you get the best experience on our website.' }}
+            {% if config.COOKIE_CONSENT_INFO_URL %}
+            <a aria-label="learn more about cookies" role="button" tabindex="0" class="cc-link" href="{{ config.COOKIE_CONSENT_INFO_URL }}" rel="noopener noreferrer nofollow" target="_blank"> {{ config.COOKIE_CONSENT_INFO_LABEL or 'Learn more' }}</a>
+            {% endif %}
+            {% if config.COOKIE_CONSENT_MSG_DESCRIPTION %}
+                <br /><span class="cc-description">{{ config.COOKIE_CONSENT_MSG_DESCRIPTION }}</span>
+            {% endif %}
+        </span>
+        <div class="cc-compliance">
+            <a id="cookie-consent" aria-label="dismiss cookie message" role="button" tabindex="0" class="cc-btn cc-dismiss">{{ config.COOKIE_CONSENT_BTN_ACCEPT_LABEL or 'Got it!' }}</a>
+        </div>
+    </div>
+    <script>
+        var fn = function () {
+            var cookie_name = '{{ config.COOKIE_CONSENT_NAME if config.COOKIE_CONSENT_NAME else 'cookie-agreed' }}';
+            var cookie_value = '{{ config.COOKIE_CONSENT_VALUE if config.COOKIE_CONSENT_VALUE else 'true' }}';
+            var cookie_path = '{{ config.COOKIE_CONSENT_PATH if config.COOKIE_CONSENT_PATH else '' }}';
+
+            var cookie = cookie_name + '=' + cookie_value;
+            if (cookie_path) {
+                cookie = cookie + ';path=' + cookie_path;
+            }
+
+            var date = new Date;
+            date.setDate(date.getDate() + 60);
+            cookie = cookie + ';expires=' + date;
+
+            document.cookie = cookie;
+
+            var elem = document.getElementById('cookie-consent-container');
+            elem.parentNode.removeChild(elem);
+        };
+        document.getElementById('cookie-consent').onclick = fn;
+    </script>
+{% endif %}

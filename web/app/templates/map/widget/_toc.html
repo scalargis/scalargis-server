@@ -1,0 +1,350 @@
+<div class="menu-bar-heading">
+    <a href="#" class="">{{ widget.titulo }}</a>
+</div>
+<div class="menu-bar-body">
+    {% for widget in widgets if widget.codigo == 'temas_add' %}
+    <div class="nav-layers-panel">
+        <a href="#" class="add-layers" data-target="#addLayersPanel"><i class="fa fa-plus" aria-hidden="true"></i> Adicionar Temas</a>
+        <a href="#" class="add-layers-back" data-target="#layersPanel" style="display:none"><i class="fa fa-angle-double-left" aria-hidden="true"></i> Voltar aos Temas</a>
+    </div>
+    {% endfor %}
+
+    <div id="layersPanel" class="layers-panel">
+    </div>
+
+    {% for widget in widgets if widget.codigo == 'temas_add' %}
+    <div id="addLayersPanel" class="layers-panel" style="display: none">
+        <div>
+            <ul class="nav nav-tabs">
+              <li class="active"><a data-toggle="tab" href="#source-type-service" aria-expanded="true">Serviço</a></li>
+              {%if widget.config and widget.config.files %}
+              <li class=""><a data-toggle="tab" href="#source-type-file" aria-expanded="false">Ficheiro</a></li>
+              {%endif%}
+              {%if widget.config and widget.config.images %}
+              <li class=""><a data-toggle="tab" href="#source-type-image" aria-expanded="false">Imagem</a></li>
+              {%endif%}
+            </ul>
+
+            <div class="tab-content">
+
+                <div id="source-type-service" class="tab-pane fade in active">
+                    <div class="row top-margin-10">
+                        <div class="col-xs-4">
+                            <label>Tipo</label>
+                            <select id="serviceType" class="form-control">
+                            {% if widget.config %}
+                                {%for service in widget.config.services %}
+                                    <option value="{{ service.type }}">{{ service.type }}</option>
+                                {% endfor %}
+                            {% else %}
+                                <option value="WMS">WMS</option>
+                            {% endif %}
+                            </select>
+                        </div>
+                        <div class="col-xs-4">
+                            <label>Versão</label>
+                            <select id="serviceVersion" class="form-control">
+                                {% if widget.config %}
+                                    {%for service in widget.config.services %}
+                                        {% for version in service.versions %}
+                                            <option value="{{ version }}" data-tipo="{{ service.type }}">{{ version }}</option>
+                                        {% endfor %}
+                                    {% endfor %}
+                                {% else %}
+                                    <option value="1.3.0" data-tipo="WMS">1.3.0</option>
+                                    <option value="1.1.1" data-tipo="WMS">1.1.1</option>
+                                {% endif %}
+                            </select>
+                        </div>
+                    </div>
+                    <div class="row top-margin-10">
+                        <div class="col-xs-12">
+                            <label for="owsUrl">Url do serviço</label>
+                            <div class="input-group">
+                                <input type="text" class="form-control" id="owsUrl" placeholder="" />
+                                <span class="input-group-btn">
+                                    <button id="btnOWS" type="button" class="btn btn-primary">Abrir</button>
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="div-ows-error" class="top-margin-10" style="display: none">
+                        <div class="alert alert-warning alert-dismissible" role="alert">
+                            <button type="button" class="close" onclick="$('#div-ows-error', '#addLayersPanel').hide(); return false;"><span aria-hidden="true">&times;</span><span class="sr-only">Fechar</span></button>
+                            <strong>Atenção:</strong> <span class="msg-error"></span>
+                        </div>
+                    </div>
+
+                    <div id="div-ows-results" class="top-margin-10" style="display: none">
+                        <div id="div-ows-service"></div>
+                        <div class="area-header-viewer">
+                            <label>Temas</label>
+                        </div>
+                        <div class="row">
+                            <div class="col-xs-9">
+                                <div class="input-group">
+                                    <input type="text" id="txtLayersFilter" class="form-control" placeholder="Filtrar Temas">
+                                    <span class="input-group-btn">
+                                        <button type="button" id="btnFilterLayers" class="btn btn-default" title="Filtar Temas">Filtrar</button>
+                                    </span>
+                                </div>
+                            </div>
+                            <div class="col-xs-3">
+                                <button type="button" id="btnClearFilter" class="btn btn-default" title="Clear filter">Limpar</button>
+                            </div>
+                        </div>
+                        <div class="row top-margin-10">
+                            <div class="col-xs-9">
+                                <span>
+                                    <input type="checkbox" id="ignorarUrlServico" /><span>&nbsp;Ignorar Url publicado pelo serviço</span>
+                                </span>
+                            </div>
+                            <div class="col-xs-3">
+                                <span>
+                                    <input type="checkbox" id="tiled" checked /><span>&nbsp;Mosaico</span>
+                                </span>
+                            </div>
+                        </div>
+                        <div class="col-xs-12 top-margin-20">
+                            <table class="table table-bordered table-striped" id="table-ows-results">
+                                <tbody>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                {%if widget.config and widget.config.files %}
+                <div id="source-type-file" class="tab-pane fade in">
+                    <div class="row top-margin-10">
+                         <div class="col-md-12">
+                            <div class="alert alert-info" style="margin-bottom: 0px; padding: 5px; font-size: .95em;">
+                                Indique o formato e clique no botão <i>Abrir</i> para selecionar o ficheiro a adicionar ao mapa
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row top-margin-10">
+                        <div class="col-md-12">
+                            <label>Ficheiro</label>
+                            <div class="input-group">
+                                <select id="fileFormat" class="form-control">
+                                {% if widget.config %}
+                                    {%for file in widget.config.files.formats %}
+                                        <option value="{{ file.extensions }}" {{' selected' if file.selected else ''}}>{{ file.type }}</option>
+                                    {% endfor %}
+                                {% else %}
+                                    <option value=".dxf">DXF</option>
+                                    <option value=".zip" data-accept="">Shapefile</option>
+                                    <option value=".json,.geojson" selected>GeoJSON</option>
+                                    <option value=".kml,.kmz">KML</option>
+                                {% endif %}
+                                </select>
+                                <span class="input-group-btn">
+                                    <button id="" type="button" class="btn btn-primary btn-import">Abrir</button>
+                                </span>
+                            </div>
+                            <form method="post" enctype="multipart/form-data" id="formFiles" action="{{widget.config.files.url if (widget.config.files and widget.config.files.url) else '../spatial_toolbox/convert2geojson'}}">
+                                <input class="hidden" type="file" accept=".json,.geojson" id="features-file-import">
+                            </form>
+                        </div>
+                    </div>
+
+                    <div class="row top-margin-10 add-vectorfile-processing" style="display: none;">
+                        <div class="col-md-12">
+                            <div id="loading_spinner"><i class="fa fa-spinner fa-pulse"></i> A processar ...</div>
+                            <div id="result" class="col-md-12">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row top-margin-10 add-vectorfile-step2" style="display: none;">
+                        <div class="col-md-12">
+                            <div id="vectorfile-metadata" class="alert alert-warning" style="margin-bottom: 0px; padding: 5px; font-size: .95em;">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row top-margin-10 add-vectorfile-error" style="display: none;">
+                         <div class="col-md-12">
+                            <div id="vectorfile-error" class="alert alert-danger" style="margin-bottom: 0px; padding: 5px; font-size: .95em;">
+                                <div>testes</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row top-margin-10 add-vectorfile-step2" style="display: none;">
+                         <div class="col-md-12">
+                            <div class="alert alert-info" style="margin-bottom: 0px; padding: 5px; font-size: .95em;">
+                                Indique o sistema de coordenadas em que estão os dados e clique no botão <i>Adicionar</i>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row top-margin-10 add-vectorfile-step2" style="display: none;">
+                        <div class="col-md-12">
+                            <label>Sistema de Coordenadas</label>
+                            <select id="fileCRS" class="form-control">
+                                {% if widget.config %}
+                                    {%for proj in widget.config.files.projections %}
+                                        <option value="{{ proj.code }}" {{' selected' if proj.selected else ''}}>{{ proj.title }}</option>
+                                    {%endfor%}
+                                {%else%}
+                                <option value="EPSG:4326">EPSG:4326 - WGS84</option>
+                                <option value="EPSG:3857">EPSG:3857 - Spherical Mercator</option>
+                                <option value="EPSG:3763" selected="selected">EPSG:3763 - PTTM06</option>
+                                <option value="EPSG:27493">EPSG:27493 - HG-D73</option>
+                                {%endif%}
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="row top-margin-10 add-vectorfile-step2" style="display: none;">
+                        <div class="col-md-12">
+                            <label>Ficheiro</label>
+                            <input type="text" id="fileTitle" class="form-control" />
+                        </div>
+                    </div>
+
+                    <div class="row top-margin-10 add-vectorfile-step2" style="display: none;">
+                        <div class="col-md-6 text-center">
+                            <button type="button" id="btn_cancel_vector_file" class="btn btn-default center-block">Cancelar</button>
+                        </div>
+                        <div class="col-md-6 text-center">
+                            <button type="button" id="btn_add_vector_file" class="btn btn-primary center-block">Adicionar</button>
+                        </div>
+                    </div>
+                </div>
+                {%endif%}
+
+                {%if widget.config and widget.config.images %}
+                <div id="source-type-image" class="tab-pane fade in">
+                    <div class="row top-margin-10">
+                         <div class="col-md-12">
+                            <div class="alert alert-info" style="margin-bottom: 0px; padding: 5px; font-size: .95em;">
+                                Indique o formato e clique no botão <i>Abrir</i> para selecionar a imagem a adicionar ao mapa
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row top-margin-10">
+                        <div class="col-md-12">
+                            <label>Ficheiro</label>
+                            <div class="input-group">
+                                <select id="imageFormat" class="form-control">
+                                {% if widget.config %}
+                                    {%for file in widget.config.images.formats %}
+                                        <option value="{{ file.extensions }}" {{' selected' if file.selected else ''}}>{{ file.type }}</option>
+                                    {% endfor %}
+                                {% else %}
+                                    <option value=".tif,.tiff">GeoTIFF</option>
+                                    <option value=".tif,.tiff,.tfw," data-accept="">TIFF</option>
+                                    <option value=".png,.pgw," selected>PNG</option>
+                                    <option value=".jpg,.jpw,">JPEG</option>
+                                {% endif %}
+                                </select>
+                                <span class="input-group-btn">
+                                    <button id="" type="button" class="btn btn-primary btn-import-image">Abrir</button>
+                                </span>
+                            </div>
+                            <form method="post" enctype="multipart/form-data" id="formImages" action="{{widget.config.images.url if (widget.config.images and widget.config.images.url) else '../spatial_toolbox/convert2geojson'}}">
+                                <input class="hidden" type="file" accept=".zip" id="image-file-import" multiple>
+                            </form>
+                        </div>
+                    </div>
+
+                    <div class="row top-margin-10 add-imagefile-processing" style="display: none;">
+                        <div class="col-md-12">
+                            <div id="loading_spinner"><i class="fa fa-spinner fa-pulse"></i> A processar ...</div>
+                            <div id="result" class="col-md-12">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row top-margin-10 add-imagefile-step2" style="display: none;">
+                        <div class="col-md-12">
+                            <div id="imagefile-metadata" class="alert alert-warning" style="margin-bottom: 0px; padding: 5px; font-size: .95em;">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row top-margin-10 add-imagefile-error" style="display: none;">
+                         <div class="col-md-12">
+                            <div id="imagefile-error" class="alert alert-danger" style="margin-bottom: 0px; padding: 5px; font-size: .95em;">
+                                <div>testes</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row top-margin-10 add-imagefile-step2" style="display: none;">
+                         <div class="col-md-12">
+                            <div class="alert alert-info" style="margin-bottom: 0px; padding: 5px; font-size: .95em;">
+                                Indique o sistema de coordenadas e a extensão geográfica da imagem e clique no botão <i>Adicionar</i>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row top-margin-10 add-imagefile-step2" style="display: none;">
+                        <div class="col-md-12">
+                            <label>Sistema de Coordenadas</label>
+                            <select id="imageCRS" class="form-control">
+                                {% if widget.config %}
+                                    {%for proj in widget.config.images.projections %}
+                                        <option value="{{ proj.code }}" {{' selected' if proj.selected else ''}}>{{ proj.title }}</option>
+                                    {%endfor%}
+                                {%else%}
+                                <option value="EPSG:4326">EPSG:4326 - WGS84</option>
+                                <option value="EPSG:3857">EPSG:3857 - Spherical Mercator</option>
+                                <option value="EPSG:3763" selected="selected">EPSG:3763 - PTTM06</option>
+                                <option value="EPSG:27493">EPSG:27493 - HG-D73</option>
+                                {%endif%}
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="row top-margin-10 add-imagefile-step2" style="display: none;">
+                        <div class="col-md-6">
+                            <label>Min X</label>
+                            <input type="text" id="imageMinX" class="form-control" />
+                        </div>
+                        <div class="col-md-6">
+                            <label>Min Y</label>
+                            <input type="text" id="imageMinY" class="form-control" />
+                        </div>
+                        <div class="col-md-6">
+                            <label>Max X</label>
+                            <input type="text" id="imageMaxX" class="form-control" />
+                        </div>
+                        <div class="col-md-6">
+                            <label>Max Y</label>
+                            <input type="text" id="imageMaxY" class="form-control" />
+                        </div>
+                    </div>
+
+                    <div class="row top-margin-10 add-imagefile-step2" style="display: none;">
+                        <div class="col-md-12">
+                            <label>Ficheiro</label>
+                            <input type="text" id="imageTitle" class="form-control" />
+                        </div>
+                    </div>
+
+                    <div class="row top-margin-10 add-imagefile-step2" style="display: none;">
+                        <div class="col-md-6 text-center">
+                            <button type="button" id="btn_cancel_image_file" class="btn btn-default center-block">Cancelar</button>
+                        </div>
+                        <div class="col-md-6 text-center">
+                            <button type="button" id="btn_add_image_file" class="btn btn-primary center-block">Adicionar</button>
+                        </div>
+                    </div>
+
+                </div>
+                {%endif%}
+
+
+            </div>
+        </div>
+
+    </div>
+    {% endfor %}
+</div>

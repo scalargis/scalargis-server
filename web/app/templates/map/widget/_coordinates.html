@@ -1,0 +1,119 @@
+<div class="menu-bar-heading">
+    <a href="#" class="">{{ widget.titulo }}</a>
+</div>
+<div class="menu-bar-body">
+    <div>
+        <form id="TransformCoordenadas" name="TransformCoordenadas" method="POST" action="{{ url_for('map.transform') }}">
+          <fieldset>
+            <div class="col-md-12">
+                <label>Sistema de Coordenadas:</label>
+                <select id="code" name="code" class="form-control">
+                    {% for record in coordenadas %}
+                        <option value="{{ record.codigo }}" data-srid="{{ record.srid }}" data-unidades="{{record.unidades or 'm'}}">{{ record.nome }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            {% set unidades = coordenadas[0].unidades if coordenadas|length > 0 and coordenadas[0].unidades else 'm' %}
+
+            <div class="coords coords-m {{'hidden' if unidades != 'm'}}">
+                <div class="col-md-6">
+                    <div class="form-group">
+                      <label>X:</label>
+                      <input type="text" id="x" name="x" class="form-control"/>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="form-group">
+                      <label>Y:</label>
+                      <input type="text" id="y" name="y" class="form-control"/>
+                    </div>
+                </div>
+            </div>
+            <div class="coords coords-d {{'hidden' if unidades != 'd'}}">
+                <div class="col-md-12">
+                    <div class="well well-sm">
+                        <label class="radio-inline">
+                          <input class="opt-unidades" type="radio" name="opt-unidades" value="dd" checked> Graus Decimais
+                        </label>
+                        <label class="radio-inline">
+                          <input class="opt-unidades" class="" type="radio" name="opt-unidades" value="dms"> Graus/Minutos/Segundos
+                        </label>
+                    </div>
+                </div>
+
+                <div class="col-md-6" data-unidades="dd">
+                    <label>Longitude:</label>
+                    <div class="form-group form-inline">
+                        <select id="lon-dd-sign" name="lon-dms-sign" class="form-control latlon-sign">
+                            <option value="W" selected>O</option>
+                            <option value="E">E</option>
+                        </select>
+                        <input type="text" id="lon-dd" name="lon-dd" class="form-control" />
+                    </div>
+                </div>
+                <div class="col-md-6" data-unidades="dd">
+                    <label>Latitude:</label>
+                    <div class="form-group form-inline">
+                        <select id="lat-dd-sign" name="lon-dms-sign" class="form-control latlon-sign">
+                          <option value="N" selected>N</option>
+                          <option value="S">S</option>
+                        </select>
+                        <input type="text" id="lat-dd" name="lat-dd" class="form-control" />
+                    </div>
+                </div>
+
+                <div class="col-md-6" data-unidades="dms" style="display: none;">
+                    <label>Longitude:</label>
+                    <div class="form-group form-inline">
+                        <select id="lon-dms-sign" name="lon-dms-sign" class="form-control latlon-sign">
+                            <option value="W" selected>O</option>
+                            <option value="E">E</option>
+                        </select>
+                        <input type="text" id="lon-dms" name="lon-dms" class="form-control" placeholder="" data-mask="999º 99' 99.99''" />
+                    </div>
+                </div>
+                <div class="col-md-6" data-unidades="dms" style="display: none;">
+                    <label>Latitude:</label>
+                    <div class="form-group form-inline">
+                        <select id="lat-dms-sign" name="lat-dms-sign" class="form-control latlon-sign">
+                          <option value="N" selected>N</option>
+                          <option value="S">S</option>
+                        </select>
+                        <input type="text" id="lat-dms" name="lat-dms" class="form-control" placeholder="" data-mask="99º 99' 99.99''" />
+                    </div>
+                </div>
+            </div>
+            <div class="coords coords-dm {{'hidden' if unidades != 'dm'}}">
+                <div class="col-md-6">
+                    <label>Longitude:</label>
+                    <div class="form-group form-inline">
+                        <select id="lon-dm-sign" name="lon-dm-sign" class="form-control latlon-sign">
+                            <option value="W" selected>O</option>
+                            <option value="E">E</option>
+                        </select>
+                        <input type="text" id="lon-dm" name="lon-dm" class="form-control" placeholder="" data-mask="999º 99.99999'" />
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <label>Latitude:</label>
+                    <div class="form-group form-inline">
+                        <select id="lat-dm-sign" name="lat-dm-sign" class="form-control latlon-sign">
+                          <option value="N" selected>N</option>
+                          <option value="S">S</option>
+                        </select>
+                        <input type="text" id="lat-dm" name="lat-dm" class="form-control" placeholder="" data-mask="99º 99.99999'" />
+                    </div>
+                </div>
+            </div>
+
+
+            <div class="col-md-12">
+                <button type="submit" class="btn btn-primary center-block">Localizar</button>
+            </div>
+          </fieldset>
+        </form>
+    </div>
+    <div id="resultsCoordenadas" class="results-area">
+    </div>
+</div>

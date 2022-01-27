@@ -1,0 +1,42 @@
+<table class="table table-condensed table-bordered">
+    {% for record in records %}
+        {% if record.unidades == 'dm' %}
+        <tr>
+            <th colspan="2"><small>{{ record.nome }}</small></th>
+        </tr>
+        <tr>
+            <td colspan="2">Graus e Minutos</td>
+        </tr>
+        <tr>
+            <td><small><strong>lon: </strong>{{ record.lon.replace('W', 'O') }}</small></td>
+            <td><small><strong>lat: </strong>{{ record.lat }}</small></td>
+        </tr>
+        {% elif record.unidades == 'd' %}
+        <tr>
+            <th colspan="2"><small>{{ record.nome }} ({{ record.codigo }})</small></th>
+        </tr>
+        <tr>
+            <td colspan="2">Graus Decimais</td>
+        </tr>
+        <tr>
+            <td><small><strong>lon: </strong>{{ '%0.7f' % record.x|float }}</small></td>
+            <td><small><strong>lat: </strong>{{ '%0.7f' % record.y|float }}</small></td>
+        </tr>
+        <tr>
+            <td colspan="2">Graus Minutos e Segundos</td>
+        </tr>
+        <tr>
+            <td><small><strong>lon: </strong>{{ record.lon.replace('W', 'O') }}</small></td>
+            <td><small><strong>lat: </strong>{{ record.lat }}</small></td>
+        </tr>
+        {% else %}
+        <tr>
+            <th colspan="2"><small>{{ record.nome }} ({{ record.codigo }})</small></th>
+        </tr>
+        <tr>
+            <td><small><strong>x: </strong>{{ '%0.2f' % record.x|float }}</small></td>
+            <td><small><strong>y: </strong>{{ '%0.2f' % record.y|float }}</small></td>
+        </tr>
+        {% endif %}
+    {% endfor %}
+</table>

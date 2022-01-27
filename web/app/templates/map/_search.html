@@ -1,0 +1,125 @@
+<div>
+
+    <div id ="search-step-0" class="search-steps">
+        <div id="menuPanel">
+            <div class="menu-control">
+                <ul class="menu-list">
+                {% for widget in widgets if widget.parent and widget.parent.codigo == 'search' %}
+                    {% if widget.codigo == 'search_address' %}
+                    <li>
+                        <div class="thumbnail">
+                            <a href="#" class="menu-button-link" data-target=".search-address" data-widget-id="{{ widget.id }}"><i class="fa fa-map-signs fa-3x"></i></a>
+                            <div class="caption"><a href="#" class="menu-button-link" data-target=".search-address" data-widget-id="{{ widget.id }}">{{widget.titulo}}</a></div>
+                        </div>
+                    </li>
+                    {% else %}
+                    <li>
+                        <div class="thumbnail">
+                            <a href="#" class="menu-button-link" data-action="{{ url_for(widget.action) }}" data-target=".search-{{widget.codigo}}" data-widget-id="{{ widget.id }}"><i class="fa {{widget.icon_css_class or '' }} fa-3x"></i></a>
+                            <div class="caption"><a href="#" class="menu-button-link" data-action="{{ url_for(widget.action) }}" data-target=".search-{{widget.codigo}}" data-widget-id="{{ widget.id }}">{{widget.titulo}}</a></div>
+                        </div>
+                    </li>
+                    {% endif%}
+                {% endfor %}
+                </ul>
+            </div>
+        </div>
+    </div>
+
+{% for widget in widgets if widget.parent and widget.parent.codigo == 'search' %}
+    {% if widget.codigo == 'search_address' %}
+    <div id="search-step-1-address" class="search-steps search-address" style="display: none;">
+        <div class="step-back-area">
+            <a href="#" class="step-back" data-step="#search-step-0"><i class="fa fa-angle-double-left" aria-hidden="true"></i> Voltar</a>
+        </div>
+
+        <form name="formSearchAddress" id="formSearchAddress" action="{{ url_for('search.search_address') }}" method="POST">
+            <input name="MapExtent" id="MapExtent" type="hidden" value="" />
+            <input name="WidgetId" id="WidgetId" type="hidden" value="{{widget.id}}" />
+
+            <div class="panel-group" id="searchAddress">
+                <div class="panel panel-default">
+                    <div class="panel-heading">
+                        <a data-toggle="collapse" data-parent="#searchAddress" href="#searchAreaAddress">Pesquisa de Moradas</a>
+                    </div>
+                    <div id="searchAreaAddress" class="panel-collapse collapse in">
+                        <div class="panel-body" >
+                            <div style="padding-left: 2px">
+                                <div class="row">
+
+                                   <div class="col-md-12">
+                                        <label>Rua</label>
+                                        <input type="text" name="RoadName" class="form-control input-block-level" />
+                                    </div>
+                                </div>
+                                <div class="row">
+                                    <div class="col-md-12">
+                                        <label>Freguesia</label>
+                                        <select name="Freguesia" id="Freguesia" class="form-control input-block-level">
+                                            <option value=""></option>
+                                            {% for freguesia in freguesias %}
+                                                <option value="{{ freguesia.id }}">{{ freguesia.freguesia }}</option>
+                                            {% endfor %}
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="row">
+                                    <div class="col-md-12">
+                                        <label>Localidade</label>
+                                        <input type="text" name="Place" class="form-control input-block-level" />
+                                    </div>
+                                </div>
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <label>Porta</label>
+                                        <input type="text" name="RoadLocator" class="form-control input-block-level" />
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label>Código Postal</label>
+                                        <input type="text" name="PostalCode" class="form-control input-block-level" placeholder="{{ config.POSTAL_CODE_MASK or '9999-999' }}" data-mask="{{ config.POSTAL_CODE_MASK or '9999-999' }}" />
+                                    </div>
+                                </div>
+                                <!--
+                                <div class="row">
+                                   <div class="col-md-offset-1 col-md-10">
+                                        <label class="checkbox">
+                                            <input name="RestricaoEspacial" type="checkbox" value="true" />Área visível
+                                        </label>
+                                    </div>
+                                </div>
+                                -->
+                            </div>
+                        </div>
+
+                        <div class="row" style="margin-bottom: 15px; margin-right: 10px">
+                            <div class="col-md-12 text-right">
+                                <button type="button" class="btn btn-clear-form">Limpar</button>
+                                <button type="submit" class="btn btn-primary">Pesquisar</button>
+                            </div>
+                        </div>
+
+                   </div>
+                </div>
+            </div>
+        </form>
+
+        <div id="resultsSearchAddress" class="results-area">
+        </div>
+    </div>
+    {% else %}
+    <div id="search-step-1-{{widget.codigo}}" class="search-steps search-{{widget.codigo}}" style="display: none;">
+        <div class="step-back-area">
+            <a href="#" class="step-back" data-step="#search-step-0"><i class="fa fa-angle-double-left" aria-hidden="true"></i> Voltar</a>
+        </div>
+
+        <input name="WidgetConfig" type="hidden" value="{{widget.config if widget.config else '' }}" />
+
+        <div class="form-area">
+        </div>
+
+        <div class="results-area search-widget" data-search-code="{{widget.codigo}}">
+        </div>
+    </div>
+    {% endif %}
+{% endfor %}
+</div>

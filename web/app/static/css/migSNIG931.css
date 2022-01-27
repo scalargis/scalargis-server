@@ -1,0 +1,104 @@
+﻿.caixa {
+	margin: 20px;
+	width: 90%;
+	border: 1px solid #CCCCCC;
+	padding: 10px;
+
+
+
+}
+.tituloCaixa {
+	background-color: #EEEEEE;
+	padding: 5px;
+	position: relative;
+	left: 0px;
+	top: 0px;
+	font-size: 12px;
+	font-weight: bold;
+	color: #000000;
+
+}
+.caixaFixa {
+	padding: 0px;
+	width: 900px;
+	font-family: Arial, Helvetica, sans-serif;
+	font-size: 11px;
+
+
+}
+
+.elemento {
+	font-size: 11px;
+	font-weight: bold;
+	text-align: left;
+	font-style: normal;
+	padding: 0px;
+	margin: 0px;
+
+
+}
+.textoElemento {
+	font-size: 11px;
+	font-weight: normal;
+	color: #333333;
+	text-align: left;
+	margin: 4px 2px 2px;
+}
+.caixaElemento {
+	padding: 3px 3px 0px;
+	position: relative;
+	left: 0px;
+	top: 0px;
+}
+.tituloCaixaSeccao {
+	background-color: #1374A5;
+	padding: 5px;
+	position: relative;
+	left: 0px;
+	top: 0px;
+	font-size: 16px;
+	font-weight: bold;
+	color: #FFFFFF;
+	border-top: 0 solid #CCCCCC;
+	border-right: 0 solid #CCCCCC;
+	border-bottom: 1px solid #CCCCCC;
+	border-left: 0 solid #CCCCCC;
+}
+.red{
+	color:red;
+	font-size:14px;
+	font-weight:bolder;
+	margin-left: 5px;
+}
+
+.footer{
+    font-style:italic;
+    font-size:10px;
+}
+body {
+	font-family: Arial, Helvetica, sans-serif;
+}
+h1 {
+	font-weight: lighter;
+	font-size: 30px;
+	margin: 5px;
+	background-color: #ececec;
+}
+.cabecalho {
+	background-color: #ECECEC;
+	position: relative;
+	width: 450px;
+	left: 350px;
+	top: 15px;
+	height: 120px;
+	float: left;
+	z-index: 1;
+}
+.caixaCabecalho {
+	margin: 20px;
+	width: 90%;
+	border: 1px solid #CCCCCC;
+	padding: 10px;
+	background-color: ECECEC;
+
+}

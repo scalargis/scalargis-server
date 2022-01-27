@@ -1,0 +1,254 @@
+{% extends "backoffice/_layout.html" %}
+{% from "_custom_macros.html" import render_pagination_summary, render_pagination %}
+
+{% block content %}
+<div class="row">
+    <div class="col-lg-12">
+        <h1 class="page-header">Auditoria->{{ title }}</h1>
+    </div>
+    <!-- /.col-lg-12 -->
+</div>
+
+
+<div id="confirmDiv" >
+</div>
+<div id="informationDiv" >
+</div>
+
+
+<div class="module-content">
+    <div class="panel-group" id="searchLog">
+        <div class="panel panel-default">
+            <div class="panel-heading">
+                <a data-toggle="collapse" data-parent="#searchLog" href="#collapseOne">Pesquisa</a>
+            </div>
+            <!--<div id="collapseOne" class="panel-collapse collapse @((Model.showSearchArea) ? "in" : "")">-->
+            <div id="collapseOne" class="panel-collapse collapse in">
+                <div class="panel-body">
+                    <form action="" method="POST">
+                      {{ form.csrf_token }}
+                      <input type="hidden" name="page" id="page" value="{{ form.page.data or '' }}" />
+                      <input type="hidden" name="orderField" id="orderField" value="{{ form.orderField.data or '' }}" />
+                      <input type="hidden" name="sortOrder" id="sortOrder" value="{{ form.sortOrder.data or '' }}" />
+
+                      <fieldset>
+                          <div class="row">
+                            <div class="col-md-2">
+                                <label>Id:</label>
+                                <input type="text" name="id" id="id" class="form-control input-block-level" value="{{ form.id.data or '' }}">
+                            </div>
+                            <div class="col-md-3">
+                                <label>Mapa:</label>
+                                <select name="mapa" id="mapa" class="form-control selectpicker" multiple data-actions-box="true">
+                                    {% for m in mapas %}
+                                    <option value="{{ m.codigo }}" data-subtext="{{ m.codigo }}" title="{{ m.codigo }}">{{ m.titulo }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            {% if tipo == 'all' %}
+                            <div class="col-md-3">
+                                <label>Operação:</label>
+                                <select name="operacao" id="operacao" class="form-control selectpicker" multiple data-actions-box="true">
+                                    <option value="{{ operacoes.VisualizarMapa.value }}">Visualização de Mapa</option>
+                                    <option value="{{ operacoes.EmissaoPlanta.value }}">Emissão de Planta</option>
+                                    <option value="{{ operacoes.AnalisePlano.value }}">Análise de Plano</option>
+                                </select>
+                            </div>
+                            {% endif %}
+                          </div>
+                          <div class="row">
+                            <div class="col-md-4">
+                                <label>Data Início:</label>
+                                <div class='input-group input-group-sm date gims-date'>
+                                    <input type="text" id="data_ref_inicio" name="data_ref_inicio" class="form-control" placeholder="dd/mm/aaaa" value="{{ form.data_ref_inicio.data|datetimefilter or '' }}" />
+                                    <span class="input-group-addon datepickerbutton">
+                                        <span class="fa fa-calendar-o"></span>
+                                    </span>
+                                    <span class="input-group-addon dateclearbutton">
+                                        <span class="fa fa-remove"></span>
+                                    </span>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <label>Data Fim:</label>
+                                <div class='input-group input-group-sm date gims-date'>
+                                    <input type="text" id="data_ref_fim" name="data_ref_fim" class="form-control" placeholder="dd/mm/aaaa" value="{{ form.data_ref_fim.data|datetimefilter or '' }}" />
+                                    <span class="input-group-addon datepickerbutton">
+                                        <span class="fa fa-calendar-o"></span>
+                                    </span>
+                                    <span class="input-group-addon dateclearbutton">
+                                        <span class="fa fa-remove"></span>
+                                    </span>
+                                </div>
+                            </div>
+                            <div class="col-md-2">
+                                <label style="display:block">&nbsp;</label>
+                                <button type="submit" class="btn btn-primary" id="pesquisar" name="pesquisar" value="true">Pesquisar</button>
+                            </div>
+                          </div>
+                      </fieldset>
+
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="panel-group" id="resultsAudit">
+        <div class="panel panel-default">
+            <div class="panel-heading">
+                <a data-toggle="collapse" data-parent="#resultsAudit" href="#collapseTwo">Resultados</a>
+            </div>
+            <!--<div id="collapseTwo" class="panel-collapse collapse @((Model.showResultsArea) ? "in" : "")">-->
+            <div id="collapseTwo" class="panel-collapse collapse in">
+                <div class="panel-body">
+                    {% if records %}
+                        <table class="table table-striped table-hover">
+                            <thead>
+                            <tr>
+                                <th data-field="id" class="columnheader {%if form.orderField.data == 'id' %}sorting_{{ form.sortOrder.data }}{% else %}sorting{% endif %}">Id</th>
+                                <th data-field="data_ref" class="columnheader {%if form.orderField.data == 'data_ref' %}sorting_{{ form.sortOrder.data }}{% else %}sorting{% endif %}">Data</th>
+                                <th>Mapa</th>
+                                {% if tipo == 'all' %}
+                                <th>Operação</th>
+                                {% endif %}
+                            </tr>
+                            </thead>
+                            <tbody>
+                            {% for record in records %}
+                            <tr>
+                                <td>{{ record.id }}</td>
+                                <td>{{ record.data_ref }}</td>
+                                <td><span class="badge" title="{{record.mapa.titulo}}">{{ record.mapa.codigo }}</span></td>
+                                {% if tipo == 'all' %}
+                                <td>{{ record.operacao.nome or '' }}</td>
+                                {% endif %}
+                            </tr>
+                            {% endfor %}
+                            </tbody>
+                        </table>
+
+                        {% if pagination %}
+                        <div class="row">
+                            <div class="col-sm-6">
+                                <div class="dataTables_info" id="dataTables-example_info" role="status" aria-live="polite" style="padding: 8px">
+                                    {{ render_pagination_summary(pagination) }}
+                                </div>
+                            </div>
+                            <div class="col-sm-6">
+                                <div class="dataTables_paginate paging_simple_numbers" style="text-align: right">
+                                    {{ render_pagination(pagination) }}
+                                </div>
+                            </div>
+                        </div>
+                        {% endif %}
+
+                    {% else %}
+                        <div style="padding: 5px">
+                            <div class="alert alert-warning">
+                                Não foram encontrados registos!
+                            </div>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div>
+{% endblock %}
+
+{% block post_script %}
+<script type="text/javascript">
+(function ($) {
+    $.fn.extend({
+        //pass the options variable to the function
+        informationModal: function (options) {
+            var html = '<div class="modal fade" id="infoContainer" tabindex="-1" role="dialog" aria-hidden="true">' +
+            '<div class="modal-content">' +
+            '<div class="modal-header"><a class="close" data-dismiss="modal">×</a>' +
+            '<h3>#Heading#</h3></div><div class="modal-body">' +
+            '<div class="#MessageClass#">#Body#</div></div><div class="modal-footer">' +
+            '<a href="#" class="btn btn-primary" data-dismiss="modal" id="infoCloseButton">Fechar</a></div></div><div>';
+
+            var defaults = {
+                heading: 'Informação',
+                body: '',
+                messageClass: 'alert alert-info',
+                callback: null
+            };
+
+            $('#infoCloseButton', this).unbind();
+            $('#informationDiv').unbind();
+
+            var options = $.extend(defaults, options);
+            html = html.replace('#Heading#', options.heading).replace('#Body#', options.body).replace('#MessageClass#', options.messageClass);
+
+            $(this).html(html);
+            $("#infoContainer", this).modal('show');
+            var context = $(this);
+            $('#infoCloseButton', this).click(function () {
+                $("#infoContainer", context).modal('hide');
+
+                if (options.callback != null)
+                    options.callback();
+            });
+        }
+    });
+})(jQuery);
+</script>
+
+<script type="text/javascript">
+    $(function () {
+
+        var mapas = '{{ form.mapa.data or  '' }}'.split(',');
+        $('#mapa.selectpicker').selectpicker({
+            title: '',
+            selectAllText: 'Todos',
+            deselectAllText: 'Nenhum'
+        });
+        $('#mapa.selectpicker').selectpicker('val', mapas);
+
+        var operacoes = '{{ form.operacao.data or  '' }}'.split(',');
+        $('#operacao.selectpicker').selectpicker({
+            title: '',
+            selectAllText: 'Todos',
+            deselectAllText: 'Nenhum'
+        });
+        $('#operacao.selectpicker').selectpicker('val', operacoes);
+
+        var options = {};
+        options.format = 'DD/MM/YYYY';
+        options.keepOpen = false;
+        options.showClose = true;
+        options.showClear = true;
+        options.locale = 'pt';
+        $('.date').datetimepicker(options);
+        $('.dateclearbutton').on('click', function (e) {
+            $(this).closest('.date').data("DateTimePicker").date(null);
+        });
+
+        $(".columnheader").click(function () {
+            $("#orderField").attr("value", $(this).attr("data-field"));
+
+            if ($(this).hasClass("sorting_asc"))
+                $("#sortOrder").attr("value", "desc");
+            else
+                $("#sortOrder").attr("value", "asc");
+
+            $("#page", "form").val("1");
+
+            $("form").submit();
+        });
+
+        $("a", ".paginate_button").click(function () {
+            page = $(this).data("page");
+
+            $("#page", "form").val(page);
+            $("form").submit();
+        });
+
+    });
+</script>
+
+{% endblock %}

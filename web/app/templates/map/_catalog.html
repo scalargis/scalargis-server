@@ -1,0 +1,106 @@
+<form name="formCatalogo" id="formCatalogo" action="{{ url_for('catalog.search_catalog') }}" method="POST">
+    <input name="MapExtent" id="MapExtent" type="hidden" value="" />
+
+    <div class="panel-group" id="searchCatalogo">
+        <div class="panel panel-default">
+            <div class="panel-heading">
+                <a data-toggle="collapse" data-parent="#searchCatalogo" href="#searchAreaCatalogo">Pesquisa</a>
+            </div>
+            <div id="searchAreaCatalogo" class="panel-collapse collapse in">
+                <div class="panel-body" >
+                    <div style="padding-left: 2px">
+                        <div class="row">
+                            <div class="col-md-12">
+                                <label>Catálogo</label>
+                                <select name="catalogo" id="catalogo" class="form-control input-block-level" data-url="{{ url_for('catalog.show_catalog') }}">
+                                {% for catalogo in catalogos %}
+                                    <option value="{{ catalogo.id }}">{{ catalogo.titulo  }}</option>
+                                {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+                        <div id="catalogoFields">
+                        {% if catalogos|length > 0 %}
+                            {% if catalogos[0].tipo|lower == 'geonetwork' %}
+                                {% include 'map/_catalog_geonetwork.html' %}
+                            {% else %}
+                                {% include 'map/_catalog_geoportal.html' %}
+                            {% endif %}
+                        {% endif %}
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row" style="margin-bottom: 15px">
+                    <div class="col-md-offset-8 col-md-4">
+                        <button type="submit" class="btn btn-primary">Pesquisar</button>
+                    </div>
+                </div>
+                <!-- TODO
+                <div class="row" style="margin-bottom: 15px; margin-right: 10px">
+                    <div class="col-md-12 text-right">
+                        <button type="button" class="btn btn-clear-form">Limpar</button>
+                        <button type="submit" class="btn btn-primary">Pesquisar</button>
+                    </div>
+                </div>
+                -->
+
+           </div>
+        </div>
+    </div>
+    <div id="resultsCatalogo" class="results-area">
+    </div>
+</form>
+
+<div class="nav-catalog-layers-panel" style="display: none">
+    <a href="#" class="add-layers-catalog-back" data-target="#formCatalogo"><i class="fa fa-angle-double-left" aria-hidden="true"></i> Voltar à Pesquisa</a>
+</div>
+
+<div id="addLayersCatalog" class="layers-panel">
+    <div>
+        <div id="div-ows-error" class="top-margin-10" style="display: none">
+            <div class="alert alert-warning alert-dismissible" role="alert">
+                <button type="button" class="close" onclick="$('#div-ows-error').hide(); return false;"><span aria-hidden="true">&times;</span><span class="sr-only">Fechar</span></button>
+                <strong>Atenção"</strong> <span class="msg-error"></span>
+            </div>
+        </div>
+
+        <div id="div-ows-results" class="top-margin-10" style="display: none">
+            <div id="div-ows-service"></div>
+            <div class="area-header-viewer">
+                <label>Temas</label>
+            </div>
+            <div class="row">
+                <div class="col-xs-9">
+                    <div class="input-group">
+                        <input type="text" id="txtLayersFilter" class="form-control" placeholder="Filtrar Temas">
+                        <span class="input-group-btn">
+                            <button type="button" id="btnFilterLayers" class="btn btn-default" title="Filtar Temas">Filtrar</button>
+                        </span>
+                    </div>
+                </div>
+                <div class="col-xs-3">
+                    <button type="button" id="btnClearFilter" class="btn btn-default" title="Clear filter">Limpar</button>
+                </div>
+            </div>
+            <div class="row top-margin-10">
+                <div class="col-xs-9">
+                    <span>
+                        <input type="checkbox" id="ignorarUrlServico" /><span>&nbsp;Ignorar Url publicado pelo serviço</span>
+                    </span>
+                </div>
+                <div class="col-xs-3">
+                    <span>
+                        <input type="checkbox" id="tiled" checked /><span>&nbsp;Mosaico</span>
+                    </span>
+                </div>
+            </div>
+            <div class="col-xs-12 top-margin-20">
+                <table class="table table-bordered table-striped" id="table-ows-results">
+                    <tbody>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>

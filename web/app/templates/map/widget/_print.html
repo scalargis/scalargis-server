@@ -1,0 +1,61 @@
+<div class="menu-bar-heading">
+    <a href="#" class="">Emissão de Plantas</a>
+</div>
+<div class="menu-bar-body">
+    <div>
+        <div id ="print-step-0" class="print-steps">
+        {% if planta %}
+            {% include 'map/print/print_step_planta.html' %}
+        {% else %}
+            <div class="well">
+                Escolha o tipo de planta que pretende emitir
+            </div>
+
+            <div class="col-md-12">
+                <ul class="nav nav-list" style="font-size: smaller">
+                    <li>
+                        <ul class="nav nav-list tree">
+                            {% for t in tipos_plantas %}
+                            <li>
+                                <div class="planta-row-title">
+                                    <a href="#" data-id="{{ t.id }}" data-action="{{ url_for('map.print_grupo') }}" data-mapa-id="{{ map.id }}" >{{ t.titulo }}
+                                    <span class="pull-right fa fa-chevron-right"></span>
+                                    </a>
+                                </div>
+                                <div class="planta-row-descricao">
+                                    {{ t.descricao }}
+                                </div>
+                            </li>
+                            {% endfor %}
+                            {% for p in plantas %}
+                            <li>
+                                <div class="planta-row-title">
+                                    <a href="#" data-id="{{ p.id }}" data-action="{{ url_for('map.print_planta') }}" data-mapa-id="{{ map.id }}" >{{ p.titulo }}
+                                    <span class="pull-right fa fa-chevron-right"></span>
+                                    </a>
+                                </div>
+                                <div class="planta-row-descricao">
+                                    {{ p.descricao }}
+                                </div>
+                            </li>
+                            {% endfor %}
+                         </ul>
+                    </li>
+                </ul>
+            </div>
+            <div class="col-md-12" style="padding-top: 10px">
+                <small class="text-danger"><strong>Atenção! </strong></small>
+                <small class="text-muted">
+                    {{ site_settings.strings['print_pdf_format'] or 'As plantas são produzidas em formato PDF. É necessário ter o Adobe Acrobat Reader para ver documentos neste formato. O Acrobat Reader pode ser descarregado gratuitamente através da seguinte ligação:' }}
+                </small>
+                <div class="text-center">
+                    <a href="http://get.adobe.com/reader/" target="_blank"><br><img alt="Obter Adobe Acrobat Reader" src="{{ url_for('static', filename='images/acrobat.gif') }}" border="0"></a>
+                </div>
+            </div>
+        {% endif %}
+        </div>
+        <div id="print-step-1" class="print-steps"></div>
+        <div id="print-step-2" class="print-steps"></div>
+        <div id="print-step-3" class="print-steps"></div>
+    </div>
+</div>

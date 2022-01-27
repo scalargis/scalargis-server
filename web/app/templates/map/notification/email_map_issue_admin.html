@@ -1,0 +1,8 @@
+<p>Aviso de novo pedido/participação.</p>
+<p>Registada com o número {{ notification_id }}</p>
+<p>{{ notification_uuid }}</p>
+{% if APP_SITE_ROOT %}
+<p>Pode aceder aos detalhes do pedido/participação através desta <a href="{{APP_SITE_ROOT}}/backoffice/mensagens/edit/{{notification_id}}">ligação</a></p>
+{% else %}
+<p>Pode aceder aos detalhes do pedido/participação através desta <a href="{{ url_for('backoffice.mensagens_edit', id=notification_id, _external=True) }}">ligação</a></p>
+{% endif %}

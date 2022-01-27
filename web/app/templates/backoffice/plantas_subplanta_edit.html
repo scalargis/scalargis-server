@@ -1,0 +1,212 @@
+{% extends "backoffice/_layout.html" %}
+
+{% block content %}
+<div class="row">
+    <div class="col-lg-12">
+        <h1 class="page-header">Elementos<i class="fa fa-long-arrow-right  fa-fw" aria-hidden="true"></i>Edição</h1>
+    </div>
+    <!-- /.col-lg-12 -->
+</div>
+
+<div id="informationDiv" >
+</div>
+
+<div class="module-content">
+    <form method="post" id="formSubPlanta" name="formSubPlanta">
+        {% with messages = get_flashed_messages() %}
+           {% if messages %}
+           <div class="alert alert-success alert-dismissible" role="alert">
+              <a class="close" data-dismiss="alert">×</a>
+              {% for message in messages %}
+                 {{ message }}
+              {% endfor %}
+           </div>
+           {% endif %}
+        {% endwith %}
+
+        {% if error %}
+           <div class="alert alert-danger alert-dismissible" role="alert">
+              <a class="close" data-dismiss="alert">×</a>
+              <h4 class="alert-heading">Erros:</h4>
+              <ul>
+             {% if error and error.Message %}
+               <li>{{ error.Message }}</li>
+             {% endif %}
+             {% for field in form if field.widget.input_type != 'hidden' %}
+               {% if field.errors %}
+                  <li><strong>{{ field.label.text }}</strong>:{% for error in field.errors %} {{ error }}.{% endfor %}</li>
+               {% endif %}
+             {% endfor %}
+              </ul>
+           </div>
+        {% endif %}
+
+        {{ form.csrf_token }}
+
+        <fieldset>
+
+            <div class="row">
+                <div class="col-md-10">
+                    <div class="row">
+                        <div class="col-md-4">
+                            <label>Código</label>
+                            <input type="text" name="codigo" id="codigo" class="form-control input-block-level" value="{{ form.codigo.data or '' }}" />
+                        </div>
+                        <div class="col-md-8">
+                            <label>Nome:</label>
+                            <input type="text" name="nome" id="nome" class="form-control input-block-level" value="{{ form.nome.data or '' }}" />
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row" style="padding-top: 20px">
+                <div class="col-md-12">
+                    <div class="row">
+
+                    </div>
+                    <div class="row" id="divAddTemplateFile">
+
+                    </div>
+                    <div class="row">
+                        <div class="col-md-12">
+                            <label>Configuração:</label>
+                            <textarea name="configuracao" id="configuracao" class="form-control input-block-level" rows="18">{{ form.configuracao.data or '' }}</textarea>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+
+
+            <div style="margin-bottom: 50px">
+            </div>
+
+            <div class="row">
+                <div class="col-md-12" style="text-align: right">
+                    <button type="button" class="btn btn-default" onclick="location.href='{{ url_for('backoffice.sub_plantas') }}'" >Voltar</button>
+                    <button type="submit" class="btn btn-primary">Gravar</button>
+                </div>
+            </div>
+
+        </fieldset>
+
+        <div style="margin-bottom: 50px">
+        </div>
+
+    </form>
+</div>
+{% endblock %}
+
+{% block post_script %}
+
+<script type="text/javascript">
+(function ($) {
+    $.fn.extend({
+        //pass the options variable to the function
+        informationModal: function (options) {
+            var html = '<div class="modal fade" id="infoContainer" tabindex="-1" role="dialog" aria-hidden="true">' +
+            '<div class="modal-content">' +
+            '<div class="modal-header"><a class="close" data-dismiss="modal">×</a>' +
+            '<h3>#Heading#</h3></div><div class="modal-body">' +
+            '<div class="#MessageClass#">#Body#</div></div><div class="modal-footer">' +
+            '<a href="#" class="btn btn-primary" data-dismiss="modal" id="infoCloseButton">Fechar</a></div></div><div>';
+
+            var defaults = {
+                heading: 'Informação',
+                body: '',
+                messageClass: 'alert alert-info',
+                callback: null
+            };
+
+            $('#infoCloseButton', this).unbind();
+            $('#informationDiv').unbind();
+
+            var options = $.extend(defaults, options);
+            html = html.replace('#Heading#', options.heading).replace('#Body#', options.body).replace('#MessageClass#', options.messageClass);
+
+            $(this).html(html);
+            $("#infoContainer", this).modal('show');
+            var context = $(this);
+            $('#infoCloseButton', this).click(function () {
+                $("#infoContainer", context).modal('hide');
+
+                if (options.callback != null)
+                    options.callback();
+            });
+        }
+    });
+})(jQuery);
+</script>
+
+
+<script type="text/javascript">
+    $(function () {
+
+        var myCodeMirror = CodeMirror.fromTextArea(document.getElementById('configuracao'), {
+            mode: {name: "javascript", json: true},
+            lineNumbers: true,
+            matchBrackets: true,
+            continueComments: "Enter",
+            extraKeys: {"Ctrl-Q": "toggleComment"}
+        });
+
+        //Form submit
+        $('form').submit(function (e) {
+            var form = this;
+
+            index = 0;
+            $('#lroles option').each(function () {
+                var input = $("<input>").attr("type", "hidden").attr("name", "RolesList-" + index).val($(this).attr("value"));
+                $(form).append($(input));
+                index = index + 1;
+            });
+        });
+
+        $("#btnShowConfig").click(function () {
+            var id = $("#configuracao").val();
+            $.ajax({
+                type: 'POST',
+                url: $(this).attr("data-action"),
+                //data: "id=" + id + "&__RequestVerificationToken=@Html.AntiForgeryTokenValueOrchard()",
+                success: function (r) {
+                    if (r.Success) {
+                        var html = r.Message;
+                        html = html.replace(/\n/g, "<br />").replace(/\r\n/g, "<br />").replace(/\t/g, '&nbsp;&nbsp;&nbsp;&nbsp;'); ;
+
+                        $("#contentDiv").contentModal({
+                            heading: '@T("Configuração")',
+                            body: '<div>' + html + '</div>',
+                            callback: function () {
+                            }
+                        });
+                    } else {
+                        $("#informationDiv").informationModal({
+                            heading: '@T("Informação")',
+                            body: r.Message,
+                            messageClass: 'alert alert-danger',
+                            callback: function () {
+                            }
+                        });
+                    }
+                },
+                error: function (r) {
+                    $("#informationDiv").informationModal({
+                        heading: 'Informação',
+                        body: 'Ocorreu um erro',
+                        messageClass: 'alert alert-danger',
+                        callback: function () {
+                        }
+                    });
+                }
+            });
+
+            return false;
+        });
+
+
+    });
+</script>
+{% endblock %}
+
+

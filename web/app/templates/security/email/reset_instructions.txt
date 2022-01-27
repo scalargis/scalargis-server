@@ -1,0 +1,3 @@
+Clique no link para definir a nova password:
+
+{{ reset_link }}

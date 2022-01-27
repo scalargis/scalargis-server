@@ -1,0 +1,7 @@
+
+.fac-draw-poly:before { content: '\e800'; } /* '' */
+.fac-ruler-area:before { content: '\e801'; } /* '' */
+.fac-draw-line:before { content: '\e802'; } /* '' */
+.fac-draw-point:before { content: '\e803'; } /* '' */
+.fac-intersect:before { content: '\e804'; } /* '' */
+.fac-ruler-line:before { content: '\e805'; } /* '' */

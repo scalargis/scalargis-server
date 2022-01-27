@@ -1,0 +1,39 @@
+{% from "_custom_macros.html" import render_pagination_summary, render_pagination %}
+
+{% if pagination %}
+<div class="row">
+    <div class="col-md-12">
+        <div class="dataTables_info" id="dataTables-example_info" role="status" aria-live="polite" style="text-align: center">
+            {{ render_pagination_summary(pagination) }}
+        </div>
+    </div>
+</div>
+{% if pagination.has_next or pagination.has_prev %}
+<div class="row">
+    <div class="col-md-12">
+        <div class="dataTables_paginate paging_simple_numbers" style="text-align: center">
+            {{ render_pagination(pagination) }}
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endif %}
+
+{{ html_list|safe }}
+
+{% if pagination and (pagination.has_next  or pagination.has_prev) %}
+<div class="row">
+    <div class="col-md-12">
+        <div class="dataTables_info" id="dataTables-example_info" role="status" aria-live="polite" style="text-align: center">
+            {{ render_pagination_summary(pagination) }}
+        </div>
+    </div>
+</div>
+<div class="row">
+    <div class="col-md-12">
+        <div class="dataTables_paginate paging_simple_numbers" style="text-align: center">
+            {{ render_pagination(pagination) }}
+        </div>
+    </div>
+</div>
+{% endif %}

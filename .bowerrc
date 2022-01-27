@@ -1,0 +1,6 @@
+{
+  "directory": "./web/app/static/bower_components",
+  "strict-ssl": false,
+  "https-proxy": "",
+  "timeout": 520000
+}

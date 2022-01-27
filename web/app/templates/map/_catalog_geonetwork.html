@@ -1,0 +1,111 @@
+<input type="hidden" id="PesquisaAvancada" name="PesquisaAvancada" value="">
+
+<div class="row">
+    <div class="col-md-6">
+        <label>Qualquer Texto:</label>
+        <input type="text" name="TextoLivre" class="form-control input-block-level" />
+    </div>
+    <div class="col-md-6">
+        <label>Palavra-Chave:</label>
+        <input type="text" name="PalavraChave" class="form-control input-block-level"  />
+    </div>
+</div>
+
+<div class="pesqCatAvancada" style="display: none">
+    <div class="row">
+        <div class="col-md-6">
+            <label>Tipo de Recurso:</label>
+            <select name="TipoRecurso" id="TipoRecurso" class="form-control input-block-level">
+                <option value=""></option>
+                {% for tipo in md_tipos_recursos %}
+                    <option value="{{ tipo.t1 }}">{{ tipo.name  }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-6">
+            <label>Tipo de Serviço:</label>
+            <select name="TipoServico" id="TipoServico" class="form-control input-block-level">
+                <option value=""></option>
+                {% for tipo in md_tipos_servicos %}
+                    <option value="{{ tipo.t1  }}">{{ tipo.name  }}</option>
+                {% endfor %}
+            </select>
+        </div>
+    </div>
+    <div class="row">
+        <div class="col-md-12">
+            <label>Categoria:</label>
+            <select name="Categoria" id="Categoria" class="form-control input-block-level">
+                <option value=""></option>
+                {% for categoria in md_categorias %}
+                    <option value="{{ categoria.t1 }}">{{ categoria.name  }}</option>
+                {% endfor %}
+            </select>
+        </div>
+    </div>
+    <div class="row">
+        <div class="col-md-12">
+            <label>Tema:</label>
+            <select id="Temas" name="Temas" multiple="multiple" class="form-control input-block-level">
+            {% for group in md_temas_inspire | groupby('t2') %}
+                <optgroup label="{{ group.grouper }}">
+                {% for tema in group.list %}
+                    <option value="{{ tema.code }}" aria-selected="true">{{ tema.name }}</option>
+                    <div>{{ tema.t1 }}</div>
+                {% endfor %}
+                </optgroup>
+            {% endfor %}
+            </select>
+        </div>
+    </div>
+    <div class="row">
+        <div class="col-md-6">
+            <label>Data início:</label>
+            <div class='input-group input-group-sm date gims-date'>
+                <input type="text" id="DataRefInicio" name="DataRefInicio" class="form-control" placeholder="dd/mm/aaaa" />
+                <span class="input-group-addon datepickerbutton">
+                    <span class="fa fa-calendar-o"></span>
+                </span>
+                <span class="input-group-addon dateclearbutton">
+                    <span class="fa fa-remove"></span>
+                </span>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <label>Data fim:</label>
+            <div class='input-group input-group-sm date'>
+                <input type='text' id="DataRefFim" name="DataRefFim" class="form-control" placeholder="dd/mm/aaaa" />
+                <span class="input-group-addon datepickerbutton">
+                    <span class="fa fa-calendar-o"></span>
+                </span>
+                <span class="input-group-addon dateclearbutton">
+                    <span class="fa fa-remove"></span>
+                </span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row" style="margin-bottom: 10px">
+    <div class="area-header-viewer">
+        <label>Restrição Geográfica</label>
+    </div>
+    <div class="col-md-4" style="font-size: .95em;">
+        <input id="RestricaoEspacial" name="RestricaoEspacial" type="radio" value="0" checked="checked">
+        Sem restrição
+    </div>
+    <div class="col-md-4" style="font-size: .95em;">
+        <input id="RestricaoEspacial" name="RestricaoEspacial" type="radio" value="1">
+        Intersecta
+    </div>
+    <div class="col-md-4" style="font-size: .95em;">
+        <input id="RestricaoEspacial" name="RestricaoEspacial" type="radio" value="2">
+        Dentro
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-offset-7 col-md-5">
+        <a href="#" class="tipoPesqCat">Pesquisa Avançada</a>
+    </div>
+</div>

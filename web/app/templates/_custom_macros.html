@@ -1,0 +1,46 @@
+{% macro render_field_with_bootstrap_errors(field) %}
+  <p>
+    {{ field.label }} {{ field(**kwargs)|safe }}
+    {% if field.errors %}
+      {% for error in field.errors %}
+        <div class="alert alert-danger" role="alert">{{ error }}</div>
+      {% endfor %}
+    {% endif %}
+  </p>
+{% endmacro %}
+
+{% macro render_pagination_summary(pagination) %}
+  {% if pagination.total_count < 1 %}
+    <div>Sem resultados</div>
+  {% elif (pagination.page * pagination.per_page) > pagination.total_count %}
+    <span>Registos {{ (pagination.page-1) * pagination.per_page + 1 }} a {{ pagination.total_count }} de {{ pagination.total_count }}</span>
+  {% else %}
+    <span>Registos {{ (pagination.page-1) * pagination.per_page + 1 }} a {{ pagination.page * pagination.per_page }} de {{ pagination.total_count }}</span>
+  {% endif %}
+{% endmacro %}
+
+{% macro render_pagination(pagination) %}
+  <ul class="pagination" style="margin-top: 0px; margin-bottom: 0px">
+  {% if pagination.has_prev %}
+    <li class="paginate_button previous" aria-controls="dataTables-example" tabindex="0" id="dataTables-example_previous"><a href="#" data-page="{{ pagination.page - 1 }}">&laquo;</a></li>
+  {% else %}
+    <li class="paginate_button previous disabled" aria-controls="dataTables-example" tabindex="0" id="dataTables-example_previous"><a href="#">&laquo;</a></li>
+  {% endif %}
+  {%- for page in pagination.iter_pages() %}
+    {% if page %}
+      {% if page != pagination.page %}
+        <li class="paginate_button" aria-controls="dataTables-example" tabindex="0"><a href="#" data-page="{{ page }}">{{ page }}</a></li>
+      {% else %}
+        <li class="paginate_button active" aria-controls="dataTables-example" tabindex="0"><a><strong>{{ page }}</strong></a></li>
+      {% endif %}
+    {% else %}
+      <li><span class=ellipsis>…</span></li>
+    {% endif %}
+  {%- endfor %}
+  {% if pagination.has_next %}
+    <li class="paginate_button next" aria-controls="dataTables-example" tabindex="0" id="dataTables-example_next"><a href="#" data-page="{{ pagination.page + 1 }}">&raquo;</a></li>
+  {% else %}
+    <li class="paginate_button next disabled" aria-controls="dataTables-example" tabindex="0" id="dataTables-example_next"><a href="#">&raquo;</a></li>
+  {% endif %}
+  </ul>
+{% endmacro %}

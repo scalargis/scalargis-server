@@ -1,0 +1,7 @@
+<p>Confirmação de receção de contato.</p>
+<p>O seu pedido/participação foi registado com o número {{ notification_id }}, pode acompanhar o seu estado através da seguinte ligação:</p>
+{% if APP_SITE_ROOT %}
+<p>{{APP_SITE_ROOT}}/backoffice/mensagens/edit/{{notification_id}}</p>
+{% else %}
+<p>{{ url_for('map.show_message', msg_uuid=notification_uuid, _external=True) }}</p>
+{% endif %}

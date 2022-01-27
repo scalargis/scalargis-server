@@ -1,0 +1,45 @@
+{% if user.is_authenticated %}
+<div class="panel">
+    <div class="panel-heading">
+        <div class="row">
+            <div class="col-xs-3">
+                <!--<i class="fa fa-user fa-3x"></i>-->
+                <i class="fas fa-user-alt fa-3x"></i>
+            </div>
+            <div class="col-xs-9">
+                <div><strong>{{ current_user.name or current_user.username }}</strong></div>
+                <div>{{ current_user.email }}</div>
+            </div>
+        </div>
+    </div>
+    <div class="panel-footer">
+        <div><a href="{{ url_for('profile.index') }}"><strong>Perfil</strong></a></div>
+        <a href="{{ logout_url }}">
+            <span class="pull-left">Sair</span>
+            <span class="pull-right"><i class="fa fa-sign-out-alt"></i></span>
+        </a>
+        <div class="clearfix"></div>
+    </div>
+</div>
+{% else %}
+<div class="panel">
+    <div class="panel-heading">
+        <div class="row">
+            <div class="col-xs-3">
+                <!--<i class="fa fa-user fa-3x"></i>-->
+                <i class="fas fa-user-alt-slash fa-3x"></i>
+            </div>
+            <div class="col-xs-9">
+                <div>Utilizador não autenticado</div>
+            </div>
+        </div>
+    </div>
+    <div class="panel-footer">
+        <a href="{{ login_url }}">
+            <span class="pull-left">Login</span>
+            <span class="pull-right"><i class="fa fa-sign-in-alt"></i></span>
+        </a>
+        <div class="clearfix"></div>
+    </div>
+</div>
+{% endif %}

@@ -1,0 +1,172 @@
+<div id="batch-print-list">
+
+    <div class="step-back-area">
+        <a href="#" class="step-back" data-step="#print-step-1" data-step-clear-back="true"><i class="fa fa-angle-double-left" aria-hidden="true"></i> Voltar</a>
+    </div>
+
+    {% if tipo %}
+    <div class="col-md-12">
+        <div class="alert alert-info">
+            Seleccione o formato e as plantas pretendidas e clique em imprimir
+        </div>
+    </div>
+
+
+
+{% if group.escalasRestritas or group.escalaLivre or group.escalaMapa %}
+<div class="col-md-12">
+    <h5 class="page-header">Escala de Saida</h5>
+</div>
+<div class="col-md-12" style="margin-top: 10px; margin-bottom: 10px">
+
+    <ul class="nav nav-tabs">
+        {% if group.escalasRestritas %}
+            <li class="active" >
+                <a data-toggle="pill" href="#predefscale">Predefinida</a>
+            </li>
+        {% endif %}
+        {% if group.escalaLivre %}
+            <li {% if not group.escalasRestritas %} class="active" {% endif %} >
+                <a data-toggle="pill" href="#userscale">Livre</a>
+            </li>
+        {% endif %}
+        {% if group.escalaMapa %}
+            <li {% if not group.escalasRestritas and not group.escalaLivre %} class="active" {% endif %}>
+                <a data-toggle="pill" href="#mapscale">Mapa</a>
+            </li>
+        {% endif %}
+    </ul>
+
+    <div class="tab-content">
+        {% if group.escalasRestritas %}
+        <div id="predefscale" class="tab-pane fade in {% if group.escalasRestritas %}active{% endif %}">
+
+                <div class="col-md-6" style="margin-top: 10px; margin-bottom: 10px">
+                    <select id="escalaPredef" name="escalaPredef" class="form-control input-block-level">
+                        {% for i in group.escalasRestritasLista.split(",") %}
+                            <option> 1 : {{ i }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+        </div>
+        {% endif %}
+        {% if group.escalaLivre %}
+        <div id="userscale" class="tab-pane fade in {% if not group.escalasRestritas %}active{% endif %}">
+            <div class="col-md-1" style="margin-top: 10px; margin-bottom: 10px"><h4>1 :</h4></div>
+            <div class="col-md-6" style="margin-top: 10px; margin-bottom: 10px">
+                <input type="text" id="escalaDenom" name="escalaDenom" class="form-control input-block-level" />
+            </div>
+        </div>
+        {% endif %}
+        {% if group.escalaMapa %}
+        <div id="mapscale"
+             class="tab-pane fade in {% if not group.escalasRestritas and not group.escalaLivre %}active{% endif %}">
+            <h5>A planta será emitida em função da escala de visualização do mapa</h5>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endif %}
+
+    {% for widget in widgets %}
+             {{widget.html_content|safe}}
+    {% endfor %}
+
+    {% if layouts|length > 0 %}
+    <div class="col-md-12">
+        <h5 class="page-header">Formato</h5>
+    </div>
+
+    <div class="col-md-8" style="margin-top: 10px; margin-bottom: 10px">
+        <select id="layout" name="layout" class="form-control input-block-level">
+        {% for l in layouts %}
+            <option value="{{ l|join('|') }}" {% if (l|join('|')) == layout %}selected{% endif %}>{{ l|join(' - ') }}</option>
+        {% endfor %}
+        </select>
+    </div>
+    {% endif %}
+
+    <div class="col-md-12">
+        <h5 class="page-header">Plantas</h5>
+    </div>
+
+    <div class="col-md-12">
+        <ul class="print-list">
+        {% for item in tipo.children recursive %}
+            <li>
+                <span class="group-title">{{ item.titulo }}</span>
+                {% if item.children %}
+                    <ul>{{ loop(item.children) }}</ul>
+                {% endif %}
+                {% if item.plantas %}
+                    <ul>
+                        {%- for planta in item.plantas %}
+                        <li>
+                            {% if tipo.seleccaoPlantas %}
+                            <span class="icon checked-icon" data-id="{{ planta.id }}" data-name="{{ planta.nome }}" data-codigo="{{ planta.codigo }}" data-tipo-id="{{ tipo.id }}" data-grupo-id="{{ grupo_id }}" data-srid="{{ planta.srid }}" data-action="{{ url_for('print.generate_pdf', codigo=planta.codigo) }}"></span>
+                            {% else %}
+                            <span class="icon checked-icon hidden" data-id="{{ planta.id }}" data-name="{{ planta.nome }}" data-codigo="{{ planta.codigo }}" data-tipo-id="{{ tipo.id }}" data-grupo-id="{{ grupo_id }}" data-srid="{{ planta.srid }}" data-action="{{ url_for('print.generate_pdf', codigo=planta.codigo) }}"></span>
+                            {% endif %}
+                            <span>{{ planta.nome }}</span>
+                        </li>
+                        {% endfor %}
+                    </ul>
+                {% endif %}
+            </li>
+        {% endfor %}
+
+        {% if tipo.plantas and tipo.plantas|length > 0 %}
+          {% for planta in tipo.plantas %}
+            <li>
+                {% if tipo.seleccaoPlantas %}
+                <span class="icon checked-icon" data-id="{{ planta.id }}" data-name="{{ planta.nome }}" data-codigo="{{ planta.codigo }}" data-tipo-id="{{ tipo.id }}" data-grupo-id="{{ grupo_id }}" data-srid="{{ planta.srid }}" data-action="{{ url_for('print.generate_pdf', codigo=planta.codigo) }}"></span>
+                {% else %}
+                <span class="icon checked-icon hidden" data-id="{{ planta.id }}" data-name="{{ planta.nome }}" data-codigo="{{ planta.codigo }}" data-tipo-id="{{ tipo.id }}" data-grupo-id="{{ grupo_id }}" data-srid="{{ planta.srid }}" data-action="{{ url_for('print.generate_pdf', codigo=planta.codigo) }}"></span>
+                {%endif %}
+                <span>{{ planta.nome }}</span>
+            </li>
+          {% endfor %}
+        {% endif %}
+        </ul>
+    </div>
+
+    {% if tipo.seleccaoPlantas %}
+    <div class="col-md-12" style="padding: 5px; margin-bottom: 10px;">
+        <div class="col-md-5 col-md-offset-1">
+            <div>
+                <button type="button" class="btn btn-default center-block form-control input-block-level unselect-all">Nenhuma</button>
+            </div>
+        </div>
+        <div class="col-md-5">
+            <div>
+                <button type="button" class="btn btn-default center-block form-control input-block-level select-all">Todas</button>
+            </div>
+        </div>
+    </div>
+    {% else %}
+    <div class="col-md-12" style="padding: 5px; margin-bottom: 10px;" />
+    {% endif %}
+
+    <div class="col-md-12">
+        <button type="button" id="btnPrintBatch" name="btnPrintBatch" class="btn btn-primary center-block print-batch" data-step="#print-step-2" data-target="#print-step-3" data-action="{{ url_for('map.print_step_batch') }}" data-agrupar-plantas="{{ tipo.agruparPlantas }}">Imprimir</button>
+    </div>
+
+    {% if group.escalaLivre or group.escalaMapa %}
+    <div class="col-md-12 form-check" style="margin-top: 10px; margin-bottom: 10px">
+        <input type="checkbox" id="ckbox_view_paper" name="ckbox_view_paper" class="form-check-input" href="#" layout_map_sizes_for_preview="{{ layout_map_sizes_for_preview }}"/>
+        <label class="form-check-label" for="ckbox_view_paper">Ver área de impressão no mapa</label>
+    </div>
+    {% endif %}
+
+    {% else %}
+
+    <div class="col-md-12">
+        <div class="alert alert-warning">
+            Não existem plantas que intersectem o local indicado.
+        </div>
+    </div>
+
+    {% endif %}
+
+</div>
