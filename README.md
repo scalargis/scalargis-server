@@ -97,7 +97,7 @@ Editar ficheiro package.json e definir:
 
 Copiar o ficheiro .env.example para .env e alterar os valores das seguintes variáveis:  
 `REACT_APP_BASE_URL="/static/frontend/"`    
-`REACT_APP_CONFIG_URL="/static/frontend/config.example.json"`
+`REACT_APP_CONFIG_URL="/static/frontend/config.example.json"`    
 `REACT_APP_MAP_PROXY="/map/proxy?url="`
 
 ##### Executar o build
