@@ -38,12 +38,12 @@ Criar a base de dados através do pgAdim e instalar nela a extensão Postgis
 
 ##### Linux
 > (venv) export FLASK_APP=app.main  
-> (venv) export PYTHONPATH=/<path>/scalargis-server/web  
+> (venv) export PYTHONPATH=/<path>/scalargis-server/web    
 > (venv) cd web  
-> (venv) flask init-db  
+> (venv) flask init-db    
 
 ### Instalar dependências
-> npm install
+> npm install  
 > bower install
 
 ### Bundle javascript files
