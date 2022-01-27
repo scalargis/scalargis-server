@@ -1,21 +1,25 @@
 # Instalação  
 
 > git clone https://github.com/ricardogsena/scalargis-server.git
-
+>
 > cd scalargis-server
-
+>
 > git checkout develop
 
 ### Instalar a aplicação em virtualenv
 
 ##### Windows 
-> x:\Python3x\python -m venv venv  
-> venv\scripts\activate  
+> x:\Python3x\python -m venv venv
+>
+> venv\scripts\activate
+>
 > (venv) python -m pip install --upgrade pip
 
 ##### Linux
-> python3 -m venv venv  
-> source venv/bin/activate  
+> python3 -m venv venv
+>
+> source venv/bin/activate
+>
 > (venv) pip install --upgrade pip
 
 ### Instalar dependências de pyhton
@@ -31,19 +35,26 @@ Criar a base de dados através do pgAdim e instalar nela a extensão Postgis
 ### Inicializar a BD
 
 ##### Windows 
-> (venv) set FLASK_APP=app.main  
-> (venv) set PYTHONPATH=&#92;<em>path</em>\scalargis-server\web  
-> (venv) cd web  
+> (venv) set FLASK_APP=app.main
+>
+> (venv) set PYTHONPATH=&#92;<em>path</em>\scalargis-server\web
+>
+> (venv) cd web
+>
 > (venv) flask init-db
 
 ##### Linux
-> (venv) export FLASK_APP=app.main  
-> (venv) export PYTHONPATH=/<em>path</em>/scalargis-server/web    
-> (venv) cd web  
+> (venv) export FLASK_APP=app.main
+>
+> (venv) export PYTHONPATH=/<em>path</em>/scalargis-server/web
+>
+> (venv) cd web
+>
 > (venv) flask init-db    
 
 ### Instalar dependências
-> npm install  
+> npm install
+>
 > bower install
 
 ### Bundle javascript files
@@ -52,13 +63,17 @@ Criar a base de dados através do pgAdim e instalar nela a extensão Postgis
 ### Executar app
 
 ##### Windows 
-> (venv) set PYTHONPATH=&#92;<em>path</em>\scalargis-server\web;&#92;<em>path</em>\scalargis-server\web\app   
-> (venv) cd web\app  
+> (venv) set PYTHONPATH=&#92;<em>path</em>\scalargis-server\web;&#92;<em>path</em>\scalargis-server\web\app
+>
+> (venv) cd web\app
+>
 > (venv) python main.py
 
 ##### Linux
-> (venv) export PYTHONPATH=/<em>path</em>/scalargis-server/web:/<em>path</em>/scalargis-server/web/app  
-> (venv) cd web/app  
+> (venv) export PYTHONPATH=/<em>path</em>/scalargis-server/web:/<em>path</em>/scalargis-server/web/app
+> 
+> (venv) cd web/app
+> 
 > (venv) python main.py
 
 ## Integrar projecto de aplicação cliente (Frontend)
@@ -66,13 +81,14 @@ Criar a base de dados através do pgAdim e instalar nela a extensão Postgis
 Instalar repositório de aplicação cliente fora do projecto principal  
 
 > git clone https://github.com/ricardogsena/scalargis-client.git
-
+>
 > cd scalargis-client
-
+>
 > yarn
 
 ##### Adicionar projecto(s) de plugin(s) (opcional)
-> cd frontend/src/components  
+> cd frontend/src/components
+> 
 > git submodule add -f -b master https://github.com/ricardogsena/scalargis-client-plugin-toc.git TOC  
 
 ##### Editar configurações utilizadas no build (opcional)
