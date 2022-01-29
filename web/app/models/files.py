@@ -17,9 +17,7 @@ class DocumentDirectory(db.Model):
     allow_delete = db.Column(db.Boolean())
     delete_anonymous = db.Column(db.Boolean())
 
-    rules = db.relationship(
-        'DocumentDirectoryRule'
-    )
+    rules = db.relationship('DocumentDirectoryRule', back_populates="document_directory")
 
 
 class DocumentDirectoryRule(db.Model):
@@ -34,5 +32,5 @@ class DocumentDirectoryRule(db.Model):
     excluir_dir = db.Column(db.Text())
     descricao = db.Column(db.Text())
 
-    document_directory = db.relationship(DocumentDirectory, backref=db.backref("document_directory_assoc"))
-    # mapa = db.relationship(Mapa, backref=db.backref("widget_assoc"))
+    # document_directory = db.relationship(DocumentDirectory, backref=db.backref("document_directory_assoc"))
+    document_directory = db.relationship(DocumentDirectory, back_populates="rules")

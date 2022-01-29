@@ -29,12 +29,12 @@ from instance import settings
 #mod = Blueprint('backoffice',  __name__, template_folder='templates', static_folder='static')
 from .. import mod
 
+
 def get_messages():
     return db.session.query(ContactoMensagem).\
         filter(or_(ContactoMensagem.checked == False, ContactoMensagem.checked == None)).\
         filter(or_(ContactoMensagem.closed == False, ContactoMensagem.closed == None)). \
         order_by(desc(ContactoMensagem.data_mensagem)).limit(5).all()
-
 
 
 @mod.route('/backoffice')
@@ -482,28 +482,34 @@ def mapas_mapa_edit(id):
                             break
 
                 # Tipos Plantas
-                for tipo in reversed(record.tipos_plantas):
-                    record.tipos_plantas.remove(tipo)
+                #for tipo in reversed(record.tipos_plantas):
+                #    record.tipos_plantas.remove(tipo)
+                for tipo in record.tipos_plantas:
+                    db.session.delete(tipo)
                 tipo_planta_list = form.TiposPlantasList.data
                 ordem = 1
                 for index in tipo_planta_list:
                     for tipo in tipos_plantas:
                         if str(tipo.id) == index:
-                            rec = MapaTipoPlanta(ordem=ordem, tipo_planta=tipo, mapa=record)
-                            db.session.add(rec)
+                            #rec = MapaTipoPlanta(ordem=ordem, tipo_planta=tipo, mapa=record)
+                            #db.session.add(rec)
+                            tpm = record.tipos_plantas.append(MapaTipoPlanta(tipo_planta=tipo, ordem=ordem))
                             break
                     ordem += 1
 
                 # Plantas
-                for planta in reversed(record.plantas):
-                    record.plantas.remove(planta)
+                #for planta in reversed(record.plantas):
+                #    record.plantas.remove(planta)
+                for planta in record.plantas:
+                    db.session.delete(planta)
                 planta_list = form.PlantasList.data
                 ordem = 1
                 for index in planta_list:
                     for planta in plantas:
                         if str(planta.id) == index:
-                            rec = MapaPlanta(ordem=ordem, planta=planta, mapa=record)
-                            db.session.add(rec)
+                            #rec = MapaPlanta(ordem=ordem, planta=planta, mapa=record)
+                            #db.session.add(rec)
+                            plt = record.plantas.append(MapaPlanta(planta=planta, ordem=ordem))
                             break
                     ordem += 1
 
@@ -552,36 +558,40 @@ def mapas_mapa_edit(id):
                 # Scripts
                 record.post_script = form.postScript.data
 
-                for widget in reversed(record.widgets):
-                    record.widgets.remove(widget)
+                #for widget in reversed(record.widgets):
+                #    record.widgets.remove(widget)
+                for widget in record.widgets:
+                    db.session.delete(widget)
                 widget_list = form.WidgetsList.data
                 ordem = 1
                 for index in widget_list:
                     for widget in widgets:
                         if str(widget.id) == index:
-                            #target = None
-                            #if widgets_old.get(str(index), None):
-                            #    target = widgets_old.get(str(index)).get('target', None)
-                            rec = MapaWidget(ordem=ordem, widget=widget, mapa=record)
+                            #rec = MapaWidget(ordem=ordem, widget=widget, mapa=record)
+                            rec = MapaWidget(widget=widget, ordem=ordem)
                             if widgets_old.get(str(index), None):
                                 rec.config = widgets_old.get(str(index)).get('config', None)
                                 rec.html_content = widgets_old.get(str(index)).get('html_content', None)
                                 rec.target = widgets_old.get(str(index)).get('target', None)
                                 rec.roles = widgets_old.get(str(index)).get('roles', None)
-                            db.session.add(rec)
+                            #db.session.add(rec)
+                            wdg = record.widgets.append(rec)
                             break
                     ordem += 1
 
                 # Plantas
-                for p in sorted(record.planta_assoc, key=lambda x: x.ordem):
+                #for p in sorted(record.planta_assoc, key=lambda x: x.ordem):
+                for p in sorted(record.plantas, key=lambda x: x.ordem):
                     form.PlantasList.append_entry(str(p.planta_id))
 
                 # Tipo de Plantas
-                for t in sorted(record.tipo_planta_assoc, key=lambda x: x.ordem):
+                #for t in sorted(record.tipo_planta_assoc, key=lambda x: x.ordem):
+                for t in sorted(record.tipos_plantas, key=lambda x: x.ordem):
                     form.TiposPlantasList.append_entry(str(t.tipo_planta_id))
 
                 # Widgets
-                for w in sorted(record.widget_assoc, key=lambda x: x.ordem):
+                #for w in sorted(record.widget_assoc, key=lambda x: x.ordem):
+                for w in sorted(record.widgets, key=lambda x: x.ordem):
                     form.WidgetsList.append_entry(str(w.widget_id))
 
                 db.session.commit()
@@ -622,13 +632,19 @@ def mapas_mapa_edit(id):
         for r in record.roles:
             form.RolesList.append_entry(str(r.id) + '|' + r.name)
 
-        for p in sorted(record.planta_assoc, key=lambda x: x.ordem):
+        #for p in sorted(record.planta_assoc, key=lambda x: x.ordem):
+        #    form.PlantasList.append_entry(str(p.planta_id))
+        for p in sorted(record.plantas, key=lambda x: x.ordem):
             form.PlantasList.append_entry(str(p.planta_id))
 
-        for t in sorted(record.tipo_planta_assoc, key=lambda x: x.ordem):
+        #for t in sorted(record.tipo_planta_assoc, key=lambda x: x.ordem):
+        #    form.TiposPlantasList.append_entry(str(t.tipo_planta_id))
+        for t in sorted(record.tipos_plantas, key=lambda x: x.ordem):
             form.TiposPlantasList.append_entry(str(t.tipo_planta_id))
 
-        for w in sorted(record.widget_assoc, key=lambda x: x.ordem):
+        #for w in sorted(record.widget_assoc, key=lambda x: x.ordem):
+        #    form.WidgetsList.append_entry(str(w.widget_id))
+        for w in sorted(record.widgets, key=lambda x: x.ordem):
             form.WidgetsList.append_entry(str(w.widget_id))
 
     return render_template('backoffice/mapas_mapa_edit.html', form=form, record=record, configuracoes=configuracoes,
@@ -1333,7 +1349,9 @@ def plantas_tipo_edit(id):
         for t in sorted(record.tipo_planta_child_assoc, key=lambda x: x.ordem):
             form.TiposPlantasList.append_entry(str(t.tipo_planta_child_id))
 
-        for p in sorted(record.planta_assoc, key=lambda x: x.ordem):
+        #for p in sorted(record.planta_assoc, key=lambda x: x.ordem):
+        #    form.PlantasList.append_entry(str(p.planta_id))
+        for p in sorted(record.plantas, key=lambda x: x.ordem):
             form.PlantasList.append_entry(str(p.planta_id))
 
     return render_template('backoffice/plantas_tipo_planta_edit.html', form=form, record=record, tipos_plantas=tipos_plantas, plantas=plantas, error=error)
@@ -2327,7 +2345,8 @@ def mensagens():
         query = query.filter(Mapa.codigo.in_(mapa_list))
 
     if (form.user.data):
-        query = query.filter(or_(ContactoMensagem.nome.ilike(form.user.data), ContactoMensagem.email.ilike(form.user.data),\
+        query = query.filter(or_(ContactoMensagem.nome.ilike(form.user.data),
+                                 ContactoMensagem.email.ilike(form.user.data),
                                  User.username.ilike(form.user.data)))
 
     if form.estado.data == '1':
@@ -2407,7 +2426,7 @@ def mensagens_edit(id):
                 if request.form['action'] == 'check':
                     record.checked = True
                     record.checked_date = datetime.datetime.now()
-                    record.observacoes == request.form['observacoes']
+                    record.observacoes = request.form['observacoes']
                     msg = constants.RECORDS_CONTACT_MSG_CHECKED_SUCCESS
                 elif request.form['action'] == 'close':
                     if not record.checked:
@@ -2415,12 +2434,12 @@ def mensagens_edit(id):
                         record.checked_date = datetime.datetime.now()
                     record.closed = True
                     record.closed_date = datetime.datetime.now()
-                    record.observacoes == request.form['observacoes']
+                    record.observacoes = request.form['observacoes']
                     msg = constants.RECORDS_CONTACT_MSG_CLOSED_SUCCESS
                 elif request.form['action'] == 'reopen':
                     record.closed = False
                     record.closed_date = None
-                    record.observacoes == request.form['observacoes']
+                    record.observacoes = request.form['observacoes']
                     msg = constants.RECORDS_CONTACT_MSG_REOPENED_SUCCESS
                 elif request.form['action'] == 'save':
                     record.observacoes = request.form['observacoes']

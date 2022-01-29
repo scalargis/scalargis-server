@@ -200,7 +200,7 @@ def filter_tipo_planta(tipo, geom_filter, geom_proj, show_all):
              'seleccaoPlantas': tipo.seleccaoPlantas, 'agruparPlantas': tipo.agruparPlantas,
              'plantas': [], 'geom_wkt': tipo.geometry_wkt}
 
-    for p in sorted(tipo.planta_assoc, key=lambda x: x.ordem):
+    for p in sorted(tipo.plantas, key=lambda x: x.ordem):
         planta = p.planta
         if geom_filter is None or planta.geometry_wkt is None:
             layouts = []
@@ -255,9 +255,9 @@ def get_layouts_from_planta(planta, layouts):
 
 def get_layouts_from_tipo(tipo, layouts):
     for p in tipo.plantas:
-        if (p.formato, p.orientacao) not in layouts:
-            layouts.append((p.formato, p.orientacao))
-        for l in p.layouts:
+        if (p.planta.formato, p.planta.orientacao) not in layouts:
+            layouts.append((p.planta.formato, p.planta.orientacao))
+        for l in p.planta.layouts:
             if (l.formato, l.orientacao) not in layouts:
                 layouts.append((l.formato, l.orientacao))
 
@@ -503,11 +503,15 @@ def index(id):
             catalogos.append(c)
 
     tipos_plantas = []
-    for t in sorted(map.tipo_planta_assoc, key=lambda x: x.ordem):
+    #for t in sorted(map.tipo_planta_assoc, key=lambda x: x.ordem):
+    #    tipos_plantas.append(t.tipo_planta)
+    for t in sorted(map.tipos_plantas, key=lambda x: x.ordem):
         tipos_plantas.append(t.tipo_planta)
 
     plantas = []
-    for p in sorted(map.planta_assoc, key=lambda x: x.ordem):
+    #for p in sorted(map.planta_assoc, key=lambda x: x.ordem):
+    #    plantas.append(p.planta)
+    for p in sorted(map.plantas, key=lambda x: x.ordem):
         plantas.append(p.planta)
 
     planta = None
@@ -522,7 +526,8 @@ def index(id):
 
     widgets = []
     widgets_script_files = []
-    for w in sorted(map.widget_assoc, key=lambda x: x.ordem):
+    #for w in sorted(map.widget_assoc, key=lambda x: x.ordem):
+    for w in sorted(map.widgets, key=lambda x: x.ordem):
         widget_permission = True
         load_widget = False
 
@@ -553,7 +558,8 @@ def index(id):
 
             # Associate parent widget only if it's also in map
             if w.widget.parent:
-                if any(wp.widget_id == w.widget.parent.id for wp in map.widget_assoc):
+                #if any(wp.widget_id == w.widget.parent.id for wp in map.widget_assoc):
+                if any(wp.widget_id == w.widget.parent.id for wp in map.widgets):
                     wc['parent'] = {'id': w.widget.parent.id, 'codigo': w.widget.parent.codigo}
             widgets.append(wc)
 
@@ -672,7 +678,8 @@ def get_config(id):
         return jsonify(Success=False, Message='Não tem permissões para aceder a este mapa.', Data=None)
 
     widgets = []
-    for w in sorted(map.widget_assoc, key=lambda x: x.ordem):
+    #for w in sorted(map.widget_assoc, key=lambda x: x.ordem):
+    for w in sorted(map.widgets, key=lambda x: x.ordem):
         # widgets.append(w.widget.codigo)
         load_widget = False
 
@@ -765,7 +772,8 @@ def pdm_index():
         map_id = int(request.form.get("map_id"))
         map = db.session.query(Mapa).filter(Mapa.id == map_id).first()
 
-        for w in sorted(map.widget_assoc, key=lambda x: x.ordem):
+        #for w in sorted(map.widget_assoc, key=lambda x: x.ordem):
+        for w in sorted(map.widgets, key=lambda x: x.ordem):
             # widgets.append(w.widget.codigo)
             load_widget = False
 
@@ -958,13 +966,15 @@ def confrontation_index():
         map = db.session.query(Mapa).filter(Mapa.id == map_id).first()
 
         config_list = []
-        widget = next((w for w in map.widget_assoc if w.widget.codigo == 'confrontation'), None)
+        #widget = next((w for w in map.widget_assoc if w.widget.codigo == 'confrontation'), None)
+        widget = next((w for w in map.widgets if w.widget.codigo == 'confrontation'), None)
         if widget:
             widget_config = get_widget_config(widget)
             if widget_config:
                 config_list = widget_config if isinstance(widget_config, list) else [widget_config]
 
-        for w in sorted(map.widget_assoc, key=lambda x: x.ordem):
+        #for w in sorted(map.widget_assoc, key=lambda x: x.ordem):
+        for w in sorted(map.widgets, key=lambda x: x.ordem):
             load_widget = False
 
             if w.widget.action:
@@ -1014,7 +1024,8 @@ def intersect_cft():
         if form.config is not None and form.config.data:
             config_code = form.config.data
         else:
-            widget = next((w for w in map.widget_assoc if w.widget.codigo == 'confrontation'), None)
+            #widget = next((w for w in map.widget_assoc if w.widget.codigo == 'confrontation'), None)
+            widget = next((w for w in map.widgets if w.widget.codigo == 'confrontation'), None)
             if widget:
                 widget_config = get_widget_config(widget)
                 if widget_config and widget_config['code']:
@@ -1121,8 +1132,8 @@ def drawtools_index():
         map_id = int(request.form.get("map_id"))
         map = db.session.query(Mapa).filter(Mapa.id == map_id).first()
 
-        for w in sorted(map.widget_assoc, key=lambda x: x.ordem):
-
+        #for w in sorted(map.widget_assoc, key=lambda x: x.ordem):
+        for w in sorted(map.widgets, key=lambda x: x.ordem):
             load_widget = False
 
             if w.widget.action:
@@ -1175,7 +1186,8 @@ def print_grupo():
 
     if mapa_id:
         map = db.session.query(Mapa).filter(Mapa.id == mapa_id).first()
-        widgets = map.widget_assoc
+        #widgets = map.widget_assoc
+        widgets = map.widgets
 
     tipo = db.session.query(TipoPlanta).filter(TipoPlanta.id == id).first()
 
@@ -1201,7 +1213,8 @@ def print_planta():
         map = db.session.query(Mapa).filter(Mapa.id == mapa_id).first()
 
     widgets = []
-    for w in map.widget_assoc:
+    #for w in map.widget_assoc:
+    for w in map.widgets:
         if w.widget.target == 'layouts':
             wc = {'id': w.widget.id, 'codigo': w.widget.codigo, 'titulo': w.widget.titulo,
                   'action': w.widget.action, 'target': w.widget.target, 'parent': None,
@@ -1238,7 +1251,8 @@ def print_step_grupo_details():
     if mapa_id:
         map = db.session.query(Mapa).filter(Mapa.id == mapa_id).first()
     widgets = []
-    for w in map.widget_assoc:
+    #for w in map.widget_assoc:
+    for w in map.widgets:
         if w.widget.target == 'layouts':
             wc = {'id': w.widget.id, 'codigo': w.widget.codigo, 'titulo': w.widget.titulo,
                   'action': w.widget.action, 'target': w.widget.target, 'parent': None,

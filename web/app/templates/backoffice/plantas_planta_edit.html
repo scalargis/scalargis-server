@@ -259,11 +259,11 @@
                             </tr>
                             </thead>
                             <tbody>
-                            {% for tipo in record.tipos_plantas %}
+                            {% for t in record.tipos_plantas %}
                             <tr>
-                                <td>{{ tipo.codigo or '' }}</td>
-                                <td>{{ tipo.titulo or '' }}</td>
-                                <td>{{ tipo.descricao or '' }}</td>
+                                <td>{{ t.tipo_planta.codigo or '' }}</td>
+                                <td>{{ t.tipo_planta.titulo or '' }}</td>
+                                <td>{{ t.tipo_planta.descricao or '' }}</td>
                             </tr>
                             {% endfor %}
                             </tbody>
@@ -282,11 +282,11 @@
                             </tr>
                             </thead>
                             <tbody>
-                            {% for mapa in record.mapas %}
+                            {% for m in record.mapas %}
                             <tr>
-                                <td>{{ mapa.codigo or '' }}</td>
-                                <td>{{ mapa.titulo or '' }}</td>
-                                <td>{{ mapa.descricao or '' }}</td>
+                                <td>{{ m.mapa.codigo or '' }}</td>
+                                <td>{{ m.mapa.titulo or '' }}</td>
+                                <td>{{ m.mapa.descricao or '' }}</td>
                             </tr>
                             {% endfor %}
                             </tbody>

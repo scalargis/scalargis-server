@@ -92,13 +92,13 @@
                                     {% endfor %}
                                 </td>
                                 <td>
-                                    {% for planta in record.plantas %}
-                                        <span class="badge" title="{{planta.nome}}">{{ planta.codigo }}</span>
+                                    {% for p in record.plantas %}
+                                        <span class="badge" title="{{p.planta.nome}}">{{ p.planta.codigo }}</span>
                                     {% endfor %}
                                 </td>
                                 <td>
-                                    {% for mapa in record.mapas %}
-                                        <span class="badge" title="{{mapa.titulo}}">{{ mapa.codigo }}</span>
+                                    {% for m in record.mapas %}
+                                        <span class="badge" title="{{m.mapa.titulo}}">{{ m.mapa.codigo }}</span>
                                     {% endfor %}
                                 </td>
                                 <td style="width: 50px; min-width: 40px">

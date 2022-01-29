@@ -131,13 +131,13 @@
                                 <td>{{ record.titulo }}</td>
                                 <td><a class="mapconfig" href="#" data-content="{{ record.configuracao }}">Ver</a></td>
                                 <td>
-                                    {% for tipo in record.tipos_plantas %}
-                                        <span class="badge" title="{{tipo.titulo}}">{{ tipo.codigo }}</span>
+                                    {% for t in record.tipos_plantas %}
+                                        <span class="badge" title="{{t.tipo_planta.titulo}}">{{ t.tipo_planta.codigo }}</span>
                                     {% endfor %}
                                 </td>
                                 <td>
-                                    {% for mapa in record.mapas %}
-                                        <span class="badge" title="{{mapa.titulo}}">{{ mapa.codigo }}</span>
+                                    {% for m in record.mapas %}
+                                        <span class="badge" title="{{m.mapa.titulo}}">{{ m.mapa.codigo }}</span>
                                     {% endfor %}
                                 </td>
                                 <td style="width: 50px; min-width: 40px">
