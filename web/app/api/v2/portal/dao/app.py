@@ -249,7 +249,7 @@ def get_app_viewer_print_group_details(viewer_id, group_id):
     group_uuid = uuid.uuid4()
 
     components = []
-    for w in viewer.component_assoc:
+    for w in viewer.components:
         if w.component.target == 'layouts':
             wc = {'id': w.widget.id, 'codigo': w.widget.codigo, 'titulo': w.widget.titulo,
                   'action': w.widget.action, 'target': w.widget.target, 'parent': None,
@@ -262,22 +262,7 @@ def get_app_viewer_print_group_details(viewer_id, group_id):
 
     geom_filter = None
     geom_proj = None
-    '''
-    if 'geom_filter' in request.values and len(request.values['geom_filter']) > 0:
-        geom_filter = loads(request.values['geom_filter'])
-        if group.tolerancia is not None:
-            geom_filter = geom_filter.buffer(group.tolerancia)
-    else:
-        geoms = request.form.getlist('geom_filter[]')
-        geoms_out = []
-        if len(geoms)>0:
-            for gm in geoms:
-                gm = loads(gm)
-                if group.tolerancia is not None:
-                    gm = gm.buffer(group.tolerancia)
-                geoms_out.append(gm.wkt)
-            geom_filter = geo.getGeometryFromWKT(geoms_out)
-    '''
+
     if 'geom_filter' in request.json:
         geoms = request.json['geom_filter']
         geoms_out = []
@@ -345,7 +330,7 @@ def filter_print_group(viewer, group, geom_filter, geom_proj, user_roles, show_a
                      'resource_url': url_for('api2.app_app_print_group_details', viewer_id=viewer.id,
                                              group_id=group.id)}
 
-        for p in sorted(group.planta_assoc, key=lambda x: x.ordem or 1):
+        for p in sorted(group.plantas, key=lambda x: x.ordem or 1):
             print = p.planta
 
             print_roles = get_roles_names(print.roles,False)
@@ -429,7 +414,7 @@ def build_viewer_config(record, user_roles, user=None, session=False):
                 viewer_cfg['config_json'] = session_cfg
                 viewer_cfg['is_session'] = True
 
-    for cmp in sorted(record.component_assoc, key=lambda x: x.order or 1):
+    for cmp in sorted(record.components, key=lambda x: x.order or 1):
         if (cmp.component.is_active or cmp.component.is_active is None) and (cmp.is_active or cmp.is_active is None):
 
             cr = get_roles_names(cmp.component.roles, False)
@@ -446,7 +431,7 @@ def build_viewer_config(record, user_roles, user=None, session=False):
     viewer_cfg['printing'] = {}
 
     viewer_cfg['printing']['prints'] = []
-    for prt in sorted(record.print_assoc, key=lambda x: x.order or 1):
+    for prt in sorted(record.prints, key=lambda x: x.order or 1):
         print_roles = get_roles_names(prt.print.roles, False)
         if len(print_roles) == 0 or constants.ROLE_ADMIN in user_roles or \
                         len(set(user_roles).intersection(print_roles)) > 0:
@@ -455,7 +440,7 @@ def build_viewer_config(record, user_roles, user=None, session=False):
             viewer_cfg['printing']['prints'].append(prt_cfg)
 
     viewer_cfg['printing']['groups'] = []
-    for grp in sorted(record.print_group_assoc, key=lambda x: x.order or 1):
+    for grp in sorted(record.print_groups, key=lambda x: x.order or 1):
         group_roles = get_roles_names(grp.print_group.roles, False)
         if len(group_roles) == 0 or constants.ROLE_ADMIN in user_roles or len(
                 set(user_roles).intersection(group_roles)) > 0:

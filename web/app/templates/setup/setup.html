@@ -1,0 +1,64 @@
+{% extends "setup/_setup_layout.html" %}
+
+{% from "_custom_macros.html" import render_field_with_bootstrap_errors %}
+
+{% block title %}
+<title>ScalarGIS - Database setup</title>
+{% endblock %}
+
+{% block content %}
+<script>
+    function onSetup(btn) {
+      $(btn).button('loading');
+    }
+</script>
+
+<div class="container">
+    <div class="row">
+        <div class="col-md-4 col-md-offset-4 text-center" style="margin-top: 20px; margin-bottom: 20px">
+            <img style="width: 80%" src="{{ url_for('static', filename='images/scalargis.png') }}" />
+        </div>
+    </div>
+    <div class="row">
+        <div class="col-md-4 col-md-offset-4">
+            <div class="panel {{'panel-danger' if error else 'panel panel-default'}}">
+                <div class="panel-heading">
+                    <h3 class="panel-title">ScalarGIS - Database setup</h3>
+                </div>
+
+                <div class="panel-body">
+                    {% if success %}
+                    <div style="color: green; text-align: center; margin: 10px; font-size: 4em;">
+                        <i class="fa fa-check-circle"></i>
+                    </div>
+                    <div>{{message|safe}}</div>
+                    <div>Go to <a href="./backoffice">BackOffice</a> to continue with the configuration.</div>
+                    {% else %}
+                        {% if message %}
+                        <div>{{message|safe}}</div>
+                        {% endif %}
+                        <form method="POST" name="setup-form" id="setup" role="form" autocomplete="off">
+                            <fieldset>
+                                <div class="checkbox">
+                                    <label>
+                                        <input name="load_sample_data" type="checkbox" value=true>
+                                        Load sample data
+                                    </label>
+                                </div>
+
+                                <button id="btnSetup" onclick="onSetup(this)"  data-loading-text="Processing..." class="btn btn-lg btn-primary btn-block">
+                                    Setup
+                                </button>
+                            </fieldset>
+                        </form>
+                        {% if db_exists %}
+                        <div style="margin-top: 10px">Go to <a href="./backoffice">BackOffice</a> if you choose not to run a new database configuration.</div>
+                        {% endif %}
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}

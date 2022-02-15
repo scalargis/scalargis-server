@@ -10,7 +10,6 @@ from app.main import app
 from app.database import db
 from app.models.mapas import Mapa, SistemaCoordenadas, TipoPlanta, Planta, ContactoMensagem, \
     SiteSettings, MDTipoServico, MDTipoRecurso, MDTemaInspire, MDCategoria, Widget
-from app.models.planos import Plano, TipoPlano
 from flask import render_template, render_template_string, request, jsonify, make_response, \
     abort, current_app, redirect, url_for, flash
 from flask_security import current_user
@@ -752,201 +751,6 @@ def transform():
     return jsonify(Success=True, Message=html, Data=data)
 
 
-@mod.route('/map/pdm/index', methods=['POST'])
-def pdm_index():
-    logger = logging.getLogger(__name__)
-    logger.debug('This message should go to the log file - map')
-
-    map = None
-    widget = None
-    widgets = []
-
-    widget = db.session.query(Widget).filter(Widget.codigo == 'pdm').first()
-
-    site_settings = {}
-    st = db.session.query(SiteSettings).all()
-    for r in st:
-        site_settings[r.code] = r.setting_value
-
-    if request.form.get('map_id') is not None:
-        map_id = int(request.form.get("map_id"))
-        map = db.session.query(Mapa).filter(Mapa.id == map_id).first()
-
-        #for w in sorted(map.widget_assoc, key=lambda x: x.ordem):
-        for w in sorted(map.widgets, key=lambda x: x.ordem):
-            # widgets.append(w.widget.codigo)
-            load_widget = False
-
-            if w.widget.action:
-                if w.widget.action.split('.')[0] in current_app.blueprints:
-                    load_widget = True
-            else:
-                load_widget = True
-
-            if load_widget:
-                wc = {'id': w.widget.id, 'codigo': w.widget.codigo, 'titulo': w.widget.titulo,
-                      'action': w.widget.action, 'target': w.widget.target, 'parent': None,
-                      'icon_css_class': w.widget.icon_css_class,
-                      'html_content': w.html_content or w.widget.html_content or None,
-                      'config': get_widget_config(w)}
-
-                if w.widget.parent:
-                    wc['parent'] = {'id': w.widget.parent.id, 'codigo': w.widget.parent.codigo}
-                widgets.append(wc)
-
-    plans = get_planos_list()
-
-    template = 'map/_pdm.html'
-    if widget and widget.template:
-        template = widget.template
-
-    html = render_template(template, settings=settings, site_settings=site_settings, planos=plans,
-                           widgets=widgets)
-
-    return jsonify(Success=True, Message=html, Data=None)
-
-
-@mod.route('/map/intersect_pdm', methods=['POST'])
-def intersect_pdm():
-    logger = logging.getLogger(__name__)
-    logger.debug('This message should go to the log file - map')
-
-    form = IntersectPDMForm()
-
-    user_id = None
-    if current_user and current_user.is_authenticated:
-        user_id = current_user.id
-
-    widget = None
-    widget = db.session.query(Widget).filter(Widget.codigo == 'pdm_intersect').first()
-
-    map_id = None
-    if form.mapId is not None:
-        map_id = form.mapId.data
-
-    records = db.session.query(IntersectPDMResult).from_statement(
-        sql.text("select * from portal.intersect_igt(:geom_ewkt, :out_srid)")). \
-        params(geom_ewkt=form.geomEWKT.data, out_srid=form.srid.data).all()
-
-    ord_list = [item for item in records if item.tipo == 'ord']
-    cond_list = [item for item in records if item.tipo == 'cond']
-    eem_list = [item for item in records if item.tipo == 'eem']
-    serv_list = [item for item in records if item.tipo == 'serv']
-    ran_list = [item for item in records if item.tipo == 'ran']
-    perigosidade_list = [item for item in records if item.tipo == 'perigosidade']
-
-    template = 'map/intersect_pdm_results.html'
-    if widget and widget.template:
-        template = widget.template
-
-    html = render_template(template, records_ord=ord_list,
-                           records_cond=cond_list, records_eem=eem_list, records_serv=serv_list, records_ran=ran_list,
-                           records_perigosidade=perigosidade_list, geom_ewkt=form.geomEWKT.data)
-
-    auditoria.log(map_id, None, auditoria.EnumOperacaoAuditoria.AnalisePlano, None, None, user_id)
-
-    return jsonify(Success=True, Message=html, Data=None)
-
-
-@mod.route('/map/intersect_pdm/export', methods=['GET'])
-def intersect_pdm_export():
-    logger = logging.getLogger(__name__)
-    logger.debug('This message should go to the log file - map')
-
-    srid = request.values['srid']
-    geom_ewkt = request.values['geomEWKT']
-    out_format = request.values['format']
-
-    if out_format == 'shapefile':
-        url = current_app.config["INTERSECT_PDM_URL"]
-        url += "&_geom_ewkt='" + geom_ewkt + "'"
-        url += "&_out_srid=" + srid
-
-        r = requests.get(url)
-
-        response = make_response(r.content)
-        response.headers['Content-Type'] = 'application/zip'
-        response.headers['Content-Disposition'] = 'attachment; filename=shapfile.zip'
-
-        return response
-
-    records = db.session.query(IntersectPDMResult).from_statement(
-        sql.text("select * from portal.intersect_igt(:geom_ewkt, :out_srid)")). \
-        params(geom_ewkt=geom_ewkt, out_srid=srid).all()
-
-    # ord_list = [item for item in records if item.tipo == 'ord']
-    # cond_list = [item for item in records if item.tipo == 'cond']
-    # eem_list = [item for item in records if item.tipo == 'eem']
-
-    # g1 = db.Column(db.Text())
-    # g2 = db.Column(db.Text())
-    # g3 = db.Column(db.Text())
-    # dimensao = db.Column(db.Integer())
-    # geom_ewkt = db.Column(db.Text())
-    # area = db.Column(db.Float())
-    # area_percent = db.Column(db.Float())
-    # tipo = db.Column(db.Text())
-
-    # output = io.StringIO()
-    # csvdata = [1, 2, 'a', 'He said "what do you mean?"', "Whoa!\nNewlines!"]
-    # writer = csv.writer(output, quoting=csv.QUOTE_NONNUMERIC)
-    # writer.writerow(csvdata)
-
-    # data = output.getvalue()
-
-    # response = make_response(data)
-
-    # response.headers["Content-Disposition"] = "attachment; filename=books.csv"
-    # return response
-
-    column_names = ['g1', 'g2', 'g3', 'area', 'area_percent', 'tipo']
-
-    file_name = "analise_pdm"
-
-    return flask_excel.make_response_from_query_sets(records, column_names, out_format, file_name=file_name)
-
-
-@mod.route('/map/intersect_pdm/export2', methods=['GET'])
-def intersect_pdm_export2():
-    srid = 3857
-    # geom_ewkt = request.values['geomEWKT']
-    # out_format = request.values['format']
-
-    geom_ewkt = "SRID=3857;POLYGON((-896377.0307002619 4630516.955001834,-899052.3266902431 4628453.155238134,-898135.082350821 4626542.229531005,-894848.2901345583 4626389.355474435,-893166.6755122845 4628529.592266419,-893931.0457951362 4630822.703114974,-896377.0307002619 4630516.955001834))"
-
-    records = db.session.query(IntersectPDMResult).from_statement(
-        sql.text("select * from portal.intersect_igt(:geom_ewkt, :out_srid)")). \
-        params(geom_ewkt=geom_ewkt, out_srid=srid).all()
-
-    records_point = [item for item in records if item.dimensao == 0]
-    records_line = [item for item in records if item.dimensao == 1]
-    records_polygon = [item for item in records if item.dimensao == 2]
-
-    # rec = records_polygon[0]
-    # wkt = rec.geom_ewkt.split(';')[1]
-    # geom = loads(wkt)
-
-    # WRITE TO SHAPEFILE USING PYSHP
-    shapewriter = shapefile.Writer()
-    shapewriter.field("field1")
-
-    for rec in records_polygon:
-        wkt = rec.geom_ewkt.split(';')[1]
-        geom = loads(wkt)
-
-        # step1: convert shapely to pyshp using the function above
-        converted_shape = geo.shapely_to_pyshp(geom)
-        # step2: tell the writer to add the converted shape
-        shapewriter._shapes.append(converted_shape)
-        # add a list of attributes to go along with the shape
-        shapewriter.record(["empty record"])
-
-    # save it
-    shapewriter.save("d:/tmp/tests4.shp")
-
-    return "teste"
-
-
 @mod.route('/map/confrontation/index', methods=['POST'])
 def confrontation_index():
     logger = logging.getLogger(__name__)
@@ -966,14 +770,12 @@ def confrontation_index():
         map = db.session.query(Mapa).filter(Mapa.id == map_id).first()
 
         config_list = []
-        #widget = next((w for w in map.widget_assoc if w.widget.codigo == 'confrontation'), None)
         widget = next((w for w in map.widgets if w.widget.codigo == 'confrontation'), None)
         if widget:
             widget_config = get_widget_config(widget)
             if widget_config:
                 config_list = widget_config if isinstance(widget_config, list) else [widget_config]
 
-        #for w in sorted(map.widget_assoc, key=lambda x: x.ordem):
         for w in sorted(map.widgets, key=lambda x: x.ordem):
             load_widget = False
 
@@ -1024,7 +826,6 @@ def intersect_cft():
         if form.config is not None and form.config.data:
             config_code = form.config.data
         else:
-            #widget = next((w for w in map.widget_assoc if w.widget.codigo == 'confrontation'), None)
             widget = next((w for w in map.widgets if w.widget.codigo == 'confrontation'), None)
             if widget:
                 widget_config = get_widget_config(widget)
@@ -1034,7 +835,7 @@ def intersect_cft():
     record = get_confrontation_results(config_code, form.geomEWKT.data, form.buffer.data)
     html = render_template("map/intersect_cft_results.html", record=record, geom_ewkt=form.geomEWKT.data,
                            config_code=config_code)
-    auditoria.log(map_id, None, auditoria.EnumOperacaoAuditoria.AnalisePlano, None, None, user_id)
+    auditoria.log(map_id, None, auditoria.EnumOperacaoAuditoria.Confrontacao, None, None, user_id)
     return jsonify(Success=True, Message=html, Data=record, geom_ewkt=form.geomEWKT.data)
 
 
@@ -1359,21 +1160,6 @@ def proxy():
     resp.headers.add("Access-Control-Allow-Origin", "*")
 
     return resp
-
-
-def get_planos_list():
-    query_planos = db.session.query(Plano)
-    records = None
-
-    if 'PLANOS_FILTER' in current_app.config.keys():
-        query_planos = query_planos.outerjoin(Plano.tipo_plano).filter(
-            TipoPlano.codigo.in_(current_app.config['PLANOS_FILTER']))
-
-    query_planos = query_planos.filter(or_(Plano.anulado == None, Plano.anulado == False))
-
-    records = query_planos.order_by(Plano.ordem).all()
-
-    return records
 
 
 @mod.route('/map/<int:map_id>/send_message', methods=['POST'])

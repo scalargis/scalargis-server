@@ -46,6 +46,7 @@ SECURITY_MSG_PASSWORD_RESET_REQUEST = ("As intruções para definição da nova 
 BCRYPT_LEVEL = 12  # Configuration for the Flask-Bcrypt extension
 MAIL_FROM_EMAIL = "name@example.com"  # For use in application emails
 
+SQLALCHEMY_TRACK_MODIFICATIONS = False
 SQLALCHEMY_DATABASE_URI = "postgresql+psycopg2://postgres:password@localhost:5432/teste_migrate"
 
 WTF_CSRF_SECRET_KEY = 'a random string'

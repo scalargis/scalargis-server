@@ -635,12 +635,11 @@ def update_print_group(id, data):
 
         # Plantas (Child Prints)
         if 'prints' in data:
-            for planta in reversed(record.planta_assoc):
+            for planta in reversed(record.plantas):
                 db.session.delete(planta)
             ordem = 1
             for plt in data['prints']:
-                rec = PlantaTipoPlanta(ordem=ordem, tipo_planta_id=record.id, planta_id=plt.get('id'))
-                db.session.add(rec)
+                record.plantas.append(PlantaTipoPlanta(ordem=ordem, planta_id=plt.get('id')))
                 ordem += 1
 
         # Roles
@@ -675,12 +674,6 @@ def delete_print_group(id):
         if not is_admin_or_manager(user) and record.owner_id != user.id:
             return 403
 
-        '''
-        for layout in reversed(record.layouts):
-            #record.layouts.remove(layout)
-            db.session.delete(layout)
-        '''
-
         db.session.delete(record)
 
         try:
@@ -706,13 +699,6 @@ def delete_print_group_list(data):
             values = filter['id']
             for id in values:
                 rec = db.session.query(model).filter(model.id == id).one()
-
-                '''
-                # Remove print layouts
-                for layout in reversed(rec.layouts):
-                    # rec.layouts.remove(layout)
-                    db.session.delete(layout)
-                '''
 
                 db.session.delete(rec)
 

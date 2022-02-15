@@ -1,5 +1,8 @@
+import os
 import json
 from datetime import datetime
+
+from sqlalchemy.sql import text
 
 from app.models.common import *
 from app.models.security import *
@@ -12,24 +15,25 @@ from app.models.domain.portal import *
 
 from flask_security.utils import hash_password
 
-def create_schema():
-    from sqlalchemy.schema import CreateSchema
-    #db.engine.execute(CreateSchema('portal'))
 
-    db.engine.execute('CREATE EXTENSION IF NOT EXISTS postgis')
-    db.engine.execute('CREATE SCHEMA IF NOT EXISTS portal')
+def setup(sample_data=False):
+    create_schema(False)
 
-    db.drop_all()
-    db.create_all()
+    filepath = os.path.join(os.path.dirname(__file__),'sql', 'load_data.sql')
 
-    load_roles(None)
-    load_admin_user(None)
+    file = open(filepath)
+    sql = text(file.read())
+
+    db.session.execute(sql)
+
+    if sample_data:
+        load_sample_data(False)
 
     db.session.commit()
 
 
-def load_sample_data():
-    #Inser user
+def load_sample_data(commit=True):
+    #Insert user
     user = User()
     user.username = 'user'
     user.email = 'user@isp.com'
@@ -465,7 +469,22 @@ def load_sample_data():
     viewer_print_group.order = 1
     db.session.add(viewer_print)
 
-    db.session.commit()
+    if commit:
+        db.session.commit()
+
+
+def create_schema(commit=True):
+    db.engine.execute('CREATE EXTENSION IF NOT EXISTS postgis')
+    db.engine.execute('CREATE SCHEMA IF NOT EXISTS portal')
+
+    db.drop_all()
+    db.create_all()
+
+    load_roles(None)
+    load_admin_user(None)
+
+    if commit:
+        db.session.commit()
 
 
 def load_roles(session):
@@ -480,10 +499,14 @@ def load_roles(session):
         role.name = name
         role.description = description
         role.read_only = True
-        db.session.add(role)
+        if session:
+            session.add(role)
+        else:
+            db.session.add(role)
 
     if session:
         session.commit()
+
 
 def load_admin_user(session):
     user = User()

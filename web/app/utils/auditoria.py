@@ -11,6 +11,7 @@ class EnumOperacaoAuditoria(Enum):
     EmissaoPlanta = 'EP'
     EmissaoPlantaMerge = 'EPM'
     AnalisePlano = 'AP'
+    Confrontacao = 'CFT'
     ContactoMensagem = 'MSG'
     BackOffice = 'BOF'
 

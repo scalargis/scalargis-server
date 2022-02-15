@@ -38,12 +38,6 @@ roles_tipo_plantas = db.Table('tipo_plantas_roles',
                               schema='portal')
 
 
-# tipos_plantas_childs = db.Table('tipos_plantas_childs',
-#                        db.Column('tipo_planta_id', db.Integer, db.ForeignKey('portal.tipo_planta.id'), nullable=False),
-#                        db.Column('tipo_planta_child_id', db.Integer, db.ForeignKey('portal.tipo_planta.id'), nullable=False),
-#                        db.PrimaryKeyConstraint('tipo_planta_id', 'tipo_planta_child_id'),
-#                        schema='portal')
-
 class SiteSettings(db.Model, TypeTableMixin):
     __tablename__ = "site_settings"
     __table_args__ = {'schema': 'portal'}
@@ -78,27 +72,10 @@ class Mapa(db.Model):
     modulos = db.relationship('Modulo', secondary=modulos_mapas,
                               backref=db.backref('mapas', lazy='dynamic'))
 
-    '''
-    tipos_plantas = db.relationship(
-        'TipoPlanta',
-        secondary='portal.mapas_tipos_plantas'
-    )
-    plantas = db.relationship(
-        'Planta',
-        secondary='portal.mapas_plantas'
-    )
-    '''
-
     catalogos = db.relationship('CatalogoMetadados', secondary=catalogos_mapas,
                                 backref=db.backref('mapas', lazy='dynamic'))
     roles = db.relationship('Role', secondary=roles_mapas,
                             backref=db.backref('mapas', lazy='dynamic'))
-    '''
-    widgets = db.relationship(
-        'Widget',
-        secondary='portal.mapas_widgets'
-    )
-    '''
 
     portal = db.Column(db.Boolean())
     activo = db.Column(db.Boolean())
@@ -124,7 +101,6 @@ class Modulo(db.Model):
     id = db.Column(db.Integer(), primary_key=True)
     codigo = db.Column(db.String(255), unique=True)
     titulo = db.Column(db.String(255))
-    # mapas = db.relationship('Mapa', secondary=mapas_modulos, lazy='dynamic')
 
     idUserIns = db.Column("id_user_ins", db.Integer())
     dataIns = db.Column("data_ins", db.Date())
@@ -159,19 +135,6 @@ class TipoPlanta(db.Model):
     agruparPlantas = db.Column('agrupar_plantas', db.Boolean(), default=False)
 
     layouts = relationship("TipoPlantaLayout", back_populates="tipo_planta")
-
-    '''
-    plantas = db.relationship(
-        'Planta',
-        secondary='portal.plantas_tipos_plantas',
-        order_by='PlantaTipoPlanta.ordem'
-    )
-    '''
-
-    viewers = db.relationship(
-        'Viewer',
-        secondary='portal.viewers_print_groups'
-    )
 
     roles = db.relationship('Role', secondary=roles_tipo_plantas,
                             backref=db.backref('tipo_plantas', lazy='dynamic'))
@@ -223,22 +186,6 @@ class Planta(db.Model):
     activo = db.Column('activo', db.Boolean())
 
     layouts = relationship("PlantaLayout", back_populates="planta")
-
-    '''
-    tipos_plantas = db.relationship(
-        'TipoPlanta',
-        secondary='portal.plantas_tipos_plantas'
-    )
-    mapas = db.relationship(
-        'Mapa',
-        secondary='portal.mapas_plantas'
-    )
-    '''
-
-    viewers = db.relationship(
-        'Viewer',
-        secondary='portal.viewers_prints'
-    )
 
     roles = db.relationship(
         'Role',
@@ -301,16 +248,6 @@ class PlantaTipoPlanta(db.Model):
     planta_id = db.Column(db.Integer, db.ForeignKey('portal.planta.id'), primary_key=True)
     ordem = db.Column(db.Integer)
 
-    '''
-    tipo_planta = db.relationship(
-        TipoPlanta,
-        backref=db.backref("planta_assoc")
-    )
-    planta = db.relationship(
-        Planta,
-        backref=db.backref("tipo_planta_assoc")
-    )
-    '''
     tipo_planta = db.relationship(
         TipoPlanta,
         backref=db.backref("plantas")
@@ -352,16 +289,6 @@ class MapaTipoPlanta(db.Model):
     mapa_id = db.Column(db.Integer, db.ForeignKey('portal.mapa.id'), primary_key=True)
     ordem = db.Column(db.Integer)
 
-    '''
-    tipo_planta = db.relationship(
-        TipoPlanta,
-        backref=db.backref("mapa_assoc")
-    )
-    mapa = db.relationship(
-        Mapa, 
-        backref=db.backref("tipo_planta_assoc")
-    )
-    '''
     tipo_planta = db.relationship(
         TipoPlanta,
         backref=db.backref("mapas")
@@ -380,16 +307,6 @@ class MapaPlanta(db.Model):
     mapa_id = db.Column(db.Integer, db.ForeignKey('portal.mapa.id'), primary_key=True)
     ordem = db.Column(db.Integer)
 
-    '''
-    planta = db.relationship(
-        Planta,
-        backref=db.backref("mapa_assoc")
-    )
-    mapa = db.relationship(
-        Mapa,
-        backref=db.backref("planta_assoc")
-    )
-    '''
     planta = db.relationship(
         Planta,
         backref=db.backref("mapas")
@@ -462,15 +379,7 @@ class Widget(db.Model):
     roles = db.Column(db.Text())
 
     parent_id = db.Column(db.Integer, db.ForeignKey('portal.widget.id'))
-    # parent = relationship("Widget")
     children = relationship("Widget", backref=backref('parent', remote_side=[id]))
-
-    '''
-    mapas = db.relationship(
-        'Mapa',
-        secondary='portal.mapas_widgets'
-    )
-    '''
 
     idUserIns = db.Column("id_user_ins", db.Integer())
     dataIns = db.Column("data_ins", db.Date())
@@ -488,16 +397,6 @@ class MapaWidget(db.Model):
     roles = db.Column(db.Text())
     target = db.Column(db.String(255))
 
-    '''
-    widget = db.relationship(
-        Widget, 
-        backref=db.backref("mapa_assoc")
-    )
-    mapa = db.relationship(
-        Mapa, 
-        backref=db.backref("widget_assoc")
-    )
-    '''
     widget = db.relationship(
         Widget,
         backref=db.backref("mapas")

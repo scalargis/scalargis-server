@@ -26,7 +26,6 @@ from app.models.auditoria import AuditLog, AuditOperacao
 from app.utils import auditoria
 from instance import settings
 
-#mod = Blueprint('backoffice',  __name__, template_folder='templates', static_folder='static')
 from .. import mod
 
 
@@ -63,7 +62,6 @@ def index():
 
     mensagens = get_messages()
 
-    #sql = text("select logdate::text,sum(count)::integer from portal.return_logs(10) group by logdate order by logdate")
     sql = 'select logdate::text,count,vm,ap,ep from portal.return_logs_types(99) order by logdate'
     result = db.engine.execute(sql)
     data_graph = []
@@ -238,8 +236,6 @@ def mapas_mapa():
         query = query.filter(Mapa.codigo.like(form.codigo.data))
     if (form.titulo.data):
         query = query.filter(Mapa.titulo.like(form.titulo.data))
-    #if (form.modulo.data):
-    #   query = query.outerjoin(Mapa.mapas).filter(Mapa.codigo == form.mapa.data)
 
     count = query.count()
     list = query.order_by(order).\
@@ -482,8 +478,6 @@ def mapas_mapa_edit(id):
                             break
 
                 # Tipos Plantas
-                #for tipo in reversed(record.tipos_plantas):
-                #    record.tipos_plantas.remove(tipo)
                 for tipo in record.tipos_plantas:
                     db.session.delete(tipo)
                 tipo_planta_list = form.TiposPlantasList.data
@@ -491,15 +485,11 @@ def mapas_mapa_edit(id):
                 for index in tipo_planta_list:
                     for tipo in tipos_plantas:
                         if str(tipo.id) == index:
-                            #rec = MapaTipoPlanta(ordem=ordem, tipo_planta=tipo, mapa=record)
-                            #db.session.add(rec)
                             tpm = record.tipos_plantas.append(MapaTipoPlanta(tipo_planta=tipo, ordem=ordem))
                             break
                     ordem += 1
 
                 # Plantas
-                #for planta in reversed(record.plantas):
-                #    record.plantas.remove(planta)
                 for planta in record.plantas:
                     db.session.delete(planta)
                 planta_list = form.PlantasList.data
@@ -507,8 +497,6 @@ def mapas_mapa_edit(id):
                 for index in planta_list:
                     for planta in plantas:
                         if str(planta.id) == index:
-                            #rec = MapaPlanta(ordem=ordem, planta=planta, mapa=record)
-                            #db.session.add(rec)
                             plt = record.plantas.append(MapaPlanta(planta=planta, ordem=ordem))
                             break
                     ordem += 1
@@ -558,8 +546,6 @@ def mapas_mapa_edit(id):
                 # Scripts
                 record.post_script = form.postScript.data
 
-                #for widget in reversed(record.widgets):
-                #    record.widgets.remove(widget)
                 for widget in record.widgets:
                     db.session.delete(widget)
                 widget_list = form.WidgetsList.data
@@ -567,30 +553,25 @@ def mapas_mapa_edit(id):
                 for index in widget_list:
                     for widget in widgets:
                         if str(widget.id) == index:
-                            #rec = MapaWidget(ordem=ordem, widget=widget, mapa=record)
                             rec = MapaWidget(widget=widget, ordem=ordem)
                             if widgets_old.get(str(index), None):
                                 rec.config = widgets_old.get(str(index)).get('config', None)
                                 rec.html_content = widgets_old.get(str(index)).get('html_content', None)
                                 rec.target = widgets_old.get(str(index)).get('target', None)
                                 rec.roles = widgets_old.get(str(index)).get('roles', None)
-                            #db.session.add(rec)
                             wdg = record.widgets.append(rec)
                             break
                     ordem += 1
 
                 # Plantas
-                #for p in sorted(record.planta_assoc, key=lambda x: x.ordem):
                 for p in sorted(record.plantas, key=lambda x: x.ordem):
                     form.PlantasList.append_entry(str(p.planta_id))
 
                 # Tipo de Plantas
-                #for t in sorted(record.tipo_planta_assoc, key=lambda x: x.ordem):
                 for t in sorted(record.tipos_plantas, key=lambda x: x.ordem):
                     form.TiposPlantasList.append_entry(str(t.tipo_planta_id))
 
                 # Widgets
-                #for w in sorted(record.widget_assoc, key=lambda x: x.ordem):
                 for w in sorted(record.widgets, key=lambda x: x.ordem):
                     form.WidgetsList.append_entry(str(w.widget_id))
 
@@ -632,18 +613,12 @@ def mapas_mapa_edit(id):
         for r in record.roles:
             form.RolesList.append_entry(str(r.id) + '|' + r.name)
 
-        #for p in sorted(record.planta_assoc, key=lambda x: x.ordem):
-        #    form.PlantasList.append_entry(str(p.planta_id))
         for p in sorted(record.plantas, key=lambda x: x.ordem):
             form.PlantasList.append_entry(str(p.planta_id))
 
-        #for t in sorted(record.tipo_planta_assoc, key=lambda x: x.ordem):
-        #    form.TiposPlantasList.append_entry(str(t.tipo_planta_id))
         for t in sorted(record.tipos_plantas, key=lambda x: x.ordem):
             form.TiposPlantasList.append_entry(str(t.tipo_planta_id))
 
-        #for w in sorted(record.widget_assoc, key=lambda x: x.ordem):
-        #    form.WidgetsList.append_entry(str(w.widget_id))
         for w in sorted(record.widgets, key=lambda x: x.ordem):
             form.WidgetsList.append_entry(str(w.widget_id))
 
@@ -1210,7 +1185,6 @@ def plantas_tipo_create():
                     for planta in plantas:
                         if str(planta.id) == index:
                             rec = PlantaTipoPlanta(ordem=ordem, planta=planta, tipo_planta=record)
-                            #record.plantas.append(planta)
                             db.session.add(rec)
                             break
                     ordem += 1
@@ -1313,7 +1287,6 @@ def plantas_tipo_edit(id):
                     for planta in plantas:
                         if str(planta.id) == index:
                             rec = PlantaTipoPlanta(ordem=ordem, planta=planta, tipo_planta=record)
-                            #record.plantas.append(planta)
                             db.session.add(rec)
                             break
                     ordem += 1
@@ -1349,8 +1322,6 @@ def plantas_tipo_edit(id):
         for t in sorted(record.tipo_planta_child_assoc, key=lambda x: x.ordem):
             form.TiposPlantasList.append_entry(str(t.tipo_planta_child_id))
 
-        #for p in sorted(record.planta_assoc, key=lambda x: x.ordem):
-        #    form.PlantasList.append_entry(str(p.planta_id))
         for p in sorted(record.plantas, key=lambda x: x.ordem):
             form.PlantasList.append_entry(str(p.planta_id))
 
@@ -1366,11 +1337,8 @@ def plantas_tipo_delete(id):
     record = db.session.query(TipoPlanta).filter(TipoPlanta.id == id).first()
 
     if record:
-        for planta in reversed(record.plantas):
-            record.plantas.remove(planta)
-
-        for planta in reversed(record.planta_assoc):
-            record.planta_assoc.remove(planta)
+        for planta in record.plantas:
+            db.session.delete(planta)
     else:
         return jsonify(Success=False, Id=id, Message=constants.RECORDS_RECORD_NOT_EXISTS)
 
@@ -2252,12 +2220,9 @@ def audit(tipo):
     order = getattr(getattr(AuditLog, form.orderField.data), form.sortOrder.data)()
 
     query = AuditLog.query
-    #query = db.session.query(AuditLog, AuditOperacao, Mapa).\
-    #    outerjoin(AuditOperacao, AuditLog.operacao_id == AuditOperacao.id).\
-    #    outerjoin(Mapa, AuditLog.id_mapa == Mapa.id)
 
     query = query.outerjoin(AuditLog.operacao)
-    #query = query.outerjoin(AuditOperacao, AuditLog.operacao_id == AuditOperacao.id)
+
     if tipo.lower() == 'all':
         title = 'Total'
     else:
@@ -2281,12 +2246,9 @@ def audit(tipo):
         mapa_list = request.form.getlist('mapa')
         form.mapa.data = ','.join(mapa_list)
         query = query.outerjoin(AuditLog.mapa).filter(Mapa.codigo.in_(mapa_list))
-        #query = query.outerjoin(Mapa, AuditLog.id_mapa == Mapa.id).filter(Mapa.codigo.in_(mapa_list))
-        #query = query.filter(Mapa.codigo.in_(mapa_list))
     if (form.operacao.data):
         operacao_list = request.form.getlist('operacao')
         form.operacao.data = ','.join(operacao_list)
-        #query = query.outerjoin(AuditLog.operacao).filter(AuditOperacao.codigo.in_(operacao_list))
         query = query.filter(AuditOperacao.codigo.in_(operacao_list))
 
     count = query.count()
@@ -2322,8 +2284,6 @@ def mensagens():
 
     order = getattr(getattr(ContactoMensagem, form.orderField.data), form.sortOrder.data)()
 
-    #query = db.session.query(ContactoMensagem, Mapa).outerjoin(Mapa, ContactoMensagem.mapa_id == Mapa.id)
-
     query = BaseQuery([ContactoMensagem, Mapa, User], db.session())\
         .outerjoin(Mapa, ContactoMensagem.mapa_id == Mapa.id)\
         .outerjoin(User, ContactoMensagem.user_id == User.id)
@@ -2357,37 +2317,6 @@ def mensagens():
         query = query.filter(or_(ContactoMensagem.closed is None, ContactoMensagem.closed == False))
     elif form.estado.data == '3':
         query = query.filter(or_(ContactoMensagem.closed == True))
-
-    '''
-    query = query.outerjoin(AuditLog.operacao)
-    if tipo.lower() == 'all':
-        title = 'Total'
-    else:
-        op = db.session.query(AuditOperacao).filter(AuditOperacao.codigo.ilike(tipo)).first()
-        if op is not None:
-            title = op.nome
-        query = query.filter(AuditOperacao.codigo.ilike(tipo))
-
-    if (form.id.data):
-        query = query.filter(cast(AuditLog.id, sqlalchemy.String).like('%' + form.id.data + '%'))
-
-    if (form.data_ref_inicio.data and form.data_ref_fim.data):
-        query = query.filter(AuditLog.data_ref >= form.data_ref_inicio.data). \
-            filter(AuditLog.data_ref <= form.data_ref_fim.data + datetime.timedelta(days=1))
-    elif form.data_ref_inicio.data:
-        query = query.filter(AuditLog.data_ref >= form.data_ref_inicio.data)
-    elif form.data_ref_fim.data:
-        query =  query.filter(AuditLog.data_ref <= form.data_ref_fim.data + datetime.timedelta(days=1))
-
-    if (form.mapa.data):
-        mapa_list = request.form.getlist('mapa')
-        form.mapa.data = ','.join(mapa_list)
-        query = query.outerjoin(AuditLog.mapa).filter(Mapa.codigo.in_(mapa_list))
-    if (form.operacao.data):
-        operacao_list = request.form.getlist('operacao')
-        form.operacao.data = ','.join(operacao_list)
-        query = query.outerjoin(AuditLog.operacao).filter(AuditOperacao.codigo.in_(operacao_list))
-    '''
 
     count = query.count()
     list = query.order_by(order).\

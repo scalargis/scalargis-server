@@ -179,7 +179,7 @@ def update(id, data):
         roles = db.session.query(Role).all()
 
         for field in viewer_fields:
-            if hasattr(record, field):
+            if hasattr(record, field) and field in data:
                 setattr(record, field, data.get(field))
 
         if 'config_json' in data:
@@ -187,24 +187,20 @@ def update(id, data):
 
         # Tipos Plantas (Child Groups)
         if 'print_groups' in data:
-            for print_group in reversed(record.print_group_assoc):
+            for print_group in record.print_groups:
                 db.session.delete(print_group)
-            record.print_group_assoc.clear()
             order = 1
             for pgrp in data['print_groups']:
-                rec = ViewerPrintGroup(order=order, viewer_id=record.id, print_group_id=pgrp.get('id'))
-                db.session.add(rec)
+                rec = record.print_groups.append(ViewerPrintGroup(order=order, print_group_id=pgrp.get('id')))
                 order += 1
 
         # Plantas (Child Prints)
         if 'prints' in data:
-            for print in reversed(record.print_assoc):
+            for print in record.prints:
                 db.session.delete(print)
-            record.print_assoc.clear()
             order = 1
             for prt in data['prints']:
-                rec = ViewerPrint(order=order, viewer_id=record.id, print_id=prt.get('id'))
-                db.session.add(rec)
+                rec = record.prints.append(ViewerPrint(order=order, print_id=prt.get('id')))
                 order += 1
 
         # Roles
@@ -239,18 +235,13 @@ def delete(id):
         if not is_admin_or_manager(user) and record.owner_id != user.id:
             return 403
 
-        #Delete user viewer sessions
-        #db.session.query(UserViewerSession).filter(UserViewerSession.viewer_id == record.id).delete()
-
         # Tipos Plantas (Child Groups)
-        for print_group in reversed(record.print_group_assoc):
+        for print_group in record.print_groups:
             db.session.delete(print_group)
-        record.print_group_assoc.clear()
 
         # Plantas (Child Prints)
-        for print in reversed(record.print_assoc):
+        for print in record.prints:
             db.session.delete(print)
-        record.print_assoc.clear()
 
         db.session.delete(record)
         try:
@@ -278,14 +269,12 @@ def delete_list(data):
 
                 if is_admin_or_manager(user) or record.owner_id == user.id:
                     # Tipos Plantas (Child Groups)
-                    for print_group in reversed(record.print_group_assoc):
+                    for print_group in record.print_groups:
                         db.session.delete(print_group)
-                    record.print_group_assoc.clear()
 
                     # Plantas (Child Prints)
-                    for print in reversed(record.print_assoc):
+                    for print in record.prints:
                         db.session.delete(print)
-                    record.print_assoc.clear()
 
                     db.session.delete(record)
 
