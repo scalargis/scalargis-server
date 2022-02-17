@@ -6,6 +6,7 @@ from flask import request
 from sqlalchemy import cast, or_, Integer
 from ..parsers import *
 from app.models.domain.portal import *
+from app.models.security import Role
 from ...endpoints import check_user, get_user
 from . import get_record_by_id
 from sqlalchemy.exc import IntegrityError

@@ -16,4 +16,4 @@ def index2(path):
     logger = logging.getLogger(__name__)
     logger.debug('This message should go to the log file - Map')
 
-    return send_from_directory(os.path.join(current_app.static_folder, 'client'), 'index.html')
+    return send_from_directory(os.path.join(current_app.static_folder, 'frontend'), 'index.html')

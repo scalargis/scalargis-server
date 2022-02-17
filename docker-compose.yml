@@ -9,7 +9,8 @@ services:
       - ./web/instance:/var/scalargis/web/instance # configs host link
       - ./web/resources:/var/scalargis/web/resources # override resources on container
       - ./web/logs:/var/scalargis/web/logs # override logs on container
-      - ./web/app/static/scripts:/var/scalargis/web/app/static/images
+      - ./web/app/static/frontend:/var/scalargis/web/app/static/frontend
+      - ./web/app/static/backoffice:/var/scalargis/web/app/static/backoffice
       - ./web/app/static/images:/var/scalargis/web/app/static/images # override static images on container
       - ./web/tmp:/var/scalargis/web/tmp # override tmp on container
       - ./web/app/plugins:/var/scalargis/web/app/plugins # override plugins on container
