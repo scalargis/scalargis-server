@@ -1,0 +1,37 @@
+version: '3.5'
+
+services:
+  scalargis:
+    image: wkt/scalargis
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./web/instance:/var/scalargis/web/instance # configs host link
+      - ./web/resources:/var/scalargis/web/resources # override resources on container
+      - ./web/logs:/var/scalargis/web/logs # override logs on container
+      - ./web/app/static/scripts:/var/scalargis/web/app/static/images
+      - ./web/app/static/images:/var/scalargis/web/app/static/images # override static images on container
+      - ./web/tmp:/var/scalargis/web/tmp # override tmp on container
+      - ./web/app/plugins:/var/scalargis/web/app/plugins # override plugins on container
+    container_name: scalargis-wkt
+    hostname: scalargis-wkt
+    #command: ["sh", "-c", "syslogd && crond && python3 /var/scalargis/web/app/main.py 2>&1"]
+    command: ["sh", "-c", "python3 /var/scalargis/web/app/main.py 2>&1"]
+    restart: always
+    env_file: ./.env
+    environment:
+      - PYTHONPATH=/var/scalargis/web
+    networks:
+      scalargis_net:
+        ipv4_address: 10.5.2.20
+
+networks:
+  scalargis_net:
+    name: scalargis-network
+    driver: bridge
+    #enable_ipv6: false
+    ipam:
+      driver: default
+      config:
+      - subnet: 10.5.2.0/24
+        # gateway: 10.5.2.1
