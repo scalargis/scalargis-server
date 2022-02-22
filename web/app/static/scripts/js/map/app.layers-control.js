@@ -672,6 +672,12 @@ app.LayersControl.prototype.addLayerToList = function (layer, element, level, vi
             } else if (layer.get('legend') && layer.get('legend').wms && layer.get('legend').wms.legendOptions) {
                 url = url + '&LEGEND_OPTIONS=' +  layer.get('legend').wms.legendOptions;
             }
+
+            if (this_.wms && this_.wms.rule) {
+                url = url + '&RULE=' + this_.wms.rule;
+            } else if (layer.get('legend') && layer.get('legend').wms && layer.get('legend').wms.rule) {
+                url = url + '&RULE=' +  layer.get('legend').wms.rule;
+            }
         }
 
         if (url) {
