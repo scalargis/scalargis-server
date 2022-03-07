@@ -10,7 +10,7 @@ from app.models.mapas import SiteSettings
 from app.utils.decorators import async_task
 
 
-def send_mail(app, receiver_email, subject, message_text):
+def send_mail(app, receiver_email, subject, message_text, attachments=None):
     try:
         logger = logging.getLogger(__name__)
 
@@ -32,6 +32,16 @@ def send_mail(app, receiver_email, subject, message_text):
             # The email client will try to render the last part first
             #message.attach(part_text)
             message.attach(part_html)
+
+            if attachments is not None:
+                for f in attachments:
+                    part = MIMEBase('application', "octet-stream")
+                    with open(f.get('filepath'), 'rb') as file:
+                        part.set_payload(file.read())
+                    encoders.encode_base64(part)
+                    part.add_header('Content-Disposition',
+                                    'attachment; filename={}'.format(f.get('filename')))
+                    message.attach(part)
 
             if mail_settings:
                 send_async_message(app, mail_settings, receiver_email, message)

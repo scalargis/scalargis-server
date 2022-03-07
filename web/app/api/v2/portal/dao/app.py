@@ -2,8 +2,12 @@ import logging
 import os
 import json
 import sqlalchemy
+import re
+import base64
 import uuid
+import requests
 from datetime import datetime
+import sqlalchemy
 from flask import request, current_app, url_for, render_template
 from flask_security import current_user
 from sqlalchemy import cast, or_, Integer, func
@@ -15,7 +19,7 @@ from shapely.wkt import loads
 from app.utils import constants, geo
 from app.utils import constants
 from app.utils.constants import ROLE_ANONYMOUS, ROLE_AUTHENTICATED
-from app.utils.settings import get_site_settings
+from app.utils.settings import get_site_settings, get_config_value
 from app.utils.security import get_roles_names, get_user_roles
 from app.utils.mailing import send_mail
 from app.utils import auditoria
@@ -171,7 +175,7 @@ def save_viewer_session(viewer_id_or_slug, data):
             "success": True
         }
 
-    return  response, status
+    return response, status
 
 
 def send_viewer_contact_message(viewer_id, data):
@@ -187,8 +191,31 @@ def send_viewer_contact_message(viewer_id, data):
 
     user_id = None
     user = get_user(request)
-    if user and not user.is_authenticated and user.is_active:
+    if user and user.is_authenticated and user.is_active:
         user_id = user.id
+
+    # CAPTCHA validation
+    if user_id is None and get_config_value('CAPTCHA_SECRET_KEY'):
+        captcha_url = 'https://www.google.com/recaptcha/api/siteverify'
+        captcha_url = get_config_value('CAPTCHA_URL') if get_config_value('CAPTCHA_URL') else captcha_url
+        pdata = {
+            'secret': get_config_value('CAPTCHA_SECRET_KEY'),
+            'response': data['captcha']
+            }
+        captcha_error_response = {
+            "success": False,
+            "message": 'Envio da mensagem não autorizado'
+        }
+        presp = requests.post(captcha_url, data=pdata)
+        if presp.status_code == 200:
+            if presp.json()['success'] is not True:
+                return captcha_error_response, 403
+        else:
+            return captcha_error_response, 403
+
+    attachments = []
+
+    message_uuid = str(uuid.uuid4().hex)
 
     record = ContactMessage()
 
@@ -207,16 +234,59 @@ def send_viewer_contact_message(viewer_id, data):
 
     record.user_id = user_id
     record.message_date = datetime.now()
-    record.message_uuid = str(uuid.uuid4().hex)
+    record.message_uuid = message_uuid
+
+    #------ Files -------------------------------
+    if 'files' in data:
+        _cfg = get_site_settings()
+
+        folder_path = None
+
+        if _cfg.get('email_notifications_folder') and os.path.exists(_cfg.get('email_notifications_folder')):
+            folder_path = os.path.join(_cfg.get('email_notifications_folder'), message_uuid)
+        elif hasattr(settings, 'EMAIL_NOTIFICATIONS_FOLDER') and os.path.exists(settings.EMAIL_NOTIFICATIONS_FOLDER):
+            folder_path = os.path.join(settings.EMAIL_NOTIFICATIONS_FOLDER, message_uuid)
+        elif 'EMAIL_NOTIFICATIONS_FOLDER' in current_app.config.keys():
+            folder_path = os.path.join(current_app.config['EMAIL_NOTIFICATIONS_FOLDER'], message_uuid)
+        elif hasattr(settings, 'APP_TMP_DIR') and os.path.exists(settings.APP_TMP_DIR):
+            folder_path = os.path.join(settings.APP_TMP_DIR, 'email_notifications', message_uuid)
+
+        if folder_path:
+            for f in data.get('files'):
+                original_filename = f.get('filename')
+                name, extension = os.path.splitext(original_filename)
+                filename = str(uuid.uuid4().hex)
+                if extension:
+                    filename = '{}{}'.format(str(uuid.uuid4().hex), extension)
+
+                # Reference: https://www.codestudyblog.com/sfb2002b1/0225213558.html
+                file_dict = re.match("data:(?P<type>.*?);(?P<encoding>.*?),(?P<data>.*)",
+                                     f.get('data')).groupdict()
+
+                if not os.path.exists(folder_path):
+                    os.makedirs(folder_path)
+
+                filepath = os.path.join(folder_path, original_filename)
+
+                output = open(filepath, 'wb')
+                output.write(base64.b64decode(file_dict['data']))
+                output.close()
+
+                file_stats = os.stat(filepath)
+
+                attachments.append({ "filename": original_filename, "filepath": filepath})
+    #------ End Files ---------------------------
 
     db.session.add(record)
 
     db.session.commit()
 
-    html = 'Mensagem enviada com sucesso.'
+    html = 'Mensagem submetida com sucesso. Obrigado pela sua participação.'
 
-    send_email_notification(viewer_id=viewer_id, notification_id=record.id, notification_uuid=record.message_uuid, author_name=record.name,
-                            author_email=record.email, message_text=record.message, message_date=record.message_date)
+    send_email_notification(viewer_id=viewer_id, notification_id=record.id, notification_uuid=record.message_uuid,
+                            author_name=record.name, author_email=record.email,
+                            message_text=record.message, message_date=record.message_date,
+                            attachments=attachments)
 
     auditoria.log(viewer_id, None, auditoria.EnumOperacaoAuditoria.ContactoMensagem, None, None, user_id)
 
@@ -516,6 +586,11 @@ def build_viewer_config(record, user_roles, user=None, session=False):
     if contact_info:
         viewer_cfg['contact_info'] = contact_info
 
+    # CAPTCHA
+    captcha_site_key = get_config_value('CAPTCHA_SITE_KEY')
+    if captcha_site_key:
+        viewer_cfg['captcha_key'] = captcha_site_key
+
     return viewer_cfg
 
 
@@ -707,7 +782,8 @@ def check_backoffice_permissions(user):
     return has_permission, status, backoffice_roles, user_roles
 
 
-def send_email_notification(viewer_id, notification_id, notification_uuid, author_name, author_email, message_text, message_date):
+def send_email_notification(viewer_id, notification_id, notification_uuid, author_name, author_email,
+                            message_text, message_date, attachments=None):
     send_email_notifications_admin = False
     email_notifications_admin = None
 
@@ -715,7 +791,7 @@ def send_email_notification(viewer_id, notification_id, notification_uuid, autho
     from app.main import app as main_app
 
     #Send email to notification author
-    message_html = render_template("v2/map/notification/email_map_issue_user.html",
+    message_html = render_template("map/notification/email_map_issue_user.html",
                                    APP_SITE_ROOT=settings.APP_SITE_ROOT or '',
                                    notification_id=notification_id, notification_uuid=notification_uuid,
                                    message_text=message_text, message_date=message_date)
@@ -738,9 +814,10 @@ def send_email_notification(viewer_id, notification_id, notification_uuid, autho
             email_notifications_admin = viewer.email_notifications_admin.split(',')
 
     if send_email_notifications_admin and email_notifications_admin:
-        message_html = render_template("v2/map/notification/email_map_issue_admin.html",
+        message_html = render_template("map/notification/email_map_issue_admin.html",
                                        APP_SITE_ROOT=settings.APP_SITE_ROOT or '',
                                        notification_id=notification_id, notification_uuid=notification_uuid,
                                        message_text=message_text, message_date=message_date)
         send_mail(main_app, email_notifications_admin,
-                  '{} - {}'.format('Notificação de Receção de Pedido/Participação', viewer.title), message_html)
+                  '{} - {}'.format('Notificação de Receção de Pedido/Participação', viewer.title),
+                  message_html, attachments)

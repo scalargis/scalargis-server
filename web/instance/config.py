@@ -99,6 +99,7 @@ SENDER_EMAIL = 'no-reply <noreply@wkt.pt>'
 SEND_EMAIL_NOTIFICATIONS_USER = True
 SEND_EMAIL_NOTIFICATIONS_ADMIN = True
 EMAIL_NOTIFICATIONS_ADMIN = ['dev@wkt.pt']
+EMAIL_NOTIFICATIONS_FOLDER = '\tmp\email_files'
 '''
 
 #Cookie Consent
@@ -114,6 +115,13 @@ COOKIE_CONSENT_INFO_URL = 'http://ec.europa.eu/ipg/basics/legal/cookies/index_en
 COOKIE_CONSENT_INFO_LABEL = 'Mais Informação'
 COOKIE_CONSENT_BTN_ACCEPT_LABEL = 'Sim, concordo'
 COOKIE_CONSENT_CLASS = 'cc-floating cc-type-info cc-theme-block cc-bottom cc-right'
+'''
+
+#CAPTCHA Settings
+'''
+CAPTCHA_URL='https://www.google.com/recaptcha/api/siteverify'
+CAPTCHA_SITE_KEY='6Lc7K7UeAAAAAAfZbh8m-XjbWjR35qhK8MhUMCzK'
+CAPTCHA_SECRET_KEY='6Lc7K7UeAAAAAGFXocI62lgFvImpFqXRQXynOmBF'
 '''
 
 del os
