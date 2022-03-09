@@ -3,6 +3,7 @@ FROM ubuntu:20.04
 MAINTAINER ricardo.sena@wkt.pt
 
 RUN apt update && DEBIAN_FRONTEND=noninteractive apt install -y \
+  git \
   iputils-ping \
   nodejs npm \
   python3-pip \
