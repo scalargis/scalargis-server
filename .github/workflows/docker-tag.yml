@@ -20,7 +20,7 @@ jobs:
 
     - name: Build the Docker image
       id: build_image
-      run: docker build . --tag registry.wkt.pt:5000/v2/wkt/scalargis-server:${{ steps.get_version.outputs.VERSION }}
+      run: docker build . --tag registry.wkt.pt:5000/wkt/scalargis-server:${{ steps.get_version.outputs.VERSION }}
 
     - name: Login to WKT registry
       id: login_registry
