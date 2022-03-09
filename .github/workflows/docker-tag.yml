@@ -2,7 +2,8 @@ name: Build and push to WKT registry ScalarGIS Server core image (tag)
 
 on:
   push:
-    tags: [ * ]
+    tags:
+      - '*'
 
 jobs:
 
