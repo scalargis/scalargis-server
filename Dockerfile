@@ -2,7 +2,7 @@ FROM ubuntu:20.04
 
 MAINTAINER ricardo.sena@wkt.pt
 
-RUN apt update && apt install -y \
+RUN apt update && DEBIAN_FRONTEND=noninteractive apt install -y \
   iputils-ping \
   nodejs npm \
   python3-pip \
