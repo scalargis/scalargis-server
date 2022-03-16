@@ -2,7 +2,7 @@ version: '3.5'
 
 services:
   scalargis:
-    image: wkt/scalargis
+    image: registry.wkt.pt:5000/wkt/scalargis-server:latest
     ports:
       - "5000:5000"
     volumes:
@@ -14,9 +14,8 @@ services:
       - ./web/app/static/images:/var/scalargis/web/app/static/images # override static images on container
       - ./web/tmp:/var/scalargis/web/tmp # override tmp on container
       - ./web/app/plugins:/var/scalargis/web/app/plugins # override plugins on container
-    container_name: scalargis-wkt
-    hostname: scalargis-wkt
-    #command: ["sh", "-c", "syslogd && crond && python3 /var/scalargis/web/app/main.py 2>&1"]
+    container_name: wkt-scalargis-server
+    hostname: wkt-scalargis-server    
     command: ["sh", "-c", "python3 /var/scalargis/web/app/main.py 2>&1"]
     restart: always
     env_file: ./.env
