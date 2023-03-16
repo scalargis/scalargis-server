@@ -1,0 +1,7 @@
+<h3>Aviso de novo pedido/participação</h3>
+<p>Registada com o número {{ notification_id }} ({{ notification_uuid }}).</p>
+<p>
+    <b>Texto da mensagem:</b><br>
+    <i>{{message_text | replace('\n', '<br>') | safe}}</i>
+</p>
+<p>Pode aceder aos detalhes do pedido/participação através desta <a href="{{APP_HOST_URL}}{{notification_url}}">ligação</a>.</p>

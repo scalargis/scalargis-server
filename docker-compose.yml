@@ -1,0 +1,32 @@
+version: '3'
+
+services:
+  scalargis:
+    image: wkt/scalargis-server
+    expose:
+      - ${PORT}
+    ports:
+      - ${HOST_PORT}:${PORT}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - ./scalargis/instance:/var/scalargis/scalargis/instance
+      - ./scalargis/tmp:/var/scalargis/scalargis/tmp
+      - ./scalargis/resources:/var/scalargis/scalargis/resources
+      - ./scalargis/logs:/var/scalargis/scalargis/logs
+      - ./scalargis/app/plugins:/var/scalargis/scalargis/app/plugins
+      - ./scalargis/app/static:/var/scalargis/scalargis/app/static
+    container_name: ${CONTAINER_NAME}
+    hostname: ${CONTAINER_NAME}
+    command: ["sh", "-c", "python3 /var/scalargis/scalargis/server.py 2>&1"]
+    restart: always
+    environment:
+      - APP_CONFIG_FILE=${APP_CONFIG_FILE}
+      - PYTHONPATH=/var/scalargis/scalargis
+      - PORT=${PORT}
+      - URL_PREFIX=${URL_PREFIX}
+    networks:
+      - scalargis
+
+networks:
+  scalargis:

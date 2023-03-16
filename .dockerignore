@@ -1,0 +1,10 @@
+./env
+./venv*
+./idea
+./libs
+./dockerignore
+./gitignore
+./Dockerfile
+./docker-compose.yml
+./README.md
+./requirements-win.txt

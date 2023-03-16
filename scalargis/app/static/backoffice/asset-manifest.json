@@ -1,0 +1,26 @@
+{
+  "files": {
+    "main.css": "/static/backoffice/static/css/main.cff0ed63.chunk.css",
+    "main.js": "/static/backoffice/static/js/main.71b3f047.chunk.js",
+    "main.js.map": "/static/backoffice/static/js/main.71b3f047.chunk.js.map",
+    "runtime-main.js": "/static/backoffice/static/js/runtime-main.a3ed8c8d.js",
+    "runtime-main.js.map": "/static/backoffice/static/js/runtime-main.a3ed8c8d.js.map",
+    "static/css/2.00168432.chunk.css": "/static/backoffice/static/css/2.00168432.chunk.css",
+    "static/js/2.a0b1172c.chunk.js": "/static/backoffice/static/js/2.a0b1172c.chunk.js",
+    "static/js/2.a0b1172c.chunk.js.map": "/static/backoffice/static/js/2.a0b1172c.chunk.js.map",
+    "index.html": "/static/backoffice/index.html",
+    "static/css/2.00168432.chunk.css.map": "/static/backoffice/static/css/2.00168432.chunk.css.map",
+    "static/css/main.cff0ed63.chunk.css.map": "/static/backoffice/static/css/main.cff0ed63.chunk.css.map",
+    "static/js/2.a0b1172c.chunk.js.LICENSE.txt": "/static/backoffice/static/js/2.a0b1172c.chunk.js.LICENSE.txt",
+    "static/media/all.min.css": "/static/backoffice/static/media/fa-solid-900.eeccf4f6.woff",
+    "static/media/flags.css": "/static/backoffice/static/media/flags_responsive.266bf78d.png",
+    "static/media/primeicons.css": "/static/backoffice/static/media/primeicons.e61f3495.woff"
+  },
+  "entrypoints": [
+    "static/js/runtime-main.a3ed8c8d.js",
+    "static/css/2.00168432.chunk.css",
+    "static/js/2.a0b1172c.chunk.js",
+    "static/css/main.cff0ed63.chunk.css",
+    "static/js/main.71b3f047.chunk.js"
+  ]
+}
