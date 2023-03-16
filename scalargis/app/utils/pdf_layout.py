@@ -1897,6 +1897,14 @@ class Pdf:
             ('BACKGROUND', (0, 1), (-1, 1), colors.lightgrey)
         ])
 
+        # simple light gray grid all txt centered
+        tab_style_all_txt_middle = TableStyle([
+            ('GRID', (0, 0), (-1, -1), 0.5, colors.grey),
+            ('ALIGN', (1, 1), (-1, -1), 'CENTER'),
+            ('BACKGROUND', (0, 0), (-1, -1), colors.lightgrey),
+            ('FONTSIZE',(0, 0), (-1, -1), 8)
+        ])
+
         # simple green with middle txt algin
         tab_style_simple_green = TableStyle([
             ('BOX', (0, 0), (-1, -1), 2, colors.black),
@@ -1933,6 +1941,8 @@ class Pdf:
             t.setStyle(tab_style_simple_red)
         if table_style == "tab_style_simple_gray":
             t.setStyle(tab_style_simple_gray)
+        if table_style == "tab_style_all_txt_middle":
+            t.setStyle(tab_style_all_txt_middle)
 
         t.wrap(width * mm, height * mm)
         t.drawOn(self.canvas, x * mm, y * mm)
