@@ -2,7 +2,7 @@ version: '3'
 
 services:
   scalargis:
-    image: wkt/scalargis-server
+    image: ${IMAGE_NAME}
     expose:
       - ${PORT}
     ports:
