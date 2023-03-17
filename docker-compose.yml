@@ -12,6 +12,7 @@ services:
     volumes:
       - ./scalargis/instance:/var/scalargis/scalargis/instance
       - ./scalargis/tmp:/var/scalargis/scalargis/tmp
+      - ./scalargis/uploads:/var/scalargis/scalargis/uploads
       - ./scalargis/resources:/var/scalargis/scalargis/resources
       - ./scalargis/logs:/var/scalargis/scalargis/logs
       - ./scalargis/app/plugins:/var/scalargis/scalargis/app/plugins

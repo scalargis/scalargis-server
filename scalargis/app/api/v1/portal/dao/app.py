@@ -236,20 +236,17 @@ def send_viewer_contact_message(viewer_id, data):
 
     #------ Files -------------------------------
     if 'files' in data:
-        _cfg = get_site_settings()
-
         folder_path = None
 
-        if _cfg.get('email_notifications_folder') and os.path.exists(_cfg.get('email_notifications_folder')):
-            folder_path = os.path.join(_cfg.get('email_notifications_folder'), message_uuid)
-        elif hasattr(settings, 'EMAIL_NOTIFICATIONS_FOLDER') and os.path.exists(settings.EMAIL_NOTIFICATIONS_FOLDER):
-            folder_path = os.path.join(settings.EMAIL_NOTIFICATIONS_FOLDER, message_uuid)
-        elif 'SCALARGIS_EMAIL_NOTIFICATIONS_FOLDER' in current_app.config.keys():
-            folder_path = os.path.join(current_app.config['SCALARGIS_EMAIL_NOTIFICATIONS_FOLDER'], message_uuid)
-        elif hasattr(settings, 'APP_TMP_DIR') and os.path.exists(settings.APP_TMP_DIR):
-            folder_path = os.path.join(settings.APP_TMP_DIR, 'email_notifications', message_uuid)
+        if os.path.exists(get_config_value('EMAIL_NOTIFICATIONS_FOLDER')):
+            folder_path = get_config_value('EMAIL_NOTIFICATIONS_FOLDER')
+        elif os.path.exists(get_config_value('APP_UPLOADS')):
+            folder_path = os.path.join(get_config_value('APP_UPLOADS'), 'notifications')
+        elif os.path.exists(get_config_value('APP_TMP_DIR')):
+            folder_path = os.path.join(get_config_value('APP_TMP_DIR'), 'notifications')
 
         if folder_path:
+            folder_path = os.path.join(folder_path, message_uuid)
             for f in data.get('files'):
                 original_filename = f.get('filename')
                 name, extension = os.path.splitext(original_filename)

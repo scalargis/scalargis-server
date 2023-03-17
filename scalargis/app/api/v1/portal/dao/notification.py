@@ -19,7 +19,7 @@ from . import get_record_by_id
 from sqlalchemy.exc import IntegrityError
 from app.utils.constants import ROLE_ANONYMOUS, ROLE_AUTHENTICATED, ROLE_ADMIN, ROLE_MANAGER
 from app.utils.security import is_admin_or_manager
-from app.utils.settings import get_site_settings
+from app.utils.settings import get_config_value
 from instance import settings
 
 
@@ -221,19 +221,17 @@ def get_file(id, filename):
 
     message_uuid = record.message_uuid
 
-    _cfg = get_site_settings()
-
     folder_path = None
 
-    if _cfg.get('email_notifications_folder') and os.path.exists(_cfg.get('email_notifications_folder')):
-        folder_path = os.path.join(_cfg.get('email_notifications_folder'), message_uuid)
-    elif hasattr(settings, 'EMAIL_NOTIFICATIONS_FOLDER') and os.path.exists(settings.EMAIL_NOTIFICATIONS_FOLDER):
-        folder_path = os.path.join(settings.EMAIL_NOTIFICATIONS_FOLDER, message_uuid)
-    elif 'SCALARGIS_EMAIL_NOTIFICATIONS_FOLDER' in current_app.config.keys():
-        folder_path = os.path.join(current_app.config['SCALARGIS_EMAIL_NOTIFICATIONS_FOLDER'], message_uuid)
-    elif hasattr(settings, 'APP_TMP_DIR') and os.path.exists(settings.APP_TMP_DIR):
-        folder_path = os.path.join(settings.APP_TMP_DIR, 'email_notifications', message_uuid)
+    if os.path.exists(get_config_value('EMAIL_NOTIFICATIONS_FOLDER')):
+        folder_path = get_config_value('EMAIL_NOTIFICATIONS_FOLDER')
+    elif os.path.exists(get_config_value('APP_UPLOADS')):
+        folder_path = os.path.join(get_config_value('APP_UPLOADS'), 'notifications')
+    elif os.path.exists(get_config_value('APP_TMP_DIR')):
+        folder_path = os.path.join(get_config_value('APP_TMP_DIR'), 'notifications')
 
+    if folder_path:
+        folder_path = os.path.join(folder_path, message_uuid)
 
     data = None
     files = []

@@ -30,8 +30,8 @@ def get_config_value(key):
         config_value = current_app.config[key]
     if 'SCALARGIS_{0}'.format(key or '') in current_app.config:
         config_value = current_app.config['SCALARGIS_{0}'.format(key or '')]
-    if hasattr(settings, 'key'):
-        config_value = settings.get(key)
+    if hasattr(settings, key):
+        config_value = getattr(settings, key)
     if key.lower() in site_settings_db:
         config_value = site_settings_db[key.lower()]
 

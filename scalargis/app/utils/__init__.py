@@ -11,7 +11,7 @@ def to_bool(bool_str):
 
 def get_file_path(base_path, path, filename):
     filepath = None
-    if (os.path.isfile(os.path.abspath(filename))):
+    if os.path.isfile(os.path.abspath(filename)):
         filepath = os.path.abspath(filename)
     elif base_path and os.path.isfile(os.path.join(base_path, filename)):
         filepath = os.path.join(base_path, filename)
