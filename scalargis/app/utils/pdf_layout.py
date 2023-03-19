@@ -42,7 +42,8 @@ def replace_geoserver_url(url):
     new_url = url
 
     try:
-        if isinstance(current_app.config.get('SCALARGIS_ROUTE_GEOSERVER'), list):
+        if isinstance(current_app.config.get('SCALARGIS_ROUTE_GEOSERVER'), list) \
+                and len(current_app.config.get('SCALARGIS_ROUTE_GEOSERVER')) > 0:
             if isinstance(current_app.config.get('SCALARGIS_ROUTE_GEOSERVER')[0], list):
                 for s in current_app.config.get('SCALARGIS_ROUTE_GEOSERVER'):
                     new_url = new_url.replace(s[0], s[1])
