@@ -9,8 +9,8 @@ yarn.lock
 **/__pycache__/
 /.idea
 /libs
-/logs
 /venv*
+/data
 scalargis/app/plugins/*
 !scalargis/app/plugins/proxy/
 !scalargis/app/plugins/geonames/

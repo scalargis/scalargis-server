@@ -17,6 +17,7 @@ services:
       - ./scalargis/logs:/var/scalargis/scalargis/logs
       - ./scalargis/app/plugins:/var/scalargis/scalargis/app/plugins
       - ./scalargis/app/static:/var/scalargis/scalargis/app/static
+      - ${HOST_DATA_DIR}:/var/scalargis/data
     container_name: ${CONTAINER_NAME}
     hostname: ${CONTAINER_NAME}
     command: ["sh", "-c", "python3 /var/scalargis/scalargis/server.py 2>&1"]
