@@ -11,6 +11,9 @@ yarn.lock
 /libs
 /venv*
 /data
+scalargis/app/static/*
+!scalargis/app/static/backoffice
+!scalargis/app/static/viewer
 scalargis/app/plugins/*
 !scalargis/app/plugins/proxy/
 !scalargis/app/plugins/geonames/
