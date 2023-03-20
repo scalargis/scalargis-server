@@ -66,6 +66,7 @@ class Viewer(db.Model, PortalTableMixin):
     credits_html = db.Column(db.Text())
     img_homepage = db.Column(db.String())
     img_logo = db.Column(db.String())
+    img_logo_alt = db.Column(db.String())
     img_icon = db.Column(db.String())
     send_email_notifications_admin = db.Column(db.Boolean())
     email_notifications_admin = db.Column(db.Text())

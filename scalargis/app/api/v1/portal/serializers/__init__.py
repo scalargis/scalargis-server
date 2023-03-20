@@ -144,6 +144,7 @@ viewer_api_model = api.model('Viewer Model', {
     'on_homepage': fields.Boolean(required=False, description='Show on homepage'),
     'img_homepage': fields.String(required=False, description='Image to show on homepage'),
     'img_logo': fields.String(required=False, description='Image logo'),
+    'img_logo_alt': fields.String(required=False, description='Image logo, alternative version'),
     'img_icon': fields.String(required=False, description='Image icon'),
     'send_email_notifications_admin': fields.Boolean(required=False, description='send email notifications to admin'),
     'email_notifications_admin': fields.String(required=False, description='Emails of admins'),

@@ -35,6 +35,7 @@ viewer_fields = [
     # 'img_homepage',
     'img_icon',
     'img_logo',
+    'img_logo_alt',
     'custom_style',
     'send_email_notifications_admin',
     'email_notifications_admin',
@@ -391,6 +392,7 @@ def app_create(data):
             record.is_shared = True
             record.img_icon = parent.img_icon
             record.img_logo = parent.img_logo
+            record.img_logo_alt = parent.img_logo_alt
             record.custom_script = parent.custom_script
             record.custom_style = parent.custom_style
             record.styles = parent.styles
