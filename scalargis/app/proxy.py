@@ -5,28 +5,11 @@ import logging.config
 
 from flask import Flask, request, make_response, current_app
 
+from app.utils.http import replace_geoserver_url
+
+
 instance_path=os.path.join(os.path.dirname(os.path.abspath(__file__)) + os.sep + '..' + os.sep + 'instance')
 app = Flask(__name__, instance_path=instance_path, instance_relative_config=True)
-
-
-def replace_geoserver_url(url):
-    new_url = url
-
-    try:
-        if isinstance(current_app.config.get('ROUTE_GEOSERVER'), list):
-            if isinstance(current_app.config.get('ROUTE_GEOSERVER')[0], list):
-                for s in current_app.config.get('ROUTE_GEOSERVER'):
-                    new_url = new_url.replace(s[0], s[1])
-            else:
-                new_url = new_url.replace(current_app.config.get('ROUTE_GEOSERVER')[0],
-                                          current_app.config.get('ROUTE_GEOSERVER')[1])
-        logging.info('WMS Url replace: ' + new_url)
-    except AttributeError:
-        logging.info('WMS Url replace: error')
-        pass
-
-    return new_url
-
 
 def setup_logging(
     default_path=os.path.join(instance_path + os.sep + 'logging_proxy.json'),

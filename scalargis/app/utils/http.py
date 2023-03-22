@@ -66,6 +66,7 @@ def replace_geoserver_url(url):
 
     return new_url
 
+
 def get_host_url():
     if 'SCALARGIS_HOST_URL' in current_app.config and current_app.config.get('SCALARGIS_HOST_URL'):
         return current_app.config.get('SCALARGIS_HOST_URL').rstrip('\/')

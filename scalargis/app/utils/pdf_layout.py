@@ -31,32 +31,12 @@ import urllib.parse
 from app.database import db
 from app.models.portal import PrintElement
 from app.utils import geo
+from app.utils.http import replace_geoserver_url
 
 from instance.settings import APP_STATIC, APP_RESOURCES
 
 
 logger = logging.getLogger(__name__)  # or logging.getLogger()
-
-
-def replace_geoserver_url(url):
-    new_url = url
-
-    try:
-        if isinstance(current_app.config.get('SCALARGIS_ROUTE_GEOSERVER'), list) \
-                and len(current_app.config.get('SCALARGIS_ROUTE_GEOSERVER')) > 0:
-            if isinstance(current_app.config.get('SCALARGIS_ROUTE_GEOSERVER')[0], list):
-                for s in current_app.config.get('SCALARGIS_ROUTE_GEOSERVER'):
-                    new_url = new_url.replace(s[0], s[1])
-            else:
-                new_url = new_url.replace(current_app.config.get('SCALARGIS_ROUTE_GEOSERVER')[0],
-                                          current_app.config.get('SCALARGIS_ROUTE_GEOSERVER')[1])
-        logger.info('WMS Url replace: ' + new_url)
-    except AttributeError:
-        logger.info('WMS Url replace: error')
-        pass
-
-    return new_url
-
 
 def merge_pdf_files(filename, files):
     pdf_writer = PdfWriter()
