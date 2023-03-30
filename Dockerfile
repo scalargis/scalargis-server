@@ -1,4 +1,4 @@
-FROM osgeo/gdal
+FROM ghcr.io/osgeo/gdal:ubuntu-small-latest
 
 MAINTAINER ricardo.sena@wkt.pt
 
