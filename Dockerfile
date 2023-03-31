@@ -4,7 +4,6 @@ MAINTAINER ricardo.sena@wkt.pt
 
 RUN apt update && DEBIAN_FRONTEND=noninteractive apt install -y \
   iputils-ping \
-  nodejs npm \
   python3-pip \
   && rm -rf /var/lib/apt/lists/*
 

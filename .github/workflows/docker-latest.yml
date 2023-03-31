@@ -2,7 +2,9 @@ name: Build and push to WKT registry ScalarGIS Server core image (latest)
 
 on:
   push:
-    branch: [ main, new-actions ]
+    branches: 
+      - main
+      - new-actions
 
 jobs:
 

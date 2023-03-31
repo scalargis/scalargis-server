@@ -1,6 +1,7 @@
 import os
 
 from sqlalchemy import text
+from sqlalchemy.sql import exists, select
 from flask_security.utils import hash_password
 
 from app.models.common import *
@@ -9,23 +10,24 @@ from app.models.logging import *
 from app.models.files import *
 from app.models.portal import *
 
-
 def create_schema():
-    db.session.execute(text('CREATE EXTENSION IF NOT EXISTS postgis'))
-    db.session.execute(text('CREATE SCHEMA IF NOT EXISTS portal'))
+    q = exists(select(text("schema_name")).select_from(text("information_schema.schemata")).where(text("schema_name = 'portal'")))
+    if not db.session.query(q).scalar():
+        db.session.execute(text('CREATE EXTENSION IF NOT EXISTS postgis'))
+        db.session.execute(text('CREATE SCHEMA IF NOT EXISTS portal'))
 
-    db.session.commit()
+        db.session.commit()
 
-    db.drop_all()
-    db.create_all()
+        db.drop_all()
+        db.create_all()
 
-    load_data()
+        load_data()
 
-    config_admin_user()
+        config_admin_user()
 
-    load_functions()
+        load_functions()
 
-    db.session.commit()
+        db.session.commit()
 
 
 def load_data():
