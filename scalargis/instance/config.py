@@ -24,6 +24,9 @@
 # -- Geoserver Url replace [[From, To], [From, To]] --
 # SCALARGIS_ROUTE_GEOSERVER = []
 
+# -- PROXY (Access-Control-Allow-Origin - CORS) --
+#SCALARGIS_PROXY_CORS = ['http://localhost:3000', 'http://localhost:3005']
+
 # -- EMAIL Settings --
 # SCALARGIS_SMTP_SERVER = 'mail.wkt.pt'
 # SCALARGIS_SMTP_PORT = '25'
