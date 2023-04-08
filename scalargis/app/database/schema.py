@@ -10,8 +10,12 @@ from app.models.logging import *
 from app.models.files import *
 from app.models.portal import *
 
+
 def create_schema():
-    q = exists(select(text("schema_name")).select_from(text("information_schema.schemata")).where(text("schema_name = 'portal'")))
+    created = False
+
+    q = exists(select(text("schema_name")).select_from(text("information_schema.schemata")).
+               where(text("schema_name = 'portal'")))
     if not db.session.query(q).scalar():
         db.session.execute(text('CREATE EXTENSION IF NOT EXISTS postgis'))
         db.session.execute(text('CREATE SCHEMA IF NOT EXISTS portal'))
@@ -28,6 +32,10 @@ def create_schema():
         load_functions()
 
         db.session.commit()
+
+        created = True
+
+    return created
 
 
 def load_data():

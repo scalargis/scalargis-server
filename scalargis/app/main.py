@@ -20,6 +20,7 @@ from app.utils import security as app_security
 
 from app import database
 from app.database import db
+from app.database.schema import create_schema
 
 
 base_path = os.path.join(os.path.dirname(os.path.abspath(__file__)))
@@ -120,6 +121,16 @@ def initialize_app(flask_app):
     flask_app.register_blueprint(backoffice_bp)
     flask_app.register_blueprint(map_bp)
     flask_app.register_blueprint(file_bp)
+
+    # -- Create database schema
+    with app.app_context():
+        log = logging.getLogger(__name__)
+        try:
+            created = create_schema()
+            if created:
+                log.info('Database schema created!')
+        except Exception as e:
+            log.error('Database Initialization error: {}'.format(str(e)))
 
 
 def load_plugins():
