@@ -2,6 +2,7 @@ import logging
 import requests
 from flask import Blueprint, request, make_response
 from app.utils.http import replace_geoserver_url
+from app.utils.settings import get_config_value
 
 
 ''' Proxy service '''
@@ -49,5 +50,15 @@ def proxy():
     for h in r.headers:
         if h.lower() == 'content-type':
             resp.headers.set(h, r.headers.get(h))
+
+    origins = get_config_value('SCALARGIS_PROXY_CORS')
+    if origins == '*':
+        resp.headers['Access-Control-Allow-Origin'] = '*'
+        resp.headers['Access-Control-Allow-Methods'] = 'PUT,GET,POST,DELETE'
+        resp.headers['Access-Control-Allow-Headers'] = 'Content-Type,Authorization'
+    elif isinstance(origins, list) and request.headers['Origin'] in origins:
+        resp.headers['Access-Control-Allow-Origin'] = request.headers['Origin']
+        resp.headers['Access-Control-Allow-Methods'] = 'PUT,GET,POST,DELETE'
+        resp.headers['Access-Control-Allow-Headers'] = 'Content-Type,Authorization'
 
     return resp
