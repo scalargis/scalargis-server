@@ -1300,9 +1300,9 @@ class Pdf:
         dynamic_pdf = PdfReader(self.output)
 
         writer = PdfWriter()
-        page = dynamic_pdf.getPage(0)
-        page.mergePage(pdf_file.getPage(0))
-        writer.addPage(dynamic_pdf.getPage(0))
+        page = dynamic_pdf.pages[0]
+        page.mergePage(pdf_file.pages[0])
+        writer.addPage(dynamic_pdf.pages[0])
 
         writer.write(self.output)
 
