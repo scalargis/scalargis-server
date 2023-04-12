@@ -56,7 +56,7 @@ def proxy():
         resp.headers['Access-Control-Allow-Origin'] = '*'
         resp.headers['Access-Control-Allow-Methods'] = 'PUT,GET,POST,DELETE'
         resp.headers['Access-Control-Allow-Headers'] = 'Content-Type,Authorization'
-    elif isinstance(origins, list) and request.headers['Origin'] in origins:
+    elif isinstance(origins, list) and 'Origin' in request.headers and request.headers['Origin'] in origins:
         resp.headers['Access-Control-Allow-Origin'] = request.headers['Origin']
         resp.headers['Access-Control-Allow-Methods'] = 'PUT,GET,POST,DELETE'
         resp.headers['Access-Control-Allow-Headers'] = 'Content-Type,Authorization'
