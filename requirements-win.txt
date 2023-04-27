@@ -1,4 +1,4 @@
-Flask
+Flask~=2.2.0
 flask_security
 flask_ldap3_login
 flask_sqlalchemy
