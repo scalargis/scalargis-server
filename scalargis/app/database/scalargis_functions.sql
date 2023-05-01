@@ -1,6 +1,6 @@
--- Function: portal.get_platform_basic_stats()
--- DROP FUNCTION portal.get_platform_basic_stats();
-CREATE OR REPLACE FUNCTION portal.get_platform_basic_stats()
+-- Function: {schema}.get_platform_basic_stats()
+-- DROP FUNCTION {schema}.get_platform_basic_stats();
+CREATE OR REPLACE FUNCTION {schema}.get_platform_basic_stats()
   RETURNS text AS
 $BODY$
 declare
@@ -11,10 +11,10 @@ nb_ops integer;
 out_json jsonb;
 begin
 
-	select count(*) into nb_users from portal."user";
-	select count(*) into nb_groups from portal."role";
-	select count(*) into nb_viewers from portal.viewers;
-	select count(*) into nb_ops from portal.audit_log;
+	select count(*) into nb_users from {schema}."user";
+	select count(*) into nb_groups from {schema}."role";
+	select count(*) into nb_viewers from {schema}.viewers;
+	select count(*) into nb_ops from {schema}.audit_log;
 
 
 	Select  jsonb_build_object(
@@ -32,13 +32,13 @@ end;
 $BODY$
   LANGUAGE plpgsql VOLATILE
   COST 100;
-ALTER FUNCTION portal.get_platform_basic_stats()
+ALTER FUNCTION {schema}.get_platform_basic_stats()
   OWNER TO postgres;
 
 
--- Function: portal.get_platform_day_stats(text, integer)
--- DROP FUNCTION portal.get_platform_day_stats(text, integer);
-CREATE OR REPLACE FUNCTION portal.get_platform_day_stats(
+-- Function: {schema}.get_platform_day_stats(text, integer)
+-- DROP FUNCTION {schema}.get_platform_day_stats(text, integer);
+CREATE OR REPLACE FUNCTION {schema}.get_platform_day_stats(
     IN _op_type_code text,
     IN _owner_id integer)
   RETURNS TABLE(stats text) AS
@@ -47,9 +47,9 @@ begin
 
 return query select (
 	with daycount as (
-		select date_trunc('day', date_ref)::date as dt,ao.name as tipo_op,  count(*) as c from portal.audit_log avl
-		left join portal.audit_operation ao on (avl.operation_id = ao.id)
-		left join portal.viewers vw on (avl.id_viewer = vw.id)
+		select date_trunc('day', date_ref)::date as dt,ao.name as tipo_op,  count(*) as c from {schema}.audit_log avl
+		left join {schema}.audit_operation ao on (avl.operation_id = ao.id)
+		left join {schema}.viewers vw on (avl.id_viewer = vw.id)
 		where ao.code like _op_type_code
 		and (vw.owner_id = _owner_id or _owner_id IS null)
 		group by 1, 2
@@ -74,13 +74,13 @@ $BODY$
   LANGUAGE plpgsql VOLATILE
   COST 100
   ROWS 1;
-ALTER FUNCTION portal.get_platform_day_stats(text, integer)
+ALTER FUNCTION {schema}.get_platform_day_stats(text, integer)
   OWNER TO postgres;
 
 
--- Function: portal.transform_coordinates(integer, double precision, double precision, double precision)
--- DROP FUNCTION portal.transform_coordinates(integer, double precision, double precision, double precision);
-CREATE OR REPLACE FUNCTION portal.transform_coordinates(
+-- Function: {schema}.transform_coordinates(integer, double precision, double precision, double precision)
+-- DROP FUNCTION {schema}.transform_coordinates(integer, double precision, double precision, double precision);
+CREATE OR REPLACE FUNCTION {schema}.transform_coordinates(
     IN p_srid integer,
     IN p_x double precision,
     IN p_y double precision,
@@ -91,7 +91,7 @@ DECLARE
 	tmprec RECORD;
 	returnrec RECORD;
 BEGIN
-    FOR tmprec IN SELECT * FROM portal.coordinate_systems WHERE active IS TRUE ORDER BY "order" LOOP
+    FOR tmprec IN SELECT * FROM {schema}.coordinate_systems WHERE active IS TRUE ORDER BY "order" LOOP
 	SELECT INTO returnrec s.srid, ST_Transform(ST_SetSRID(ST_MakePoint(p_x, p_y, p_z), p_srid), tmprec.srid::integer) AS point
 	FROM spatial_ref_sys s where s.srid = tmprec.srid;
 
@@ -102,11 +102,11 @@ $BODY$
   LANGUAGE plpgsql VOLATILE
   COST 100
   ROWS 1000;
-ALTER FUNCTION portal.transform_coordinates(integer, double precision, double precision, double precision)
+ALTER FUNCTION {schema}.transform_coordinates(integer, double precision, double precision, double precision)
   OWNER TO postgres;
 
 
-CREATE OR REPLACE FUNCTION portal.generate_print_output_number()
+CREATE OR REPLACE FUNCTION {schema}.generate_print_output_number()
 RETURNS integer
 LANGUAGE plpgsql
 AS $function$
@@ -114,10 +114,10 @@ DECLARE
     new_output_number integer := null;
 BEGIN
     SELECT INTO new_output_number COALESCE(max(output_number)+1, 1)
-	FROM portal.print_output_number
+	FROM {schema}.print_output_number
 	WHERE output_year= date_part('year', CURRENT_DATE);
 
-    INSERT INTO portal.print_output_number (output_number, output_year)
+    INSERT INTO {schema}.print_output_number (output_number, output_year)
 		VALUES (new_output_number, date_part('year', CURRENT_DATE));
 
 
@@ -125,4 +125,4 @@ BEGIN
 END;
 $function$
 ;
-ALTER FUNCTION portal.generate_print_output_number() OWNER TO postgres;
+ALTER FUNCTION {schema}.generate_print_output_number() OWNER TO postgres;

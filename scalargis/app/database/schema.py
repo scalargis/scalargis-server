@@ -11,18 +11,21 @@ from app.models.files import *
 from app.models.portal import *
 
 
+db_schema = get_db_schema()
+
+
 def create_schema():
     created = False
 
     q = exists(select(text("schema_name")).select_from(text("information_schema.schemata")).
-               where(text("schema_name = 'portal'")))
+               where(text("schema_name = '{schema}'".format(schema=db_schema))))
     if not db.session.query(q).scalar():
         db.session.execute(text('CREATE EXTENSION IF NOT EXISTS postgis'))
-        db.session.execute(text('CREATE SCHEMA IF NOT EXISTS portal'))
+        db.session.execute(text('CREATE SCHEMA IF NOT EXISTS {schema}'.format(schema=db_schema)))
 
         db.session.commit()
 
-        db.drop_all()
+        #db.drop_all()
         db.create_all()
 
         load_data()
@@ -44,7 +47,10 @@ def load_data():
 
     file = open(filepath, encoding='utf-8')
 
-    db.session.execute(text(file.read()))
+    sql_text = file.read()
+    sql_text = sql_text.replace('{schema}', db_schema)
+
+    db.session.execute(text(sql_text))
 
 
 def load_functions():
@@ -53,7 +59,10 @@ def load_functions():
 
     file = open(filepath, encoding='utf-8')
 
-    db.session.execute(text(file.read()))
+    sql_text = file.read()
+    sql_text = sql_text.replace('{schema}', db_schema)
+
+    db.session.execute(text(sql_text))
 
 
 def config_admin_user():

@@ -1,4 +1,12 @@
 from app.database import db
+from app import get_db_schema
+
+
+db_schema = get_db_schema()
+
+
+class PortalTable(object):
+    __table_args__ = {'schema': db_schema}
 
 
 class PortalTableMixin(object):

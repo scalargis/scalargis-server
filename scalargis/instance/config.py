@@ -12,6 +12,8 @@
 # SQLALCHEMY_DATABASE_URI = "postgresql+psycopg2://postgres:postgres@localhost:5432/scalargis"
 
 # -- SCALARGIS settings --
+# SCALARGIS_DB_SCHEMA = "scalargis"
+
 # SCALARGIS_HOST_URL = ''
 # SCALARGIS_BASE_URL = ''
 

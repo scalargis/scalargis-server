@@ -4,34 +4,39 @@ from werkzeug.local import LocalProxy
 from flask_security import UserMixin, RoleMixin
 
 from app.database import db
+from app import get_db_schema
+from .common import PortalTable
+
+
+db_schema = get_db_schema()
+
 
 roles_permissions = db.Table('roles_permissions',
-                       db.Column('role_id', db.Integer(), db.ForeignKey('portal.role.id')),
-                       db.Column('permission_id', db.Integer(), db.ForeignKey('portal.permission.id')),
-                       schema='portal')
+                       db.Column('role_id', db.Integer(), db.ForeignKey('{schema}.role.id'.format(schema=db_schema))),
+                       db.Column('permission_id', db.Integer(), db.ForeignKey('{schema}.permission.id'.format(schema=db_schema))),
+                       schema=db_schema)
 
 roles_users = db.Table('roles_users',
-                       db.Column('user_id', db.Integer(), db.ForeignKey('portal.user.id')),
-                       db.Column('role_id', db.Integer(), db.ForeignKey('portal.role.id')),
-                       schema='portal')
+                       db.Column('user_id', db.Integer(), db.ForeignKey('{schema}.user.id'.format(schema=db_schema))),
+                       db.Column('role_id', db.Integer(), db.ForeignKey('{schema}.role.id'.format(schema=db_schema))),
+                       schema=db_schema)
 
 roles_groups = db.Table('roles_groups',
-                       db.Column('group_id', db.Integer(), db.ForeignKey('portal.group.id')),
-                       db.Column('role_id', db.Integer(), db.ForeignKey('portal.role.id')),
-                       schema='portal')
+                       db.Column('group_id', db.Integer(), db.ForeignKey('{schema}.group.id'.format(schema=db_schema))),
+                       db.Column('role_id', db.Integer(), db.ForeignKey('{schema}.role.id'.format(schema=db_schema))),
+                       schema=db_schema)
 
 groups_users = db.Table('groups_users',
-                       db.Column('user_id', db.Integer(), db.ForeignKey('portal.user.id')),
-                       db.Column('group_id', db.Integer(), db.ForeignKey('portal.group.id')),
-                       schema='portal')
+                       db.Column('user_id', db.Integer(), db.ForeignKey('{schema}.user.id'.format(schema=db_schema))),
+                       db.Column('group_id', db.Integer(), db.ForeignKey('{schema}.group.id'.format(schema=db_schema))),
+                       schema=db_schema)
 
 
 _security = LocalProxy(lambda: current_app.extensions['security'])
 
 
-class Permission(db.Model):
+class Permission(db.Model, PortalTable):
     __tablename__ = "permission"
-    __table_args__ = {'schema': 'portal'}
 
     id = db.Column(db.Integer(), primary_key=True)
     name = db.Column(db.String(80), unique=True)
@@ -39,9 +44,8 @@ class Permission(db.Model):
     read_only = db.Column(db.Boolean, default=False)
 
 
-class Role(db.Model, RoleMixin):
+class Role(db.Model, PortalTable, RoleMixin):
     __tablename__ = "role"
-    __table_args__ = {'schema': 'portal'}
 
     id = db.Column(db.Integer(), primary_key=True)
     name = db.Column(db.String(80), unique=True)
@@ -50,9 +54,8 @@ class Role(db.Model, RoleMixin):
     permissions = db.relationship('Permission', secondary=roles_permissions)
 
 
-class Group(db.Model):
+class Group(db.Model, PortalTable):
     __tablename__ = "group"
-    __table_args__ = {'schema': 'portal'}
 
     id = db.Column(db.Integer(), primary_key=True)
     name = db.Column(db.String(80), unique=True)
@@ -73,9 +76,8 @@ class Group(db.Model):
         return hash(self.name)
 
 
-class User(db.Model, UserMixin):
+class User(db.Model, PortalTable, UserMixin):
     __tablename__ = "user"
-    __table_args__ = {'schema': 'portal'}
 
     id = db.Column(db.Integer, primary_key=True)
     email = db.Column(db.String(255), unique=True)
