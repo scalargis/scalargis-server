@@ -1,5 +1,6 @@
 import logging
 from flask import current_app
+
 from app.database import db
 from instance import settings
 from app.models.portal import SiteSettings

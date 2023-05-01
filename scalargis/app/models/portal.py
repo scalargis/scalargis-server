@@ -5,31 +5,43 @@ from geoalchemy2.types import Geometry
 import geoalchemy2.functions as geo_funcs
 
 from app.database import db
-from .common import PortalTableMixin, GenericTableMixin, TypeTableMixin
+from app import get_db_schema
+from .common import PortalTable, PortalTableMixin, GenericTableMixin, TypeTableMixin
+
+
+db_schema = get_db_schema()
 
 
 viewers_roles = db.Table('viewers_roles',
-                        db.Column('viewer_id', db.Integer, db.ForeignKey('portal.viewers.id', ondelete="cascade"), nullable=False),
-                        db.Column('role_id', db.Integer, db.ForeignKey('portal.role.id', ondelete="cascade"), nullable=False),
-                        db.PrimaryKeyConstraint('viewer_id', 'role_id'),
-                         schema='portal')
+                         db.Column('viewer_id', db.Integer,
+                                   db.ForeignKey('{schema}.viewers.id'.format(schema=db_schema), ondelete="cascade"),
+                                   nullable=False),
+                         db.Column('role_id',
+                                   db.Integer,
+                                   db.ForeignKey('{schema}.role.id'.format(schema=db_schema), ondelete="cascade"),
+                                   nullable=False),
+                         db.PrimaryKeyConstraint('viewer_id', 'role_id'),
+                         schema=db_schema)
 
 prints_roles = db.Table('prints_roles',
-                         db.Column('print_id', db.Integer, db.ForeignKey('portal.print.id'), nullable=False),
-                         db.Column('role_id', db.Integer, db.ForeignKey('portal.role.id'), nullable=False),
-                         db.PrimaryKeyConstraint('print_id', 'role_id'),
-                         schema='portal')
+                        db.Column('print_id', db.Integer,
+                                  db.ForeignKey('{schema}.print.id'.format(schema=db_schema)), nullable=False),
+                        db.Column('role_id', db.Integer,
+                                  db.ForeignKey('{schema}.role.id'.format(schema=db_schema)), nullable=False),
+                        db.PrimaryKeyConstraint('print_id', 'role_id'),
+                        schema=db_schema)
 
 print_groups_roles = db.Table('print_groups_roles',
-                         db.Column('print_group_id', db.Integer, db.ForeignKey('portal.print_group.id'), nullable=False),
-                         db.Column('role_id', db.Integer, db.ForeignKey('portal.role.id'), nullable=False),
-                         db.PrimaryKeyConstraint('print_group_id', 'role_id'),
-                         schema='portal')
+                              db.Column('print_group_id', db.Integer,
+                                        db.ForeignKey('{schema}.print_group.id'.format(schema=db_schema)), nullable=False),
+                              db.Column('role_id', db.Integer,
+                                        db.ForeignKey('{schema}.role.id'.format(schema=db_schema)), nullable=False),
+                              db.PrimaryKeyConstraint('print_group_id', 'role_id'),
+                              schema=db_schema)
 
 
-class Viewer(db.Model, PortalTableMixin):
+class Viewer(db.Model, PortalTable, PortalTableMixin):
     __tablename__ = "viewers"
-    __table_args__ = {'schema': 'portal'}
 
     id = db.Column(db.Integer(), primary_key=True)
     name = db.Column(db.String(255), unique=True)
@@ -51,9 +63,9 @@ class Viewer(db.Model, PortalTableMixin):
     config_version = db.Column(db.String(10))
     config_json = db.Column(db.Text())
     parent_id = db.Column(db.Integer())
-    owner_id = db.Column(db.Integer(), ForeignKey('portal.user.id'))
+    owner_id = db.Column(db.Integer(), ForeignKey('{schema}.user.id'.format(schema=db_schema)))
     owner = db.relationship('models.security.User')
-    #allow_add_layers = db.Column(db.Boolean())
+    # allow_add_layers = db.Column(db.Boolean())
     allow_user_session = db.Column(db.Boolean())
     allow_sharing = db.Column(db.Boolean())
     default_component = db.Column(db.String(255))
@@ -70,7 +82,7 @@ class Viewer(db.Model, PortalTableMixin):
     img_icon = db.Column(db.String())
     send_email_notifications_admin = db.Column(db.Boolean())
     email_notifications_admin = db.Column(db.Text())
-    styles= db.Column(db.Text())
+    styles = db.Column(db.Text())
     scripts = db.Column(db.Text())
     custom_script = db.Column(db.Text())
     custom_style = db.Column(db.Text())
@@ -85,9 +97,8 @@ class Viewer(db.Model, PortalTableMixin):
     notifications_manager_roles = db.Column(ARRAY(db.Text()))
 
 
-class PrintGroup(db.Model, PortalTableMixin):
+class PrintGroup(db.Model, PortalTable, PortalTableMixin):
     __tablename__ = "print_group"
-    __table_args__ = {'schema': 'portal'}
 
     __srid__ = 4326
 
@@ -134,9 +145,8 @@ class PrintGroup(db.Model, PortalTableMixin):
     geometry_srid = __srid__
 
 
-class Print(db.Model, PortalTableMixin):
+class Print(db.Model, PortalTable, PortalTableMixin):
     __tablename__ = "print"
-    __table_args__ = {'schema': 'portal'}
 
     __srid__ = 4326
 
@@ -162,7 +172,7 @@ class Print(db.Model, PortalTableMixin):
     print_purpose = db.Column(db.Boolean(), default=False)
     restrict_scales = db.Column(db.Boolean(), default=False)
     restrict_scales_list = db.Column(db.Text(),
-                                      default='1000,2000,5000,10000,20000,25000,50000')
+                                     default='1000,2000,5000,10000,20000,25000,50000')
     free_scale = db.Column(db.Boolean(), default=False)
     map_scale = db.Column(db.Boolean(), default=False)
     form_fields = db.Column(db.JSON())
@@ -185,18 +195,18 @@ class Print(db.Model, PortalTableMixin):
     geometry_wkt = column_property(geo_funcs.ST_AsText(geo_funcs.ST_Transform(geometry, __srid__)))
     tolerance_filter = db.Column(db.Integer())
 
-    owner_id = db.Column(db.Integer(), ForeignKey('portal.user.id'))
+    owner_id = db.Column(db.Integer(), ForeignKey('{schema}.user.id'.format(schema=db_schema)))
     owner = db.relationship('models.security.User')
 
     geometry_srid = __srid__
 
 
-class ViewerPrintGroup(db.Model):
+class ViewerPrintGroup(db.Model, PortalTable):
     __tablename__ = "viewers_print_groups"
-    __table_args__ = {'schema': 'portal'}
 
-    print_group_id = db.Column(db.Integer, db.ForeignKey('portal.print_group.id'), primary_key=True)
-    viewer_id = db.Column(db.Integer, db.ForeignKey('portal.viewers.id'), primary_key=True)
+    print_group_id = db.Column(db.Integer,
+                               db.ForeignKey('{schema}.print_group.id'.format(schema=db_schema)), primary_key=True)
+    viewer_id = db.Column(db.Integer, db.ForeignKey('{schema}.viewers.id'.format(schema=db_schema)), primary_key=True)
     order = db.Column(db.Integer)
 
     print_group = db.relationship(
@@ -209,12 +219,11 @@ class ViewerPrintGroup(db.Model):
     )
 
 
-class ViewerPrint(db.Model):
+class ViewerPrint(db.Model, PortalTable):
     __tablename__ = "viewers_prints"
-    __table_args__ = {'schema': 'portal'}
 
-    print_id = db.Column(db.Integer, db.ForeignKey('portal.print.id'), primary_key=True)
-    viewer_id = db.Column(db.Integer, db.ForeignKey('portal.viewers.id'), primary_key=True)
+    print_id = db.Column(db.Integer, db.ForeignKey('{schema}.print.id'.format(schema=db_schema)), primary_key=True)
+    viewer_id = db.Column(db.Integer, db.ForeignKey('{schema}.viewers.id'.format(schema=db_schema)), primary_key=True)
     order = db.Column(db.Integer)
 
     print = db.relationship(
@@ -227,9 +236,8 @@ class ViewerPrint(db.Model):
     )
 
 
-class PrintElement(db.Model, PortalTableMixin):
+class PrintElement(db.Model, PortalTable, PortalTableMixin):
     __tablename__ = "print_element"
-    __table_args__ = {'schema': 'portal'}
 
     id = db.Column(db.Integer(), primary_key=True)
     code = db.Column(db.String(255), unique=True)
@@ -237,36 +245,37 @@ class PrintElement(db.Model, PortalTableMixin):
     config = db.Column(db.Text())
 
 
-class PrintLayout(db.Model):
+class PrintLayout(db.Model, PortalTable):
     __tablename__ = "print_layouts"
-    __table_args__ = {'schema': 'portal'}
 
     id = db.Column(db.Integer(), primary_key=True)
-    print_id = db.Column(db.Integer, db.ForeignKey('portal.print.id', ondelete='cascade'))
+    print_id = db.Column(db.Integer,
+                         db.ForeignKey('{schema}.print.id'.format(schema=db_schema), ondelete='cascade'))
     print = relationship("Print", back_populates="layouts")
     orientation = db.Column(db.String(25))
     format = db.Column(db.String(25))
     config = db.Column(db.Text())
 
 
-class PrintGroupLayout(db.Model):
+class PrintGroupLayout(db.Model, PortalTable):
     __tablename__ = "print_group_layouts"
-    __table_args__ = {'schema': 'portal'}
 
     id = db.Column(db.Integer(), primary_key=True)
-    print_group_id = db.Column(db.Integer, db.ForeignKey('portal.print_group.id', ondelete='cascade'))
+    print_group_id = db.Column(db.Integer,
+                               db.ForeignKey('{schema}.print_group.id'.format(schema=db_schema), ondelete='cascade'))
     print_group = relationship("PrintGroup", back_populates="layouts")
     orientation = db.Column(db.String(25))
     format = db.Column(db.String(25))
     config = db.Column(db.Text())
 
 
-class PrintGroupPrint(db.Model):
+class PrintGroupPrint(db.Model, PortalTable):
     __tablename__ = "print_group_prints"
-    __table_args__ = {'schema': 'portal'}
 
-    print_group_id = db.Column(db.Integer, db.ForeignKey('portal.print_group.id'), primary_key=True)
-    print_id = db.Column(db.Integer, db.ForeignKey('portal.print.id'), primary_key=True)
+    print_group_id = db.Column(db.Integer,
+                               db.ForeignKey('{schema}.print_group.id'.format(schema=db_schema)), primary_key=True)
+    print_id = db.Column(db.Integer,
+                         db.ForeignKey('{schema}.print.id'.format(schema=db_schema)), primary_key=True)
     order = db.Column(db.Integer)
 
     print_group = db.relationship(
@@ -278,12 +287,14 @@ class PrintGroupPrint(db.Model):
         backref=db.backref("print_group_assoc", cascade="all, delete-orphan")
     )
 
-class PrintGroupChild(db.Model):
-    __tablename__ = "print_group_childs"
-    __table_args__ = {'schema': 'portal'}
 
-    print_group_id = db.Column(db.Integer, db.ForeignKey('portal.print_group.id'), primary_key=True)
-    print_group_child_id = db.Column(db.Integer, db.ForeignKey('portal.print_group.id'), primary_key=True)
+class PrintGroupChild(db.Model, PortalTable):
+    __tablename__ = "print_group_childs"
+
+    print_group_id = db.Column(db.Integer,
+                               db.ForeignKey('{schema}.print_group.id'.format(schema=db_schema)), primary_key=True)
+    print_group_child_id = db.Column(db.Integer,
+                                     db.ForeignKey('{schema}.print_group.id'.format(schema=db_schema)), primary_key=True)
     order = db.Column(db.Integer)
 
     print_group_parent = db.relationship(
@@ -302,9 +313,8 @@ class PrintGroupChild(db.Model):
     )
 
 
-class PrintOutput(db.Model, PortalTableMixin):
+class PrintOutput(db.Model, PortalTable, PortalTableMixin):
     __tablename__ = "print_outputs"
-    __table_args__ = {'schema': 'portal'}
 
     __srid__ = 4326
 
@@ -313,7 +323,7 @@ class PrintOutput(db.Model, PortalTableMixin):
     output_year = db.Column(db.Integer())
     print_group_id = db.Column(db.Integer())
     print_group_name = db.Column(db.String(255))
-    print_id = db.Column(db.Integer, db.ForeignKey('portal.print.id'))
+    print_id = db.Column(db.Integer, db.ForeignKey('{schema}.print.id'.format(schema=db_schema)))
     print_name = db.Column(db.String(255))
     print = relationship("Print")
     source_id = db.Column(db.Integer())
@@ -326,7 +336,6 @@ class PrintOutput(db.Model, PortalTableMixin):
     output_date = db.Column(db.DateTime())
     geom = db.Column(Geometry(geometry_type='GEOMETRY', srid=__srid__))
     geometry_wkt = column_property(geo_funcs.ST_AsText(geo_funcs.ST_Transform(geom, __srid__)))
-    #grupo_emissao = db.Column(db.String(36))  # TODO - remove
 
     geometry_srid = __srid__
 
@@ -335,27 +344,24 @@ class PrintOutput(db.Model, PortalTableMixin):
         return '{}/{}'.format(self.output_number or '    ', self.output_year or '    ') if self.output_number else None
 
 
-class PrintOutputNumber(db.Model):
+class PrintOutputNumber(db.Model, PortalTable):
     __tablename__ = "print_output_number"
-    __table_args__ = {'schema': 'portal'}
 
     output_number = db.Column(db.Integer(), primary_key=True)
     output_year = db.Column(db.Integer(), primary_key=True)
 
 
-class UserViewerSession(db.Model, PortalTableMixin):
+class UserViewerSession(db.Model, PortalTable, PortalTableMixin):
     __tablename__ = "user_viewer_session"
-    __table_args__ = {'schema': 'portal'}
 
     id = db.Column(db.Integer(), primary_key=True)
     config_json = db.Column(db.Text())
-    viewer_id = db.Column(db.Integer(), db.ForeignKey("portal.viewers.id", ondelete="cascade"))
-    user_id = db.Column(db.Integer(), db.ForeignKey("portal.user.id", ondelete="cascade"))
+    viewer_id = db.Column(db.Integer(), db.ForeignKey("{schema}.viewers.id".format(schema=db_schema), ondelete="cascade"))
+    user_id = db.Column(db.Integer(), db.ForeignKey("{schema}.user.id".format(schema=db_schema), ondelete="cascade"))
 
 
-class UserDataLayer(db.Model, PortalTableMixin):
+class UserDataLayer(db.Model, PortalTable, PortalTableMixin):
     __tablename__ = "user_data_layer"
-    __table_args__ = {'schema': 'portal'}
 
     id = db.Column(db.Integer(), primary_key=True)
     uuid = db.Column(db.String(120))
@@ -371,26 +377,24 @@ class UserDataLayer(db.Model, PortalTableMixin):
     last_access = db.Column(db.DateTime())
 
 
-class CoordinateSystems(db.Model, GenericTableMixin):
+class CoordinateSystems(db.Model, PortalTable, GenericTableMixin):
     __tablename__ = "coordinate_systems"
-    __table_args__ = {'schema': 'portal'}
 
     srid = db.Column(db.Integer())
 
 
-class ContactMessage(db.Model, PortalTableMixin):
+class ContactMessage(db.Model, PortalTable, PortalTableMixin):
     __tablename__ = "contact_message"
-    __table_args__ = {'schema': 'portal'}
 
     id = db.Column(db.Integer(), primary_key=True)
-    viewer_id = db.Column(db.Integer(), db.ForeignKey("portal.viewers.id", ondelete="cascade"))
+    viewer_id = db.Column(db.Integer(), db.ForeignKey("{schema}.viewers.id".format(schema=db_schema), ondelete="cascade"))
     viewer = db.relationship(Viewer)
     name = db.Column(db.String(255))
     email = db.Column(db.String(255))
     message = db.Column(db.Text())
     message_json = db.Column(db.Text())
     user_id = db.Column(db.Integer())
-    message_date = db.Column( db.Date())
+    message_date = db.Column(db.Date())
     checked = db.Column(db.Boolean())
     checked_date = db.Column(db.Date())
     closed = db.Column(db.Boolean())
@@ -399,16 +403,14 @@ class ContactMessage(db.Model, PortalTableMixin):
     message_uuid = db.Column(db.Text())
 
 
-class SiteSettings(db.Model, TypeTableMixin, PortalTableMixin):
+class SiteSettings(db.Model, PortalTable, TypeTableMixin, PortalTableMixin):
     __tablename__ = "site_settings"
-    __table_args__ = {'schema': 'portal'}
 
     setting_value = db.Column(db.Text())
 
 
-class Widget(db.Model, PortalTableMixin):
+class Widget(db.Model, PortalTable, PortalTableMixin):
     __tablename__ = "widget"
-    __table_args__ = {'schema': 'portal'}
 
     id = db.Column(db.Integer(), primary_key=True)
     code = db.Column(db.String(255), unique=True)
@@ -419,19 +421,16 @@ class Widget(db.Model, PortalTableMixin):
     roles = db.Column(db.Text())
 
 
-class RecordStatus(db.Model, TypeTableMixin):
+class RecordStatus(db.Model, PortalTable, TypeTableMixin):
     __tablename__ = "record_status_value"
-    __table_args__ = {'schema': 'portal'}
 
 
-class AuditOperation(db.Model, TypeTableMixin):
+class AuditOperation(db.Model, PortalTable, TypeTableMixin):
     __tablename__ = "audit_operation"
-    __table_args__ = {'schema': 'portal'}
 
 
-class AuditLog(db.Model):
+class AuditLog(db.Model, PortalTable):
     __tablename__ = "audit_log"
-    __table_args__ = {'schema': 'portal'}
 
     id = db.Column(db.Integer(), primary_key=True)
     id_viewer = db.Column(db.Integer())

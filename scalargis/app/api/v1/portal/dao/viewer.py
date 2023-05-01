@@ -16,6 +16,7 @@ from app.utils.constants import ROLE_ANONYMOUS, ROLE_AUTHENTICATED
 from app.utils.security import is_admin_or_manager
 from ..dao.app import get_viewer_record
 
+
 viewer_fields = [
     'name',
     'title',
@@ -515,7 +516,7 @@ def app_transcoord(data):
     crs_list = db.session.query(CoordinateSystems).all()
 
     records = db.session.query(TransCoordResult).from_statement(
-        sql.text("select code, srid, name, x, y, z from portal.transform_coordinates(:srid, :x, :y, 0)")). \
+        sql.text("select code, srid, name, x, y, z from {schema}.transform_coordinates(:srid, :x, :y, 0)".format(schema=db_schema))). \
         params(srid=srid, x=x, y=y, z=z).all()
 
     results = {}

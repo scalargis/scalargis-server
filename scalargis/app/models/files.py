@@ -1,8 +1,13 @@
 from app.database import db
+from app import get_db_schema
+from .common import PortalTable
 
-class DocumentDirectory(db.Model):
+
+db_schema = get_db_schema()
+
+
+class DocumentDirectory(db.Model, PortalTable):
     __tablename__ = "document_directory"
-    __table_args__ = {'schema': 'portal'}
 
     id = db.Column(db.Integer(), primary_key=True)
     codigo = db.Column(db.String(255), unique=True)
@@ -22,13 +27,12 @@ class DocumentDirectory(db.Model):
     )
 
 
-class DocumentDirectoryRule(db.Model):
+class DocumentDirectoryRule(db.Model, PortalTable):
     __tablename__ = "document_directory_rules"
-    __table_args__ = {'schema': 'portal'}
 
     id = db.Column(db.Integer(), primary_key=True)
-    doc_dir_id = db.Column(db.Integer, db.ForeignKey('portal.document_directory.id'))
-    viewer_id = db.Column(db.Integer, db.ForeignKey('portal.viewers.id'))
+    doc_dir_id = db.Column(db.Integer, db.ForeignKey('{schema}.document_directory.id'.format(schema=db_schema)))
+    viewer_id = db.Column(db.Integer, db.ForeignKey('{schema}.viewers.id'.format(schema=db_schema)))
     filtro = db.Column(db.Text())
     excluir = db.Column(db.Text())
     excluir_dir = db.Column(db.Text())

@@ -29,6 +29,7 @@ import logging
 import urllib.parse
 
 from app.database import db
+from app import get_db_schema
 from app.models.portal import PrintElement
 from app.utils import geo
 from app.utils.http import replace_geoserver_url
@@ -37,6 +38,9 @@ from instance.settings import APP_STATIC, APP_RESOURCES
 
 
 logger = logging.getLogger(__name__)  # or logging.getLogger()
+
+db_schema = get_db_schema()
+
 
 def merge_pdf_files(filename, files):
     pdf_writer = PdfWriter()
@@ -339,8 +343,8 @@ class Pdf:
             merger = Merger(layout_schema)
 
             for wid in self.widget_inputs:
-                sqltxt = "Select config from portal.widget where code = '%s'" % wid['codigo']
-                input_conf = db.session.execute(sqltxt).first();
+                sqltxt = "Select config from {schema}.widget where code = '%s'".format(schema=db_schema) % wid['codigo']
+                input_conf = db.session.execute(sqltxt).first()
                 subjson = json.loads(input_conf[0])
                 base = None
                 base = merger.merge(base, config)

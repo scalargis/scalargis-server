@@ -3,12 +3,14 @@ from sqlalchemy.types import DateTime, Integer, String
 from sqlalchemy.sql import func
 from sqlalchemy.ext.declarative import declarative_base
 
+from .common import PortalTable
+
+
 Base = declarative_base()
 
 
-class Log(Base):
+class Log(Base, PortalTable):
     __tablename__ = 'logs'
-    __table_args__ = {'schema': 'portal'}
 
     id = Column(Integer, primary_key=True)  # auto incrementing
     logger = Column(String)  # the name of the logger. (e.g. myapp.views)

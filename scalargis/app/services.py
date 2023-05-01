@@ -1,45 +1,12 @@
 import os
-import json
-import logging.config
 import os.path
 import importlib
 
-from flask import Flask
-
+from app import app, setup_security, setup_mail
 from app.database import db
 
 
-instance_path=os.path.join(os.path.dirname(os.path.abspath(__file__)) + os.sep + '..' + os.sep + 'instance')
-app = Flask(__name__, instance_path=instance_path, instance_relative_config=True)
-
-
 service_name = os.environ.get('SERVICE_NAME') or 'services'
-
-def setup_logging(
-    default_path=os.path.join(instance_path + os.sep + 'logging_' + service_name + '.json'),
-    default_level=logging.INFO,
-    env_key='LOG_CFG'
-):
-    """Setup logging configuration
-
-    """
-    path = default_path
-    value = os.getenv(env_key, None)
-    log_config = 'Not defined'
-    if value:
-        path = value
-        log_config = value
-    if os.path.exists(path):
-        log_config = path
-        with open(path, 'rt') as f:
-            config = json.load(f)
-        logging.config.dictConfig(config)
-    else:
-        logging.basicConfig(level=default_level)
-        log_config = 'basicConfig'
-
-    log = logging.getLogger(__name__)
-    log.info('Setup logging: {}'.format(log_config))
 
 
 def load_plugins():
@@ -101,24 +68,30 @@ def configure_app(flask_app):
 
 
 def init_wsgi():
-    setup_logging()
-    configure_app(app)
-
     db.init_app(app)
+
+    setup_security(app)
+
+    setup_mail(app)
 
     load_plugins()
 
 
-def load_app():
-    setup_logging()
-    configure_app(app)
+def run(argv):
+    if os.path.basename(os.getcwd()).lower() == 'app':
+        os.chdir(os.path.join(os.getcwd(), '../'))
 
     db.init_app(app)
 
+    setup_security(app)
+
+    setup_mail(app)
+
     load_plugins()
 
-    app.run(host="0.0.0.0", debug=True, use_reloader=True, threaded=True)
+    reloader = '--reloader' in argv
+    threaded = '--threaded' in argv
 
+    port = int(os.environ.get('PORT')) if os.environ.get('PORT') else 5000
 
-if __name__ == "__main__":
-    load_app()
+    app.run(host="0.0.0.0", port=port, use_reloader=reloader, threaded=threaded)
