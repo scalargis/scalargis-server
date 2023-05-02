@@ -1,11 +1,9 @@
 import json
-#import importlib
 from datetime import datetime
 
 from flask import request
 import sqlalchemy
-from sqlalchemy import Integer,cast
-from sqlalchemy import sql, or_, and_
+from sqlalchemy import Integer, cast, inspect, or_
 from sqlalchemy.exc import IntegrityError
 
 from app.database import db
@@ -13,10 +11,19 @@ from ..parsers import *
 from app.models.portal import CoordinateSystems
 from app.api.v1.endpoints import get_user
 
+
 generic_models = {
     "coordinatesystems": CoordinateSystems,
     "coordinate_systems": CoordinateSystems,
     }
+
+generic_fields = [
+    "code",
+    "name",
+    "description",
+    "config_json"
+]
+
 
 def get_generic(entity_name, request):
     """
@@ -27,8 +34,6 @@ def get_generic(entity_name, request):
     per_page = args.get('per_page', 10)
     filter = json.loads(args.get('filter') or '{}')
 
-    # Load "module.submodule.MyClass"
-    #model = getattr(importlib.import_module("app.models.portal"), "CoordinateSystems")
     model = generic_models[entity_name.lower()]
 
     qy = model.query
@@ -78,12 +83,17 @@ def create_generic(entity_name, data):
 
     record = model()
 
-    #for key in data:
-    #    print(key)
-    record.code = data['code'] if 'code' in data  else None
-    record.name = data['name'] if 'code' in data  else None
-    record.description = data['description'] if 'description' in data  else None
+    record.code = data['code'] if 'code' in data else None
+    record.name = data['name'] if 'name' in data else None
+    record.description = data['description'] if 'description' in data else None
     record.config_json = json.dumps(data['config_json']) if 'config_json' in data  else None
+
+    # Update custom model fields
+    mapper = inspect(model)
+    for column in mapper.attrs:
+        if column.key not in generic_fields:
+            if column.key in data:
+                setattr(record, column.key, data[column.key])
 
     record.created_at = datetime.now()
     if user and user.id:
@@ -102,12 +112,17 @@ def update_generic(entity_name, id, data):
 
     record = db.session.query(model).filter(model.id == id).one()
 
-    #for key in data:
-    #    print(key)
-    record.code = data['code'] if 'code' in data  else None
-    record.name = data['name'] if 'code' in data  else None
-    record.description = data['description'] if 'description' in data  else None
-    record.config_json = json.dumps(data['config_json']) if 'config_json' in data  else None
+    record.code = data['code'] if 'code' in data else None
+    record.name = data['name'] if 'name' in data else None
+    record.description = data['description'] if 'description' in data else None
+    record.config_json = json.dumps(data['config_json']) if 'config_json' in data else None
+
+    # Update custom model fields
+    mapper = inspect(model)
+    for column in mapper.attrs:
+        if column.key not in generic_fields:
+            if column.key in data:
+                setattr(record, column.key, data[column.key])
 
     record.updated_at = datetime.now()
     if user and user.id:
@@ -163,4 +178,3 @@ def delete_generic_list(entity_name, data):
         return 204
     else:
         return 555
-
