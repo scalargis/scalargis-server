@@ -13,7 +13,7 @@ from reportlab.lib.enums import TA_JUSTIFY  # , TA_LEFT, TA_CENTER
 from PyPDF2 import PdfWriter, PdfReader, PdfMerger
 
 from shapely import wkt, geometry
-
+from sqlalchemy import text
 from PIL import Image
 from io import BytesIO
 import requests
@@ -35,8 +35,6 @@ from app.utils import geo
 from app.utils.http import replace_geoserver_url
 
 from instance.settings import APP_STATIC, APP_RESOURCES
-
-from sqlalchemy import text
 
 logger = logging.getLogger(__name__)  # or logging.getLogger()
 
