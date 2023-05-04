@@ -13,7 +13,7 @@ from reportlab.lib.enums import TA_JUSTIFY  # , TA_LEFT, TA_CENTER
 from PyPDF2 import PdfWriter, PdfReader, PdfMerger
 
 from shapely import wkt, geometry
-
+from sqlalchemy import text
 from PIL import Image
 from io import BytesIO
 import requests
@@ -35,7 +35,6 @@ from app.utils import geo
 from app.utils.http import replace_geoserver_url
 
 from instance.settings import APP_STATIC, APP_RESOURCES
-
 
 logger = logging.getLogger(__name__)  # or logging.getLogger()
 
@@ -227,8 +226,10 @@ class Pdf:
         try:
             # wkt.loads(_wkt)
             self.geom = geo.getGeometryFromWKT(_wkt)
+            center = self.geom.centroid
+            self.populate_string("_geometry_center_x", str(round(center.x))) # populate strings if found in config
+            self.populate_string("_geometry_center_y", str(round(center.y)))
             if is_centered:
-                center = self.geom.centroid
                 self.mapcenter = [center.x, center.y]
             logger.debug("WKT to draw: " + self.geom.wkt)
         except Exception as err:
@@ -408,7 +409,7 @@ class Pdf:
                         if db_geo_func["active"]:
                             func_var = db_geo_func["func_var"]
                             func_txt = db_geo_func["sql_function"].replace('%input_ewkt%', ewkt)
-                            qy_result = db.session.execute(func_txt).first();
+                            qy_result = db.session.execute(text(func_txt)).first()
 
                             if qy_result and qy_result[0]:
                                 self.db_vars[func_var] = qy_result[0][0]
