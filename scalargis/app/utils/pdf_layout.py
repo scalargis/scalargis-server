@@ -848,6 +848,11 @@ class Pdf:
                     else:
                         rotation = 0
 
+                    if 'mode' in string:
+                        mode = string["mode"]
+                    else:
+                        mode = None
+
                     txt = string["value"]
                     font = string["font"]
                     fontsize = string["fontsize"]
@@ -867,7 +872,7 @@ class Pdf:
                             txt = None
 
                     if txt is not None:
-                        self.insert_string(x, y, txt, font, fontsize, fontcolor,rotation=rotation)
+                        self.insert_string(x, y, txt, font, fontsize, fontcolor,mode=mode,rotation=rotation)
 
             # paragraphs
             for paragraph in self.paragraphs:
