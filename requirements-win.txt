@@ -14,7 +14,7 @@ GDAL @ https://download.lfd.uci.edu/pythonlibs/archived/GDAL-3.4.3-cp310-cp310-w
 fiona @ https://download.lfd.uci.edu/pythonlibs/archived/Fiona-1.8.21-cp39-cp39-win_amd64.whl;python_version=="3.9"
 fiona @ https://download.lfd.uci.edu/pythonlibs/archived/Fiona-1.8.21-cp310-cp310-win_amd64.whl;python_version=="3.10"
 Shapely
-reportlab
+reportlab==3.6.13
 PyPDF2
 jsonmerge
 waitress
