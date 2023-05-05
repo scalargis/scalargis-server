@@ -2,6 +2,8 @@ version: '3'
 
 services:
   scalargis:
+    build:
+      context: .
     image: ${IMAGE_NAME}
     expose:
       - ${PORT}
