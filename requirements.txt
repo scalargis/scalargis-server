@@ -14,5 +14,6 @@ fiona
 Shapely
 reportlab==3.6.13
 PyPDF2
+qrcode
 jsonmerge
 waitress
