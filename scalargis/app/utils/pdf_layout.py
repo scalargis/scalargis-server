@@ -12,6 +12,8 @@ from reportlab.lib.enums import TA_JUSTIFY  # , TA_LEFT, TA_CENTER
 #from PyPDF2 import PdfFileWriter, PdfFileReader, PdfFileMerger
 from PyPDF2 import PdfWriter, PdfReader, PdfMerger
 
+import qrcode
+
 from shapely import wkt, geometry
 from sqlalchemy import text
 from PIL import Image
@@ -1019,7 +1021,36 @@ class Pdf:
             else:
                 logger.debug('No scalebar to draw..')
 
-            # final step.
+
+            # QR Code
+            # JSON Params: x, y, width, value
+            if 'qrcode' in config:
+                qrcode_json = config["qrcode"]
+                ll_x = qrcode_json["x"]
+                ll_y = qrcode_json["y"]
+                box_width = qrcode_json["width"]
+                value= qrcode_json["value"]
+
+                qr = qrcode.QRCode(
+                    version=1,
+                    error_correction=qrcode.constants.ERROR_CORRECT_L,
+                    box_size=10,
+                    border=2,
+                )
+                qr.add_data(value)
+                qr.make(fit=True)
+
+                pil_img = qr.make_image(fill_color="black", back_color="white") # make pil img
+                img = ImageReader(pil_img.get_image()) # need ImageReader for drawImage()
+
+                if img is not None:
+                    self.canvas.drawImage(img,
+                                          ll_x * mm, ll_y * mm,
+                                          width=box_width * mm, height=box_width * mm,
+                                          mask='auto')
+
+
+            # final step -----------------------------------------------------------------------
             if (nb_confgis > i + 1) and (config["page_id"] == self.configs[i + 1]["page_id"]):
                 logger.debug('Same page found. Keep working on it...')
                 pass
