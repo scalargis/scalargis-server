@@ -246,6 +246,7 @@ def generate_pdf(code):
     p.populate_string("guia_val", payment_reference)
     p.populate_string("num_processo_val", process_number)
     p.populate_string("username_val", username)
+    p.populate_string("titulo_val", title)
     p.populate_paragraph("titulo_val", title)
     p.populate_paragraph("coords_system_val", coordinate_system)
     p.generate(json_config, scale=scale, srid=srid)
@@ -433,6 +434,7 @@ def viewer_generate_pdf(code, user):
     p.populate_string("guia_val", payment_reference)
     p.populate_string("num_processo_val", process_number)
     p.populate_string("username_val", username)
+    p.populate_string("titulo_val", title)
     p.populate_paragraph("titulo_val", title)
     p.populate_paragraph("coords_system_val", coordinate_system)
 
