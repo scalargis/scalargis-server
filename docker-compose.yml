@@ -5,8 +5,6 @@ services:
     build:
       context: .
     image: ${IMAGE_NAME}
-    build:
-      context: .
     expose:
       - ${PORT}
     ports:
