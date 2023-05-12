@@ -51,6 +51,7 @@ def initialize_app(flask_app):
                 log.info('Database schema created!')
         except Exception as e:
             log.error('Database Initialization error: {}'.format(str(e)))
+            raise
 
 
 def load_plugins():
@@ -91,18 +92,23 @@ def load_plugins():
 
 
 def run(argv):
+    log = logging.getLogger(__name__)
     if os.path.basename(os.getcwd()).lower() == 'app':
         os.chdir(os.path.join(os.getcwd(), '../'))
 
-    initialize_app(app)
-    load_plugins()
+    try:
+        initialize_app(app)
+        load_plugins()
 
-    reloader = '--reloader' in argv
-    threaded = '--threaded' in argv
+        reloader = '--reloader' in argv
+        threaded = '--threaded' in argv
 
-    port = int(os.environ.get('PORT')) if os.environ.get('PORT') else 5000
+        port = int(os.environ.get('PORT')) if os.environ.get('PORT') else 5000
 
-    app.run(host="0.0.0.0", port=port, use_reloader=reloader, threaded=threaded)
+        app.run(host="0.0.0.0", port=port, use_reloader=reloader, threaded=threaded)
+    except Exception as e:
+        log.error('Could not initialize ScalarGIS. Status: {}'.format(e))
+        raise
 
 
 def init_wsgi():

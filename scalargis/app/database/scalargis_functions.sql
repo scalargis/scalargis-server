@@ -32,8 +32,6 @@ end;
 $BODY$
   LANGUAGE plpgsql VOLATILE
   COST 100;
-ALTER FUNCTION {schema}.get_platform_basic_stats()
-  OWNER TO postgres;
 
 
 -- Function: {schema}.get_platform_day_stats(text, integer)
@@ -74,8 +72,6 @@ $BODY$
   LANGUAGE plpgsql VOLATILE
   COST 100
   ROWS 1;
-ALTER FUNCTION {schema}.get_platform_day_stats(text, integer)
-  OWNER TO postgres;
 
 
 -- Function: {schema}.transform_coordinates(integer, double precision, double precision, double precision)
@@ -102,8 +98,6 @@ $BODY$
   LANGUAGE plpgsql VOLATILE
   COST 100
   ROWS 1000;
-ALTER FUNCTION {schema}.transform_coordinates(integer, double precision, double precision, double precision)
-  OWNER TO postgres;
 
 
 CREATE OR REPLACE FUNCTION {schema}.generate_print_output_number()
@@ -125,4 +119,4 @@ BEGIN
 END;
 $function$
 ;
-ALTER FUNCTION {schema}.generate_print_output_number() OWNER TO postgres;
+
