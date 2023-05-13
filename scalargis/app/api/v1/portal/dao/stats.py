@@ -17,6 +17,7 @@ def get_viewer_visits(request):
     """
 
     type_code = request.values['type_code']
+    viewer_id = request.values.get('viewer_id')
 
     user = get_user(request)
 
@@ -27,9 +28,9 @@ def get_viewer_visits(request):
     data = db.session.execute(text(
         """
         Select * 
-        from {schema}.get_platform_day_stats(:type_code, :owner_id)
+        from {schema}.get_platform_day_stats(:type_code, :owner_id, :viewer_id)
         """.format(schema=db_schema)),
-        {'type_code': type_code, 'owner_id': owner_id})
+        {'type_code': type_code, 'owner_id': owner_id, 'viewer_id': viewer_id})
 
     return json.loads(data.fetchall()[0][0])
 

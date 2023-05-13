@@ -34,22 +34,24 @@ $BODY$
   COST 100;
 
 
--- Function: {schema}.get_platform_day_stats(text, integer)
--- DROP FUNCTION {schema}.get_platform_day_stats(text, integer);
+-- Function: {schema}.get_platform_day_stats(text, integer, integer)
+-- DROP FUNCTION {schema}.get_platform_day_stats(text, integer, integer);
 CREATE OR REPLACE FUNCTION {schema}.get_platform_day_stats(
     IN _op_type_code text,
-    IN _owner_id integer)
+    IN _owner_id integer,
+    IN _viewer_id integer)
   RETURNS TABLE(stats text) AS
 $BODY$
 begin
 
 return query select (
 	with daycount as (
-		select date_trunc('day', date_ref)::date as dt,ao.name as tipo_op,  count(*) as c from {schema}.audit_log avl
+		select date_trunc('day', date_ref)::date as dt,ao.name as type_op,  count(*) as c from {schema}.audit_log avl
 		left join {schema}.audit_operation ao on (avl.operation_id = ao.id)
 		left join {schema}.viewers vw on (avl.id_viewer = vw.id)
 		where ao.code like _op_type_code
 		and (vw.owner_id = _owner_id or _owner_id IS null)
+		and (vw.id = _viewer_id or _viewer_id IS null)
 		group by 1, 2
 		order by 1 asc
 	)

@@ -17,7 +17,7 @@ from app.utils import geo
 from app.utils import constants
 from app.utils.constants import ROLE_ANONYMOUS
 from app.utils.settings import get_site_settings, get_config_value
-from app.utils.security import get_roles_names, get_user_roles
+from app.utils.security import get_roles_names, get_user_roles, is_admin_or_manager
 from app.utils.mailing import send_mail
 from app.utils.http import get_host_url, get_script_root, get_base_url
 from app.utils import auditoria
@@ -732,6 +732,25 @@ def get_app_backoffice():
     #-- Get Notifications --
     notifications = get_new_notifications()
     backoffice_cfg.get('config')['notifications'] = { "total": notifications if notifications is not None else 0}
+
+    #-- Stats --
+    if 'stats' in backoffice_cfg.get('config'):
+        is_admin = is_admin_or_manager(user)
+
+        if not is_admin or (is_admin and not 'viewers' in backoffice_cfg.get('config')['stats']):
+            qy = db.session.query(Viewer.id, Viewer.name)
+            if not is_admin:
+                backoffice_cfg.get('config')['stats']['viewers'] = None
+                if user:
+                    owner_id = user.id
+                    if owner_id:
+                        qy = qy.filter(Viewer.owner_id == owner_id)
+
+            viewers_records = qy.order_by('name').all()
+            if viewers_records and len(viewers_records) < 250:
+                viewers_data = list(map(lambda r: {"value": str(r.id), "label": r.name}, viewers_records))
+
+                backoffice_cfg.get('config')['stats']['viewers'] = viewers_data
 
     auditoria.log_backoffice_async(current_app._get_current_object(), auditoria.EnumAuditOperation.BackOffice,
                                    user.id if user else None)

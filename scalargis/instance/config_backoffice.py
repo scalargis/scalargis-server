@@ -67,7 +67,8 @@ backoffice_cfg = {
           {"label": "Últimos 7 dias", "value": "7"},
           {"label": "Últimos 30 dias", "value": "30"},
           {"label": "Últimos 100 dias", "value": "100"},
-          {"label": "Último ano", "value": "365"}
+          {"label": "Último ano", "value": "365"},
+          {"label": "Período", "value": "custom"}
       ],
       "selected_type": "VM",
       "selected_timerange": "30"
