@@ -322,7 +322,7 @@ def get_app_viewer_print_group_details(viewer_id, group_id):
         if len(geoms)>0:
             for gm in geoms:
                 gm = loads(gm)
-                if group.tolerance_filter is not None:
+                if group.tolerance_filter is not None and group.tolerance_filter != 0:
                     gm = gm.buffer(group.tolerance_filter)
                 geoms_out.append(gm.wkt)
             geom_filter = geo.getGeometryFromWKT(geoms_out)
