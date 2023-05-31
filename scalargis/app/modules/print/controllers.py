@@ -407,6 +407,7 @@ def viewer_generate_pdf(code, user):
             max_scale = 0
             min_scale = 0
             wms_style = None
+            wms_format = None
             opacity = 1
             if len(l.split(';')) > 4:
                 min_scale = float(l.split(';')[4])
@@ -415,11 +416,15 @@ def viewer_generate_pdf(code, user):
             if len(l.split(';')) > 7:
                 wms_style = l.split(';')[7]
 
+            if len(l.split(';')) > 8:
+                wms_format = l.split(';')[8]
+
             if len(l.split(';')) > 3:
                 opacity = float(l.split(';')[3])
 
             if (min_scale == 0 or scale <= min_scale) and (max_scale == 0 or scale >= max_scale):
-                p.add_map(l.split(';')[0], l.split(';')[1], l.split(';')[2], page_id=100, cql_filter=l.split(';')[6], style=wms_style, opacity=opacity)
+                p.add_map(l.split(';')[0], l.split(';')[1], l.split(';')[2], page_id=100, cql_filter=l.split(';')[6],
+                          style=wms_style, img_format=wms_format, opacity=opacity)
 
     p.set_wkt_and_center(geomWKT, extentWKT)
     p.populate_string("planta_id", print_output.print_output_number)
