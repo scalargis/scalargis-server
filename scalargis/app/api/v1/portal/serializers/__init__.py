@@ -205,6 +205,9 @@ page_viewer = api.inherit('Viewer pages', pagination, {
     'items': fields.List(fields.Nested(viewer_api_model))
 })
 
+page_simple_viewer = api.inherit('Viewer pages', pagination, {
+    'items': fields.List(fields.Nested(viewer_simple_api_model))
+})
 
 viewer_contact_message_app_api_model = api.model('Viewer Contact Message Model', {
     'name': fields.String(required=True, description='Name'),

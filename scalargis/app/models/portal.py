@@ -1,5 +1,6 @@
 from sqlalchemy import ForeignKey, UniqueConstraint
 from sqlalchemy.orm import relationship, column_property
+from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.dialects.postgresql import ARRAY
 from geoalchemy2.types import Geometry
 import geoalchemy2.functions as geo_funcs
@@ -144,6 +145,10 @@ class PrintGroup(db.Model, PortalTable, PortalTableMixin):
 
     geometry_srid = __srid__
 
+    @hybrid_property
+    def viewers_sample(self):
+        return [rec.viewer for rec in self.viewer_assoc.limit(10).all()]
+
 
 class Print(db.Model, PortalTable, PortalTableMixin):
     __tablename__ = "print"
@@ -200,6 +205,10 @@ class Print(db.Model, PortalTable, PortalTableMixin):
 
     geometry_srid = __srid__
 
+    @hybrid_property
+    def viewers_sample(self):
+        return [rec.viewer for rec in self.viewer_assoc.limit(10).all()]
+
 
 class ViewerPrintGroup(db.Model, PortalTable):
     __tablename__ = "viewers_print_groups"
@@ -211,7 +220,7 @@ class ViewerPrintGroup(db.Model, PortalTable):
 
     print_group = db.relationship(
         PrintGroup,
-        backref=db.backref("viewer_assoc", cascade="all, delete-orphan")
+        backref=db.backref("viewer_assoc", cascade="all, delete-orphan", lazy='dynamic')
     )
     viewer = db.relationship(
         Viewer,
@@ -228,7 +237,7 @@ class ViewerPrint(db.Model, PortalTable):
 
     print = db.relationship(
         Print,
-        backref=db.backref("viewer_assoc", cascade="all, delete-orphan")
+        backref=db.backref("viewer_assoc", cascade="all, delete-orphan", lazy='dynamic'),
     )
     viewer = db.relationship(
         Viewer,
@@ -284,7 +293,7 @@ class PrintGroupPrint(db.Model, PortalTable):
     )
     print = db.relationship(
         Print,
-        backref=db.backref("print_group_assoc", cascade="all, delete-orphan")
+        backref=db.backref("print_group_assoc", cascade="all, delete-orphan", lazy='dynamic')
     )
 
 

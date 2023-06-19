@@ -4,6 +4,7 @@ import logging
 
 from flask import request
 import sqlalchemy
+from sqlalchemy.orm import aliased
 from sqlalchemy import cast, or_, Integer
 from sqlalchemy.exc import IntegrityError
 from shapely.wkt import loads
@@ -14,7 +15,7 @@ from ..parsers import *
 from app.models.security import Role
 from app.utils.security import is_admin_or_manager
 from app.models.portal import Print, PrintGroup, PrintElement, PrintLayout, PrintGroupPrint, \
-    PrintGroupChild, PrintGroupLayout
+    PrintGroupChild, PrintGroupLayout, Viewer, ViewerPrint, ViewerPrintGroup
 from ...endpoints import get_user
 from . import get_record_by_id
 
@@ -108,21 +109,33 @@ def get_by_filter(request):
         kf = key
         if key in print_fields:
             kf = print_fields.get(key)
-        field = getattr(Print, kf)
-        if isinstance(filter[key], list):
-            values = filter[key]
-            conditions = []
-            for val in values:
+        if hasattr(Print, kf):
+            field = getattr(Print, kf)
+            if isinstance(filter[key], list):
+                values = filter[key]
+                conditions = []
+                for val in values:
+                    if isinstance(field.property.columns[0].type, Integer):
+                        conditions.append(field == val)
+                    else:
+                        conditions.append(cast(field, sqlalchemy.String).ilike('%' + str(val) + '%'))
+                qy = qy.filter(or_(*conditions))
+            elif key not in ['groups', 'viewers']:
                 if isinstance(field.property.columns[0].type, Integer):
-                    conditions.append(field == val)
+                    qy = qy.filter(field == filter[key])
                 else:
-                    conditions.append(cast(field, sqlalchemy.String).ilike('%' + str(val) + '%'))
-            qy = qy.filter(or_(*conditions))
-        else:
-            if isinstance(field.property.columns[0].type, Integer):
-                qy = qy.filter(field == filter[key])
-            else:
-                qy = qy.filter(cast(field, sqlalchemy.String).ilike('%' + str(filter[key]) + '%'))
+                    qy = qy.filter(cast(field, sqlalchemy.String).ilike('%' + str(filter[key]) + '%'))
+
+    if 'groups' in filter:
+        grps = filter['groups']
+        qy = qy.join(PrintGroupPrint, Print.id == PrintGroupPrint.print_id)\
+            .join(PrintGroup, PrintGroup.id == PrintGroupPrint.print_group_id)\
+            .filter(PrintGroup.code.ilike('%' + str(grps) + '%'))
+
+    if 'viewers' in filter:
+        viewers = filter['viewers']
+        qy = qy.join(ViewerPrint, Print.id == ViewerPrint.print_id).join(Viewer, Viewer.id == ViewerPrint.viewer_id).\
+            filter(Viewer.name.ilike('%' + str(viewers) + '%'))
 
     sort = json.loads(args.get('sort') or '[]')
     if len(sort) > 0:
@@ -360,6 +373,66 @@ def delete_list(data):
         return 555
 
 
+def get_print_viewers_by_filter(print_id, request):
+    """
+    Returns paged list of Prints Viewers
+    """
+    args = parser_records_with_page.parse_args(request)
+    page = args.get('page', 1)
+    per_page = args.get('per_page', 10)
+    filter = json.loads(args.get('filter') or '{}')
+
+    qy = db.session.query(Viewer.id, Viewer.name, Viewer.title, Viewer.is_active, Viewer.is_shared).\
+        join(ViewerPrint, Viewer.id == ViewerPrint.viewer_id)
+    qy = qy.filter(ViewerPrint.print_id == print_id)
+
+    for key in filter:
+        kf = key
+        '''
+        if key in print_fields:
+            kf = print_fields.get(key)
+        '''
+        if hasattr(Viewer, kf):
+            field = getattr(Viewer, kf)
+            if isinstance(filter[key], list):
+                values = filter[key]
+                conditions = []
+                for val in values:
+                    if isinstance(field.property.columns[0].type, Integer):
+                        conditions.append(field == val)
+                    else:
+                        conditions.append(cast(field, sqlalchemy.String).ilike('%' + str(val) + '%'))
+                qy = qy.filter(or_(*conditions))
+            else:
+                if isinstance(field.property.columns[0].type, Integer):
+                    qy = qy.filter(field == filter[key])
+                else:
+                    qy = qy.filter(cast(field, sqlalchemy.String).ilike('%' + str(filter[key]) + '%'))
+
+    sort = json.loads(args.get('sort') or '[]')
+    if len(sort) > 0:
+        for i in range(0, len(sort), 2):
+            order = None
+
+            if sort[i] == 'xxxxx':
+                s = 1
+            elif sort[i]:
+                kf = sort[i]
+                '''
+                if sort[i] in print_fields:
+                    kf = print_fields.get(sort[i])
+                '''
+                order = getattr(getattr(Viewer, kf), sort[i+1].lower())()
+
+            if order is not None:
+                qy = qy.order_by(order)
+
+    page = qy.paginate(page=page, per_page=per_page, error_out=False)
+
+    return page
+
+# ---------------------------------------
+
 def get_print_group_by_filter(request):
     """
     Returns paged list of Print Groups
@@ -384,21 +457,38 @@ def get_print_group_by_filter(request):
         kf = key
         if key in print_group_fields:
             kf = print_group_fields.get(key)
-        field = getattr(PrintGroup, kf)
-        if isinstance(filter[key], list):
-            values = filter[key]
-            conditions = []
-            for val in values:
+        if hasattr(PrintGroup, kf):
+            field = getattr(PrintGroup, kf)
+            if isinstance(filter[key], list):
+                values = filter[key]
+                conditions = []
+                for val in values:
+                    if isinstance(field.property.columns[0].type, Integer):
+                        conditions.append(field == val)
+                    else:
+                        conditions.append(cast(field, sqlalchemy.String).ilike('%' + str(val) + '%'))
+                qy = qy.filter(or_(*conditions))
+            elif key not in ['groups', 'prints', 'viewers']:
                 if isinstance(field.property.columns[0].type, Integer):
-                    conditions.append(field == val)
+                    qy = qy.filter(field == filter[key])
                 else:
-                    conditions.append(cast(field, sqlalchemy.String).ilike('%' + str(val) + '%'))
-            qy = qy.filter(or_(*conditions))
-        else:
-            if isinstance(field.property.columns[0].type, Integer):
-                qy = qy.filter(field == filter[key])
-            else:
-                qy = qy.filter(cast(field, sqlalchemy.String).ilike('%' + str(filter[key]) + '%'))
+                    qy = qy.filter(cast(field, sqlalchemy.String).ilike('%' + str(filter[key]) + '%'))
+
+    if 'groups' in filter:
+        grps = filter['groups']
+        child = aliased(PrintGroup)
+        qy = qy.join(PrintGroupChild, PrintGroup.id == PrintGroupChild.print_group_id).filter().\
+            join(child, child.id == PrintGroupChild.print_group_child_id).filter(child.code.ilike('%' + str(grps) + '%'))
+
+    if 'prints' in filter:
+        prts = filter['prints']
+        qy = qy.join(PrintGroupPrint, PrintGroup.id == PrintGroupPrint.print_group_id).\
+            join(Print, Print.id == PrintGroupPrint.print_id).filter(Print.code.ilike('%' + str(prts) + '%'))
+
+    if 'viewers' in filter:
+        viewers = filter['viewers']
+        qy = qy.join(ViewerPrintGroup, PrintGroup.id == ViewerPrintGroup.print_group_id).\
+            join(Viewer, Viewer.id == ViewerPrintGroup.viewer_id).filter(Viewer.name.ilike('%' + str(viewers) + '%'))
 
     sort = json.loads(args.get('sort') or '[]')
     if len(sort) > 0:
@@ -406,8 +496,8 @@ def get_print_group_by_filter(request):
             order = None
             if sort[i]:
                 kf = sort[i]
-                if sort[i] in print_fields:
-                    kf = print_fields.get(sort[i])
+                if sort[i] in print_group_fields:
+                    kf = print_group_fields.get(sort[i])
                 order = getattr(getattr(PrintGroup, kf), sort[i+1].lower())()
 
             if order is not None:
@@ -664,6 +754,66 @@ def delete_print_group_list(data):
     else:
         return 555
 
+
+def get_print_group_viewers_by_filter(print_group_id, request):
+    """
+    Returns paged list of Prints groups Viewers
+    """
+    args = parser_records_with_page.parse_args(request)
+    page = args.get('page', 1)
+    per_page = args.get('per_page', 10)
+    filter = json.loads(args.get('filter') or '{}')
+
+    qy = db.session.query(Viewer.id, Viewer.name, Viewer.title, Viewer.is_active, Viewer.is_shared). \
+        join(ViewerPrintGroup, Viewer.id == ViewerPrintGroup.viewer_id)
+    qy = qy.filter(ViewerPrintGroup.print_group_id == print_group_id)
+
+    for key in filter:
+        kf = key
+        '''
+        if key in print_fields:
+            kf = print_fields.get(key)
+        '''
+        if hasattr(Viewer, kf):
+            field = getattr(Viewer, kf)
+            if isinstance(filter[key], list):
+                values = filter[key]
+                conditions = []
+                for val in values:
+                    if isinstance(field.property.columns[0].type, Integer):
+                        conditions.append(field == val)
+                    else:
+                        conditions.append(cast(field, sqlalchemy.String).ilike('%' + str(val) + '%'))
+                qy = qy.filter(or_(*conditions))
+            else:
+                if isinstance(field.property.columns[0].type, Integer):
+                    qy = qy.filter(field == filter[key])
+                else:
+                    qy = qy.filter(cast(field, sqlalchemy.String).ilike('%' + str(filter[key]) + '%'))
+
+    sort = json.loads(args.get('sort') or '[]')
+    if len(sort) > 0:
+        for i in range(0, len(sort), 2):
+            order = None
+
+            if sort[i] == 'xxxxx':
+                s = 1
+            elif sort[i]:
+                kf = sort[i]
+                '''
+                if sort[i] in print_fields:
+                    kf = print_fields.get(sort[i])
+                '''
+                order = getattr(getattr(Viewer, kf), sort[i + 1].lower())()
+
+            if order is not None:
+                qy = qy.order_by(order)
+
+    page = qy.paginate(page=page, per_page=per_page, error_out=False)
+
+    return page
+
+# ---------------------------------------
 
 def get_print_element_by_filter(request):
     """

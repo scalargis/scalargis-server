@@ -62,14 +62,28 @@ print_api_model = api.model('Print Model', {
     'geom_filter': fields.String(required=False, attribute='geometry_wkt', description='WKT da geometria'),
     'geom_filter_srid': fields.Integer(required=False, attribute='geometry_srid', description='SRID da geometria'),
     'tolerance_filter': fields.Integer(required=False, description='Spatial filter tolerance'),
-    'layouts': fields.List(fields.Nested(print_layout_api_model)),
-    'groups': fields.List(fields.Nested(print_group_simple_api_model), attribute='print_groups', description='Print Groups'),
-    'viewers': fields.List(fields.Nested(viewer_simple_api_model), attribute='viewers', description='Viewers')
+    'layouts': fields.List(fields.Nested(print_layout_api_model))
+})
+print_group_aux_model = api.model('Child Print Group Model', {
+    'id': fields.Integer(readOnly=True, attribute='print_group.id', description='Identifier'),
+    'code': fields.String(required=True, attribute='print_group.code', description='Code'),
+    'title': fields.String(required=False, attribute='print_group.title', description='Title'),
+    'description': fields.String(required=False, attribute='print_group.description', description='Description'),
+    'is_active': fields.Boolean(readOnly=False, attribute='print_group.is_active', description='Active')
+})
+print_api_model['groups'] = fields.List(fields.Nested(print_group_aux_model), attribute='print_group_assoc')
+
+
+
+
+print_with_viewers_api_model = api.inherit('Print Model', print_api_model, {
+    'viewers': fields.List(fields.Nested(viewer_simple_api_model), attribute='viewers_sample', description='Viewers')
 })
 
 page_print = api.inherit('Print pages', pagination, {
-    'items': fields.List(fields.Nested(print_api_model))
+    'items': fields.List(fields.Nested(print_with_viewers_api_model))
 })
+
 
 print_group_api_model = api.model('Print Model', {
     'id': fields.Integer(readOnly=True, description='Identifier'),
@@ -101,11 +115,15 @@ print_group_api_model = api.model('Print Model', {
     'geom_filter_srid': fields.Integer(required=False, attribute='geometry_srid', description='SRID da geometria'),
     'tolerance_filter': fields.Integer(required=False, description='Spatial filter tolerance'),
 
-    'layouts': fields.List(fields.Nested(print_layout_api_model)),
+    'layouts': fields.List(fields.Nested(print_layout_api_model))#,
 
     #'prints': fields.List(fields.Nested(print_api_model), attribute='print_assoc', description='Child Prints'),
 
-    'viewers': fields.List(fields.Nested(viewer_simple_api_model), attribute='viewers', description='Viewers')
+    #'viewers': fields.List(fields.Nested(viewer_simple_api_model), attribute='viewers', description='Viewers')
+})
+
+print_group_with_viewers_api_model = api.inherit('Print Model', print_group_api_model, {
+    'viewers': fields.List(fields.Nested(viewer_simple_api_model), attribute='viewers_sample', description='Viewers')
 })
 
 print_group_child_api_model = api.model('Child Print Group Model', {
@@ -129,11 +147,9 @@ print_child_api_model = api.model('Child Print Model', {
 print_group_api_model['prints'] = fields.List(fields.Nested(print_child_api_model), attribute='print_assoc')
 
 
-
 page_print_group = api.inherit('Print group pages', pagination, {
-    'items': fields.List(fields.Nested(print_group_api_model))
+    'items': fields.List(fields.Nested(print_group_with_viewers_api_model))
 })
-
 
 print_element_api_model = api.model('Print Model', {
     'id': fields.Integer(readOnly=True, description='Identifier'),

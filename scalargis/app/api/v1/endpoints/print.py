@@ -3,8 +3,10 @@ from flask import request
 from flask_restx import Resource
 
 from ..portal.parsers import *
-from ..portal.serializers.print import page_print, print_api_model, print_element_api_model, page_print_element, \
-    print_group_api_model, page_print_group
+from ..portal.serializers import page_simple_viewer
+from ..portal.serializers.print import page_print, print_api_model, print_with_viewers_api_model, \
+    print_element_api_model, page_print_element, \
+    print_group_api_model, print_group_with_viewers_api_model, page_print_group
 from ..portal.dao import print as dao_print
 from ..endpoints import check_user, ns_portal as ns
 from app.utils.constants import ROLE_AUTHENTICATED, ROLE_ADMIN, ROLE_MANAGER
@@ -140,7 +142,35 @@ class Print(Resource):
                 'Access-Control-Allow-Headers': 'Origin, X-Requested-With, Content-Type, Accept'
                 }
 
-#------------------------------------------
+
+@ns.route('/prints/<int:id>/viewers')
+@ns.response(404, 'Todo not found')
+@ns.param('id', 'The print identifier')
+class PrintViewers(Resource):
+    def options(self, id):
+        return {'Allow': 'GET'}, 200, \
+               {'Access-Control-Allow-Origin': '*',
+                'Access-Control-Allow-Methods': 'GET',
+                'Access-Control-Allow-Headers': 'Origin, X-Requested-With, Content-Type, Accept, X-API-KEY'
+                }
+
+    '''Show print viewers'''
+
+    @ns.doc('get_print_viewers')
+    @ns.expect(parser_records_with_page)
+    @ns.marshal_with(page_simple_viewer)
+    def get(self, id):
+        """Returns Print Viewers """
+        if (check_user(request, [ROLE_AUTHENTICATED])):
+            data = dao_print.get_print_viewers_by_filter(id, request)
+            return data, 200, {'Access-Control-Allow-Origin': '*',
+                               'Access-Control-Allow-Methods': 'GET',
+                               'Access-Control-Allow-Headers': 'Content-Type,X-API-KEY'
+                               }
+        else:
+            return 'Bad Credenciais', 401, {'Access-Control-Allow-Origin': '*'}
+
+# ------------------------------------------
 
 @ns.route('/prints/groups')
 class PrintGroupList(Resource):
@@ -197,10 +227,11 @@ class PrintGroupList(Resource):
                 'Access-Control-Allow-Headers': 'Origin, X-Requested-With, Content-Type, Accept'
                 }
 
+
 @ns.route('/prints/groups/<int:id>')
 @ns.response(404, 'Todo not found')
 @ns.param('id', 'The print group identifier')
-class Print(Resource):
+class PrintGroup(Resource):
     def options(self, id):
         return {'Allow': 'GET, PUT, DELETE'}, 200, \
                {'Access-Control-Allow-Origin': '*',
@@ -269,7 +300,35 @@ class Print(Resource):
                 'Access-Control-Allow-Headers': 'Origin, X-Requested-With, Content-Type, Accept'
                 }
 
-#-------------------------------------------
+
+@ns.route('/groups/<int:id>/viewers')
+@ns.response(404, 'Todo not found')
+@ns.param('id', 'The print identifier')
+class PrintGroupViewers(Resource):
+    def options(self, id):
+        return {'Allow': 'GET'}, 200, \
+               {'Access-Control-Allow-Origin': '*',
+                'Access-Control-Allow-Methods': 'GET',
+                'Access-Control-Allow-Headers': 'Origin, X-Requested-With, Content-Type, Accept, X-API-KEY'
+                }
+
+    '''Show print group viewers'''
+
+    @ns.doc('get_print_group_viewers')
+    @ns.expect(parser_records_with_page)
+    @ns.marshal_with(page_simple_viewer)
+    def get(self, id):
+        """Returns Print Viewers """
+        if (check_user(request, [ROLE_AUTHENTICATED])):
+            data = dao_print.get_print_group_viewers_by_filter(id, request)
+            return data, 200, {'Access-Control-Allow-Origin': '*',
+                               'Access-Control-Allow-Methods': 'GET',
+                               'Access-Control-Allow-Headers': 'Content-Type,X-API-KEY'
+                               }
+        else:
+            return 'Bad Credenciais', 401, {'Access-Control-Allow-Origin': '*'}
+
+# -------------------------------------------
 
 @ns.route('/prints/elements')
 class PrintElementsList(Resource):
