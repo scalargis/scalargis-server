@@ -423,15 +423,16 @@ class Pdf:
                 raise Exception(err)
 
             # draw map area background
-            try:
-                fill_map_background = config["params"]["fill_map_backgroud"]
-            except KeyError:
-                fill_map_background = True  # default if no conf entry
-            if fill_map_background:
-                self.canvas.saveState()
-                self.canvas.setFillColor(colors.Color(1, 1, 1, 1))
-                self.canvas.rect(ll_x * mm, ll_y * mm, width * mm, height * mm, stroke=0, fill=1)
-                self.canvas.restoreState()
+            if 'map' in config:
+                try:
+                    fill_map_background = config["params"]["fill_map_backgroud"]
+                except KeyError:
+                    fill_map_background = True  # default if no conf entry
+                if fill_map_background:
+                    self.canvas.saveState()
+                    self.canvas.setFillColor(colors.Color(1, 1, 1, 1))
+                    self.canvas.rect(ll_x * mm, ll_y * mm, width * mm, height * mm, stroke=0, fill=1)
+                    self.canvas.restoreState()
 
             # basemap layers
 
@@ -711,8 +712,7 @@ class Pdf:
             except KeyError:
                 clean = True  # default is True
 
-
-            if (nb_confgis == 1) or (clean):
+            if 'map' in config and (nb_confgis == 1 or clean):
                 # clear arround map only if one page or use json config ["params"]["clean_arround_map"]
                 self.canvas.saveState()
                 pg_x = self.pagesize[0]
