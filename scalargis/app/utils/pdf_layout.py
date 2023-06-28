@@ -1031,6 +1031,21 @@ class Pdf:
                 box_width = qrcode_json["width"]
                 value= qrcode_json["value"]
 
+                # if add_extent = true then add bbox extent to URL params
+                if 'add_extent' in qrcode_json:
+                    add_extent = qrcode_json['add_extent']
+                    if add_extent and self.bbox: # use map bbox for extent
+                        round_bbox = [round(v) for v in self.bbox]
+                        value += '?extent=' + ','.join(str(e) for e in round_bbox) + '&extent_srid=' + srid
+
+                # if add_geom = true then add wkt in params TODO
+                # if 'add_geom' in qrcode_json:
+                #     add_geom = qrcode_json['add_geom']
+                #     if add_geom and self.geom:
+                #         value += '?geom=' + self.geom.wkt
+
+                logger.info('QRCode URL: ' + value)
+
                 qr = qrcode.QRCode(
                     version=1,
                     error_correction=qrcode.constants.ERROR_CORRECT_L,
