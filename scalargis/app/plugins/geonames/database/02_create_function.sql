@@ -42,7 +42,7 @@ begin
 	mysql = mysql || '), q as
 		(
 			(
-			SELECT geom, name, source, type, "group", admin_level1, admin_level2, admin_level3, admin_level4, admin_code,
+			SELECT st_centroid(geom) as geom, name, source, type, "group", admin_level1, admin_level2, admin_level3, admin_level4, admin_code,
 			similarity(name, '''||f||''') as similarity, ''similarity'' as search_func
 			FROM t
 			)
@@ -51,7 +51,7 @@ begin
 		mysql = mysql || '
 			Union All
 				(
-				SELECT geom, name, source, type, "group", admin_level1, admin_level2, admin_level3, admin_level4, admin_code,
+				SELECT st_centroid(geom) as geom, name, source, type, "group", admin_level1, admin_level2, admin_level3, admin_level4, admin_code,
 				 (ts_rank(fs_str, to_tsquery(''pt'','''||fts||''')) + 0.8)::real AS similarity, ''full_ts'' as search_func
 				from t
 				where fs_str @@ to_tsquery(''pt'','''||fts||''')
@@ -60,7 +60,7 @@ begin
 		mysql = mysql || '
 			Union All
 				(
-				SELECT geom, name, source, type, "group", admin_level1, admin_level2, admin_level3, admin_level4, admin_code,
+				SELECT st_centroid(geom) as geom, name, source, type, "group", admin_level1, admin_level2, admin_level3, admin_level4, admin_code,
 				 (ts_rank(fs_str, to_tsquery(''pt'','''||fts||''')) + 0.8)::real AS similarity, ''full_ts'' as search_func
 				from t
 				where admin_code @@ to_tsquery('''||fts||':*'')
