@@ -684,6 +684,85 @@ def get_app_viewer_print_merge(viewer_id):
     return data, status
 
 
+def get_viewer_translations(viewer_id):
+    data = None
+    status = 200
+
+    viewer = get_viewer_record(viewer_id)
+
+    if not viewer:
+        return data, 404
+
+    record = SiteSettings.query.\
+            filter(SiteSettings.code.ilike('TRANSLATIONS_' + viewer.name)).one_or_none()
+    if record:
+        try:
+            data = json.loads(record.setting_value)
+            return data, status
+        except:
+            pass
+
+    record = SiteSettings.query. \
+        filter(SiteSettings.code.ilike('TRANSLATIONS')).one_or_none()
+    if record:
+        try:
+            data = json.loads(record.setting_value)
+            return data, status
+        except:
+            pass
+
+    return None, status
+
+    '''
+    data = {
+        "common": {
+            "en": {
+                "viewer_translations": "viewer_translations EN"
+            },
+            "pt": {
+                "viewer_translations": "viewer_translation PT"
+            }
+        },
+        "DataForm": {
+            "en": {
+                "teste": "teste2EN",
+                "teste_dataform": "Teste DataForm EN",
+                "Alojamento Local": "Alojamento Local1",
+                "Bar": "Bar1",
+                "FooBar": "FooBar1"
+            },
+            "pt": {
+                "teste": "teste2PT",
+                "teste_dataform": "Teste DataForm PT",
+                "Alojamento Local": "Alojamento Local2",
+                "Bar": "Bar2",
+                "FooBar": "FooBar2"
+            }
+        },
+        "lists": {
+            "en": {
+                "housing": {
+                    "Alojamento Local": "Alojamento Local11",
+                    "Bar": "Bar11",
+                    "FooBar": "FooBar11",
+                    "Apartamento": "Apartamento11",
+                    "Moradia": "Motaria11"
+                }
+            },
+            "pt": {
+                "housing": {
+                    "Alojamento Local": "Alojamento Local21",
+                    "Bar": "Bar21",
+                    "FooBar": "FooBar21",
+                    "Apartamento": "Apartamento21",
+                    "Moradia": "Moradia21"
+                }
+            }
+        }
+    }
+    '''
+
+
 def get_app_backoffice():
     user = get_user(request)
 
