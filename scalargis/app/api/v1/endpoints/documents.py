@@ -14,13 +14,6 @@ from ..endpoints import ns_documents as ns, get_user
 
 logger = logging.getLogger(__name__)
 
-'''
-class HelloWorld(Resource):
-    def get(self):
-        return "Hello world!"
-
-ns.add_resource(HelloWorld, '/hello', '/world')
-'''
 
 @ns.route('/temporary/<string:filename>')
 @ns.response(404, 'Todo not found')
@@ -38,7 +31,7 @@ class FileFromTmpDir(Resource):
     def get(self, filename):
         if os.path.exists(os.path.join(settings.APP_TMP_DIR, filename)):
             response = make_response(send_file(os.path.join(settings.APP_TMP_DIR, filename),
-                             attachment_filename=filename))
+                             download_name=filename))
 
             return response
         else:
@@ -74,7 +67,7 @@ class FileFromDir(Resource):
                 return {"message": "File not found"}, 404
 
         try:
-            response = make_response(send_file(filepath, attachment_filename=filename))
+            response = make_response(send_file(filepath, download_name=filename))
 
             return response
         except Exception as e:
@@ -188,10 +181,10 @@ class FileDir(Resource):
 
         if os.path.isfile(filepath):
             try:
-                response = make_response(send_file(filepath, attachment_filename=os.path.basename(filepath)))
+                response = make_response(send_file(filepath,  download_name=os.path.basename(filepath)))
 
                 return send_file(os.path.join(filepath),
-                                 attachment_filename=os.path.basename(path))
+                                 download_name=os.path.basename(path))
             except Exception as e:
                 return {"message": "Internal Server Error"}, 500
         else:
