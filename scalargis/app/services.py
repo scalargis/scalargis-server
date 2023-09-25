@@ -48,10 +48,53 @@ def load_plugins():
                 module = getattr(mods[fname], 'module')
                 app.register_blueprint(module)
         elif os.path.isfile(os.path.join(path, fname)):
+            '''
+            Deprecated: will be removed in next main version, use folder plugin instead
+            '''
             name, ext = os.path.splitext(fname)
             if ext == '.py' and not name == '__init__':
                 mods[name] = importlib.import_module('.' + name, 'app.plugins2')
                 module = getattr(mods[name], 'module')
+                app.register_blueprint(module)
+
+
+def load_extensions():
+    """
+        This code looks for any modules or packages in the given directory, loads them
+        and then registers a blueprint - blueprints must be created with the name 'module'
+        Implemented directory scan
+    """
+    path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'extensions')
+    if (os.path.basename(os.path.dirname(os.path.abspath(__file__)))).lower() == 'scalargis':
+        path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'app', 'extensions')
+
+    dir_list = os.listdir(path)
+
+    mods = {}
+
+    extensions = None
+
+    extension_service_name = 'SCALARGIS_EXTENSIONS_{0}'.format(service_name).upper()
+
+    if 'SCALARGIS_EXTENSIONS' in app.config.keys():
+        extensions = app.config['SCALARGIS_EXTENSIONS']
+
+    if extension_service_name in app.config.keys():
+        extensions = app.config[extension_service_name]
+
+    if extensions:
+        dir_list.clear()
+        for extension in extensions:
+            dir_list.append(extension)
+
+    for fname in dir_list:
+        if os.path.isdir(os.path.join(path, fname)) and os.path.exists(os.path.join(path, fname, '__init__.py')):
+            mods[fname] = importlib.import_module('.' + fname, 'app.extensions')
+            if hasattr(mods[fname], 'module_api'):
+                module = getattr(mods[fname], 'module_api')
+                app.register_blueprint(module)
+            if hasattr(mods[fname], 'module'):
+                module = getattr(mods[fname], 'module')
                 app.register_blueprint(module)
 
 
@@ -76,6 +119,8 @@ def init_wsgi():
 
     load_plugins()
 
+    load_extensions()
+
 
 def run(argv):
     if os.path.basename(os.getcwd()).lower() == 'app':
@@ -88,6 +133,8 @@ def run(argv):
     setup_mail(app)
 
     load_plugins()
+
+    load_extensions()
 
     reloader = '--reloader' in argv
     threaded = '--threaded' in argv

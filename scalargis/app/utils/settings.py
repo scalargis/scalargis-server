@@ -37,3 +37,7 @@ def get_config_value(key):
         config_value = site_settings_db[key.lower()]
 
     return config_value
+
+
+def get_default_locale():
+    return current_app.config.get('SCALARGIS_DEFAULT_LOCALE') or ''

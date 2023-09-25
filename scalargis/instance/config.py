@@ -17,11 +17,17 @@
 # SCALARGIS_HOST_URL = ''
 # SCALARGIS_BASE_URL = ''
 
+# SCALARGIS_DEFAULT_LOCALE = ''
+
 # SCALARGIS_LDAP_AUTHENTICATION = False
 
 # -- PLUGINS --
 # SCALARGIS_PLUGINS = ['proxy', 'geonames', 'spatial_toolbox']
 # SCALARGIS_PLUGINS_SERVICES = []
+
+# -- EXTENSIONS --
+# SCALARGIS_EXTENSIONS = []
+# SCALARGIS_PLUGINS_EXTENSIONS = []
 
 # -- Geoserver Url replace [[From, To], [From, To]] --
 # SCALARGIS_ROUTE_GEOSERVER = []

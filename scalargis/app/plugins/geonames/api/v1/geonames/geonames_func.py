@@ -4,12 +4,19 @@ from sqlalchemy import sql
 
 from app.plugins.geonames.models.geonames import *
 
+
 # ---------------------------------------------------- Get info
 def search():
-
     logger = logging.getLogger(__name__)
 
     filter = request.args.get('_filter')
+
+    admin_level1 = request.args.get('_admin_level1', None)
+    admin_level2 = request.args.get('_admin_level2', None)
+    admin_level3 = request.args.get('_admin_level3', None)
+    admin_level4 = request.args.get('_admin_level4', None)
+    admin_code = request.args.get('_admin_code', None)
+
     min_similarity = request.args.get('_min_similarity') or 0.5
     max_rows = request.args.get('_max_rows') or 10
 
@@ -22,13 +29,17 @@ def search():
     IN _admin_level1 text DEFAULT NULL::text,
     IN _admin_level2 text DEFAULT NULL::text,
     IN _admin_level3 text DEFAULT NULL::text,
+    IN _admin_level4 text DEFAULT NULL::text,
+    IN _admin_code text DEFAULT NULL::text,
     IN _maxrows integer DEFAULT 18,
     IN _min_similarity real DEFAULT 0)
     '''
     data = db.session.query(GeonamesSearchResult).from_statement(
         sql.text
-            ("select * from  geonames.search_geonames(:filter,:group,:admin_level1,:admin_level2,:admin_level3,:max_rows,:min_similarity)")). \
-        params(filter=filter, group=None, admin_level1=None, admin_level2=None, admin_level3=None, max_rows=max_rows, min_similarity=min_similarity).all()
+        ("select * from  geonames.search_geonames(:filter,:group,:admin_level1,:admin_level2,:admin_level3,:admin_level4,:admin_code,:max_rows,:min_similarity)")). \
+        params(filter=filter, group=None, admin_level1=admin_level1, admin_level2=admin_level2,
+        admin_level3=admin_level3, admin_level4=admin_level4, admin_code=admin_code,
+        max_rows=max_rows, min_similarity=min_similarity).all()
 
     '''
     result = [

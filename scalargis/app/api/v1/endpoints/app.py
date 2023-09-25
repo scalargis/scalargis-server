@@ -243,6 +243,27 @@ class AppContactMessage(Resource):
             }
 
 
+@ns.route('/viewer/<path:viewer_id>/translations')
+@ns.response(404, 'Todo not found')
+@ns.param('viewer_id', 'The viewer identifier')
+class AppViewerTranslations(Resource):
+    def options(self, viewer_id):
+        return {'Allow': 'GET'}, 200, \
+               {'Access-Control-Allow-Origin': '*',
+                'Access-Control-Allow-Methods': 'GET',
+                'Access-Control-Allow-Headers': 'Origin, X-Requested-With, Content-Type, Accept, X-API-KEY'
+                }
+
+    '''Get viewer translations'''
+    @ns.doc('viewer_translations')
+    def get(self, viewer_id):
+        '''Get viewer translations'''
+        item, status = dao_app.get_viewer_translations(viewer_id)
+        return item, status, {'Access-Control-Allow-Origin': '*',
+                              'Access-Control-Allow-Methods': 'GET',
+                              'Access-Control-Allow-Headers': 'Origin, X-Requested-With, Content-Type, Accept'}
+
+
 @ns.route('/backoffice')
 @ns.response(404, 'Todo not found')
 class AppBackoffice(Resource):
