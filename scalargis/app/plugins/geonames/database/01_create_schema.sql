@@ -11,6 +11,7 @@ CREATE TABLE geonames.geographical_names (
 	name text NULL,
     source text NULL,
     "type" text NULL,
+    fs_str tsvector NULL,
     "group" text NULL,
     admin_level1 text NULL,
     admin_level2 text NULL,

@@ -1,4 +1,4 @@
-CREATE OR REPLACE FUNCTION geonames.search_geonames(_filter text, _group text DEFAULT NULL::text, _admin_level1 text DEFAULT NULL::text, _admin_level2 text DEFAULT NULL::text, _admin_level3 text DEFAULT NULL::text, _maxrows integer DEFAULT 18, _min_similarity real DEFAULT 0)
+CREATE OR REPLACE FUNCTION geonames.search_geonames(_filter text, _group text DEFAULT NULL::text, _admin_level1 text DEFAULT NULL::text, _admin_level2 text DEFAULT NULL::text, _admin_level3 text DEFAULT NULL::text, _admin_level4 text DEFAULT NULL::text, _admin_code text DEFAULT NULL::text, _maxrows integer DEFAULT 18, _min_similarity real DEFAULT 0)
  RETURNS TABLE(id integer, geom_wkt text, name text, source text, type text, "group" text, admin_level1 text, admin_level2 text, admin_level3 text, admin_level4 text, admin_code text, similarity real, search_func text)
  LANGUAGE plpgsql
  ROWS 10
@@ -29,13 +29,20 @@ begin
 		mysql = mysql || ' and group like ''' || _group::text ||'''';
 	end if;
 	if (_admin_level1 Is Not Null) Then
-		mysql = mysql || ' and admin_level1 like ''' || _admin_level1::text ||'''';
+		mysql = mysql || ' and admin_level1 ilike ''' || _admin_level1::text ||'''';
 	end if;
 	if (_admin_level2 Is Not Null) Then
-		mysql = mysql || ' and admin_level2 like ''' || _admin_level2::text ||'''';
+		mysql = mysql || ' and admin_level2 ilike ''' || _admin_level2::text ||'''';
 	end if;
 	if (_admin_level3 Is Not Null) Then
-		mysql = mysql || ' and admin_level3 like ''' || _admin_level3::text ||'''';
+		mysql = mysql || ' and admin_level3 ilike ''' || _admin_level3::text ||'''';
+	end if;
+	if (_admin_level4 Is Not Null) Then
+		mysql = mysql || ' and admin_level4 ilike ''' || _admin_level4::text ||'''';
+	end if;
+	if (_admin_code Is Not Null) Then
+		--mysql = mysql || ' and starts_with(admin_code, ''' || _admin_code ||'''::text)';
+		mysql = mysql || ' and admin_code ilike ''' || _admin_code ||'%''';
 	end if;
 
 
@@ -91,6 +98,6 @@ $function$
 
 -- Permissions
 
-ALTER FUNCTION geonames.search_geonames(text, text, text, text, text, int4, float4) OWNER TO postgres;
-GRANT ALL ON FUNCTION geonames.search_geonames(text, text, text, text, text, int4, float4) TO public;
-GRANT ALL ON FUNCTION geonames.search_geonames(text, text, text, text, text, int4, float4) TO postgres;
+ALTER FUNCTION geonames.search_geonames(text, text, text, text, text, text, text, int4, float4) OWNER TO postgres;
+GRANT ALL ON FUNCTION geonames.search_geonames(text, text, text, text, text, text, text, int4, float4) TO public;
+GRANT ALL ON FUNCTION geonames.search_geonames(text, text, text, text, text, text, text, int4, float4) TO postgres;

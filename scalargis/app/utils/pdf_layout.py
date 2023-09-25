@@ -1644,7 +1644,7 @@ class Pdf:
         url += 'service=WMS'
         url += '&version=%s' % version
         url += '&request=GetMap'
-        url += '&layers=%s' % layers  # cm_faro:municipal_ln
+        url += '&layers=%s' % urllib.parse.quote(layers)  # cm_faro:municipal_ln
         url += '&styles=%s' % styles
         url += '&bbox=%s,%s,%s,%s' % (bbox[0], bbox[1], bbox[2], bbox[3])
         url += '&width=%s' % int(width)  # 658
@@ -1681,7 +1681,7 @@ class Pdf:
         url += 'service=WMS'
         url += '&request=GetLegendGraphic'
         url += '&version=%s' % version
-        url += '&layer=%s' % layer
+        url += '&layer=%s' % urllib.parse.quote(layer)
         url += '&format=%s' % img_format  # image/jpeg
 
         if style:
