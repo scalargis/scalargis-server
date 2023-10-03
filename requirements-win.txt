@@ -19,3 +19,4 @@ PyPDF2
 qrcode
 jsonmerge
 waitress
+Werkzeug==2.3.0
