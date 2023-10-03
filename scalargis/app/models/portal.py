@@ -418,6 +418,20 @@ class SiteSettings(db.Model, PortalTable, TypeTableMixin, PortalTableMixin):
     setting_value = db.Column(db.Text())
 
 
+class ViewerContent(db.Model, PortalTable, PortalTableMixin):
+    __tablename__ = "viewer_content"
+
+    id = db.Column(db.Integer(), primary_key=True)
+    name = db.Column(db.Text(), unique=True)
+    description = db.Column(db.Text())
+    keywords = db.Column(db.ARRAY(db.Text()))
+    content = db.Column(db.Text())
+    template = db.Column(db.Text())
+    roles = db.Column(db.ARRAY(db.Text()))
+    read_only = db.Column(db.Boolean(), default=False)
+    active = db.Column(db.Boolean(), default=True)
+
+
 class Widget(db.Model, PortalTable, PortalTableMixin):
     __tablename__ = "widget"
 

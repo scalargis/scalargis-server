@@ -1,12 +1,11 @@
 import logging
-from flask import request
+from flask import request, make_response
 from flask_restx import Resource, inputs
 
 from ..portal.parsers import *
 from ..portal.serializers import *
 from ..portal.dao import viewer as dao_viewer, app as dao_app
 from ..endpoints import check_user, ns_app as ns
-
 
 logger = logging.getLogger(__name__)
 
@@ -22,14 +21,15 @@ class AppDefaultViewer(Resource):
                 }
 
     '''Get a viewer'''
+
     @ns.doc('get_viewer')
     def get(self):
         '''Fetch a given resource'''
         item, status = dao_app.get_app_default_viewer()
         return item, status, {'Access-Control-Allow-Origin': '*',
-            'Access-Control-Allow-Methods': 'GET, POST',
-            'Access-Control-Allow-Headers': 'Origin, X-Requested-With, Content-Type, Accept'
-            }
+                              'Access-Control-Allow-Methods': 'GET, POST',
+                              'Access-Control-Allow-Headers': 'Origin, X-Requested-With, Content-Type, Accept'
+                              }
 
     @ns.doc('create_viewer')
     @ns.expect(viewer_app_api_model)
@@ -38,9 +38,10 @@ class AppDefaultViewer(Resource):
         '''Create a new viewer'''
         item = dao_viewer.app_create(request.json)
         return item, 201, {'Access-Control-Allow-Origin': '*',
-            'Access-Control-Allow-Methods': 'GET, POST',
-            'Access-Control-Allow-Headers': 'Origin, X-Requested-With, Content-Type, Accept'
-            }
+                           'Access-Control-Allow-Methods': 'GET, POST',
+                           'Access-Control-Allow-Headers': 'Origin, X-Requested-With, Content-Type, Accept'
+                           }
+
 
 @ns.route('/viewer/<path:viewer_id_or_slug>')
 @ns.response(404, 'Todo not found')
@@ -54,14 +55,15 @@ class AppViewer(Resource):
                 }
 
     '''Get a viewer'''
+
     @ns.doc('get_viewer')
     def get(self, viewer_id_or_slug):
         '''Fetch a given resource'''
         item, status = dao_app.get_app_viewer(viewer_id_or_slug)
         return item, status, {'Access-Control-Allow-Origin': '*',
-            'Access-Control-Allow-Methods': 'GET, PUT',
-            'Access-Control-Allow-Headers': 'Origin, X-Requested-With, Content-Type, Accept'
-            }
+                              'Access-Control-Allow-Methods': 'GET, PUT',
+                              'Access-Control-Allow-Headers': 'Origin, X-Requested-With, Content-Type, Accept'
+                              }
 
     @ns.doc('save_viewer')
     @ns.expect(viewer_app_api_model)
@@ -70,9 +72,9 @@ class AppViewer(Resource):
         '''Update viewer'''
         item, status = dao_viewer.app_update(viewer_id_or_slug, request.json)
         return item, status, {'Access-Control-Allow-Origin': '*',
-            'Access-Control-Allow-Methods': 'GET, PUT',
-            'Access-Control-Allow-Headers': 'Origin, X-Requested-With, Content-Type, Accept'
-            }
+                              'Access-Control-Allow-Methods': 'GET, PUT',
+                              'Access-Control-Allow-Headers': 'Origin, X-Requested-With, Content-Type, Accept'
+                              }
 
 
 @ns.route('/viewer/session/<path:viewer_id_or_slug>')
@@ -87,14 +89,15 @@ class AppViewerSession(Resource):
                 }
 
     '''Get a viewer'''
+
     @ns.doc('get_viewer')
     def get(self, viewer_id_or_slug):
         '''Fetch a given resource'''
         item, status = dao_app.get_app_viewer(viewer_id_or_slug, True)
         return item, status, {'Access-Control-Allow-Origin': '*',
-            'Access-Control-Allow-Methods': 'GET, POST',
-            'Access-Control-Allow-Headers': 'Origin, X-Requested-With, Content-Type, Accept'
-            }
+                              'Access-Control-Allow-Methods': 'GET, POST',
+                              'Access-Control-Allow-Headers': 'Origin, X-Requested-With, Content-Type, Accept'
+                              }
 
     @ns.doc('save_viewer_session')
     @ns.expect(viewer_app_api_model)
@@ -102,9 +105,9 @@ class AppViewerSession(Resource):
         '''Update viewer'''
         item, status = dao_app.save_viewer_session(viewer_id_or_slug, request.json)
         return item, status, {'Access-Control-Allow-Origin': '*',
-            'Access-Control-Allow-Methods': 'GET, POST',
-            'Access-Control-Allow-Headers': 'Origin, X-Requested-With, Content-Type, Accept'
-            }
+                              'Access-Control-Allow-Methods': 'GET, POST',
+                              'Access-Control-Allow-Headers': 'Origin, X-Requested-With, Content-Type, Accept'
+                              }
 
 
 @ns.route('/viewer/<int:viewer_id>/print/group/<int:group_id>/details')
@@ -120,18 +123,20 @@ class AppPrintGroupDetails(Resource):
                 }
 
     '''Get a print group details'''
+
     @ns.doc('get_print_group_details')
     @ns.doc(params={'geom_filter': {'description': 'Geometry filter (WKT)',
-                                'type': 'str'}})
+                                    'type': 'str'}})
     @ns.doc(params={'geom_srid': {'description': 'Geometry filter SRID',
-                                'type': 'int'}})
+                                  'type': 'int'}})
     def post(self, viewer_id, group_id):
         '''Fetch a given resource'''
         item, status = dao_app.get_app_viewer_print_group_details(viewer_id, group_id)
         return item, status, {'Access-Control-Allow-Origin': '*',
-            'Access-Control-Allow-Methods': 'POST',
-            'Access-Control-Allow-Headers': 'Origin, X-Requested-With, Content-Type, Accept'
-            }
+                              'Access-Control-Allow-Methods': 'POST',
+                              'Access-Control-Allow-Headers': 'Origin, X-Requested-With, Content-Type, Accept'
+                              }
+
 
 @ns.route('/viewer/<int:viewer_id>/print/<string:print_code>/generate')
 @ns.response(404, 'Todo not found')
@@ -146,14 +151,15 @@ class AppPrintGenerate(Resource):
                 }
 
     '''Generate Print'''
+
     @ns.doc('do_print_generate')
     def post(self, viewer_id, print_code):
         '''Generate print'''
         item, status = dao_app.get_app_viewer_print_generate(viewer_id, print_code)
         return item, status, {'Access-Control-Allow-Origin': '*',
-            'Access-Control-Allow-Methods': 'POST',
-            'Access-Control-Allow-Headers': 'Origin, X-Requested-With, Content-Type, Accept'
-            }
+                              'Access-Control-Allow-Methods': 'POST',
+                              'Access-Control-Allow-Headers': 'Origin, X-Requested-With, Content-Type, Accept'
+                              }
 
 
 @ns.route('/viewer/<int:viewer_id>/print/merge')
@@ -168,14 +174,15 @@ class AppPrintMerge(Resource):
                 }
 
     '''Merge Print'''
+
     @ns.doc('do_print_merge')
     def post(self, viewer_id):
         '''Generate print'''
         item, status = dao_app.get_app_viewer_print_merge(viewer_id)
         return item, status, {'Access-Control-Allow-Origin': '*',
-            'Access-Control-Allow-Methods': 'POST',
-            'Access-Control-Allow-Headers': 'Origin, X-Requested-With, Content-Type, Accept'
-            }
+                              'Access-Control-Allow-Methods': 'POST',
+                              'Access-Control-Allow-Headers': 'Origin, X-Requested-With, Content-Type, Accept'
+                              }
 
 
 @ns.route('/data/layer/<string:layer_id>')
@@ -190,14 +197,51 @@ class AppDataLayer(Resource):
                 }
 
     '''Get a print group details'''
+
     @ns.doc('get_data_layer')
     def get(self, layer_id):
         '''Fetch a given resource'''
         item, status = dao_app.get_data_layer(layer_id)
         return item, status, {'Access-Control-Allow-Origin': '*',
-            'Access-Control-Allow-Methods': 'GET',
-            'Access-Control-Allow-Headers': 'Origin, X-Requested-With, Content-Type, Accept'
-            }
+                              'Access-Control-Allow-Methods': 'GET',
+                              'Access-Control-Allow-Headers': 'Origin, X-Requested-With, Content-Type, Accept'
+                              }
+
+
+@ns.route('/content/<int:content_id>')
+@ns.response(404, 'Todo not found')
+@ns.param('content_id', 'The content identifier')
+class AppSiteContent(Resource):
+    def options(self, content_id):
+        return {'Allow': 'GET'}, 200, \
+               {'Access-Control-Allow-Origin': '*',
+                'Access-Control-Allow-Methods': 'GET',
+                'Access-Control-Allow-Headers': 'Origin, X-Requested-With, Content-Type, Accept, X-API-KEY'
+                }
+
+    '''Get content'''
+
+    @ns.doc('get_content')
+    def get(self, content_id):
+        '''Fetch a given resource'''
+        item, status = dao_app.get_viewer_content(content_id)
+
+        if item and status == 200:
+            format = "application/json"
+            if type(item) == str:
+                format = "text/html"
+
+            response = make_response(item)
+            response.headers['Content-Type'] = format
+            response.headers['Access-Control-Allow-Origin'] = '*'
+            response.headers['Access-Control-Allow-Methods'] = 'GET'
+            response.headers['Access-Control-Allow-Headers'] = 'Origin, X-Requested-With, Content-Type, Accept'
+            return response
+        else:
+            return item, status, {'Access-Control-Allow-Origin': '*',
+                                  'Access-Control-Allow-Methods': 'GET',
+                                  'Access-Control-Allow-Headers': 'Origin, X-Requested-With, Content-Type, Accept'
+                                  }
 
 
 @ns.route('/utils/transcoord')
@@ -211,14 +255,16 @@ class AppUtilsTransCoord(Resource):
                 }
 
     '''Transform coordinates'''
+
     @ns.doc('get_trans_coord')
     def post(self):
         '''Fetch a given resource'''
         item, status = dao_viewer.app_transcoord(request.json)
         return item, status, {'Access-Control-Allow-Origin': '*',
-            'Access-Control-Allow-Methods': 'POST',
-            'Access-Control-Allow-Headers': 'Origin, X-Requested-With, Content-Type, Accept'
-            }
+                              'Access-Control-Allow-Methods': 'POST',
+                              'Access-Control-Allow-Headers': 'Origin, X-Requested-With, Content-Type, Accept'
+                              }
+
 
 @ns.route('/viewer/<path:viewer_id>/contact_message')
 @ns.response(404, 'Todo not found')
@@ -232,15 +278,16 @@ class AppContactMessage(Resource):
                 }
 
     '''Post viewer contact message'''
+
     @ns.doc('viewer_post_contact_message')
     @ns.expect(viewer_contact_message_app_api_model)
     def post(self, viewer_id):
         '''Post message viewer'''
         item, status = dao_app.send_viewer_contact_message(viewer_id, request.json)
         return item, status, {'Access-Control-Allow-Origin': '*',
-            'Access-Control-Allow-Methods': 'POST',
-            'Access-Control-Allow-Headers': 'Origin, X-Requested-With, Content-Type, Accept'
-            }
+                              'Access-Control-Allow-Methods': 'POST',
+                              'Access-Control-Allow-Headers': 'Origin, X-Requested-With, Content-Type, Accept'
+                              }
 
 
 @ns.route('/viewer/<path:viewer_id>/translations')
@@ -255,6 +302,7 @@ class AppViewerTranslations(Resource):
                 }
 
     '''Get viewer translations'''
+
     @ns.doc('viewer_translations')
     def get(self, viewer_id):
         '''Get viewer translations'''
@@ -275,11 +323,12 @@ class AppBackoffice(Resource):
                 }
 
     '''Get backoffice config'''
+
     @ns.doc('get_backoffice')
     def get(self):
         '''Fetch a given resource'''
         item, status = dao_app.get_app_backoffice()
         return item, status, {'Access-Control-Allow-Origin': '*',
-            'Access-Control-Allow-Methods': 'GET',
-            'Access-Control-Allow-Headers': 'Origin, X-Requested-With, Content-Type, Accept'
-            }
+                              'Access-Control-Allow-Methods': 'GET',
+                              'Access-Control-Allow-Headers': 'Origin, X-Requested-With, Content-Type, Accept'
+                              }

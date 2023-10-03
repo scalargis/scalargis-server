@@ -7,7 +7,7 @@ import uuid
 import requests
 from datetime import datetime
 
-from flask import request, current_app, url_for, render_template
+from flask import request, current_app, url_for, render_template, render_template_string
 from flask_security import current_user
 from sqlalchemy import func
 from flask_restx import marshal
@@ -761,6 +761,41 @@ def get_viewer_translations(viewer_id):
         }
     }
     '''
+
+
+def get_viewer_content(content_id):
+    status = 200
+
+    record = ViewerContent.query.filter(ViewerContent.id == content_id).one_or_none()
+
+    if record is None:
+        return None, 404
+
+    if record.roles:
+        user = get_user(request)
+
+        user_roles = get_user_roles(user)
+
+        if len(record.roles) > 0 and constants.ROLE_ADMIN not in user_roles and \
+                len(set(user_roles).intersection(record.roles)) == 0:
+            if user and user.is_authenticated:
+                return None, 403
+            else:
+                return None, 401
+
+    data = record.content
+    try:
+        data = json.loads(record.content)
+        if record.template:
+            data = render_template_string(record.template, data=data)
+            try:
+                data = json.loads(data)
+            except:
+                pass
+    except:
+        pass
+
+    return data, status
 
 
 def get_app_backoffice():
