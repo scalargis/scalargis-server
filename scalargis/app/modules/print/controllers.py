@@ -11,6 +11,7 @@ from geoalchemy2 import shape
 from shapely.wkt import loads
 
 from app.database import db
+from app.database.schema import get_db_schema
 from app.utils import pdf_layout, auditoria
 from app.models.portal import Print, PrintLayout, PrintGroup, PrintOutput, CoordinateSystems
 from app.utils import constants, geo
@@ -26,7 +27,8 @@ def generate_print_output_number():
     numero = None
 
     try:
-        record = db.session.execute(text('select portal.generate_print_output_number()')).first();
+        sql = 'select {schema}.generate_print_output_number()'.format(schema=get_db_schema())
+        record = db.session.execute(text(sql)).first()
 
         if record:
             numero = record[0]
