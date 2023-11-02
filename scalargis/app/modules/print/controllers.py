@@ -447,6 +447,10 @@ def viewer_generate_pdf(code, user):
         for key in form_fields:
             p.populate_string(key, form_fields[key])
 
+    if form_fields:
+        for key in form_fields:
+            p.populate_paragraph(key, form_fields[key])
+
     p.generate(json_config, scale=scale, srid=srid)
     pdf_file = p.getpdf()
     filename = str(uuid.uuid4()) + ".pdf"
