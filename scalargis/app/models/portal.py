@@ -167,7 +167,6 @@ class Print(db.Model, PortalTable, PortalTableMixin):
     draw_location = db.Column(db.Boolean())
     multi_geom = db.Column(db.Boolean())
     free_printing = db.Column(db.Boolean())
-    add_title = db.Column(db.Boolean())
     show_author = db.Column(db.Boolean(), default=False)
     payment_reference = db.Column(db.Boolean(), default=False)
     print_purpose = db.Column(db.Boolean(), default=False)
