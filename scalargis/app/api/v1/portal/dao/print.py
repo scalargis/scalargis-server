@@ -46,8 +46,7 @@ print_fields = {
     "print_purpose": "print_purpose",
     "restrict_scales": "restrict_scales",
     "free_scale": "free_scale",
-    "map_scale": "map_scale",
-    "identification": "identification"
+    "map_scale": "map_scale"
 }
 
 print_group_fields = {
@@ -69,7 +68,6 @@ print_group_fields = {
     "restrict_scales": "restrict_scales",
     "free_scale": "free_scale",
     "map_scale": "map_scale",
-    "identification": "identification",
 
     "select_prints": "select_prints",
     "group_prints": "group_prints",
@@ -199,10 +197,6 @@ def create(data):
     if 'form_fields' in data:
         record.form_fields = json.dumps(data['form_fields']) if data['form_fields'] else None
 
-    if 'identification_fields' in data:
-        record.identification_fields = json.dumps(data['identification_fields']) if data[
-            'identification_fields'] else None
-
     # Layouts
     if 'layouts' in data:
         for ld in data.get('layouts'):
@@ -277,9 +271,6 @@ def update(id, data):
 
         if 'form_fields' in data:
             record.form_fields = json.dumps(data['form_fields']) if data['form_fields'] else None
-
-        if 'identification_fields' in data:
-            record.identification_fields = json.dumps(data['identification_fields']) if data['identification_fields'] else None
 
         # Layouts
         if 'layouts' in data:
@@ -545,10 +536,6 @@ def create_print_group(data):
     if 'form_fields' in data:
         record.form_fields = json.dumps(data['form_fields']) if data['form_fields'] else None
 
-    if 'identification_fields' in data:
-        record.identification_fields = json.dumps(data['identification_fields']) if data[
-            'identification_fields'] else None
-
     if 'layouts' in data:
         # Insert
         for ld in data.get('layouts'):
@@ -637,9 +624,6 @@ def update_print_group(id, data):
 
         if 'form_fields' in data:
             record.form_fields = json.dumps(data['form_fields']) if data['form_fields'] else None
-
-        if 'identification_fields' in data:
-            record.identification_fields = json.dumps(data['identification_fields']) if data['identification_fields'] else None
 
         # Layouts
         if 'layouts' in data:
