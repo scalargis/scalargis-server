@@ -45,7 +45,6 @@ print_api_model = api.model('Print Model', {
     'location_marking': fields.Boolean(readOnly=False, description='Location Marking'),
     'draw_location': fields.Boolean(readOnly=False, description='Draw Location'),
     'free_printing': fields.Boolean(readOnly=False, description='Free Printing'),
-    'add_title': fields.Boolean(readOnly=False, description='Add title'),
     'show_author': fields.Boolean(readOnly=False, description='Show Author'),
     'payment_reference': fields.Boolean(readOnly=False, description='Payment Reference'),
     'print_purpose': fields.Boolean(readOnly=False, description='Print purpose'),
