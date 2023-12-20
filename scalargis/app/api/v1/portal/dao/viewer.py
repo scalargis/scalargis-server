@@ -33,7 +33,7 @@ viewer_fields = [
     'show_credits',
     'show_contact',
     'on_homepage',
-    # 'img_homepage',
+    'img_homepage',
     'img_icon',
     'img_logo',
     'img_logo_alt',
@@ -116,15 +116,18 @@ def get_by_filter(request):
     return page
 
 
-def get_list(request):
+def get_list(request, is_index=False):
     data = []
-    records = db.session.query(Viewer.id, Viewer.name).order_by('id').all()
+    query = db.session.query(Viewer.id, Viewer.name, Viewer.img_homepage).order_by('id')
+    if is_index:
+        query = query.filter(Viewer.on_homepage.is_(True))
+
+    records = query.all()
 
     for r in records:
-        data.append({"id": r.id, "name": r.name})
+        data.append({"id": r.id, "name": r.name, "thumbnail": r.img_homepage})
 
     return data
-
 
 def get_by_id(id):
     data = get_record_by_id(Viewer, id)

@@ -87,6 +87,17 @@ class ViewerListAll(Resource):
         else:
             return 'Bad Credenciais', 401, {'Access-Control-Allow-Origin': '*'}
 
+    @ns.doc('get index page viewers')
+    def post(self):
+        """Returns Index page Viewers List """
+        if (check_user(request, [ROLE_AUTHENTICATED])):
+            data = dao_viewer.get_list(request, is_index=True)
+            return data, 201, {'Access-Control-Allow-Origin': '*',
+                                'Access-Control-Allow-Headers': 'Content-Type,X-API-KEY'
+                                }
+        else:
+            return 'Bad Credenciais', 401, {'Access-Control-Allow-Origin': '*'}
+
 
 @ns.route('/viewers/<int:id>')
 @ns.response(404, 'Todo not found')
