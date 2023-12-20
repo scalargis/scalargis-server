@@ -10,8 +10,8 @@ log = logging.getLogger(__name__)
 
 
 api = Api(version='1.0',
-          title='Arade API',
-          description='REST API to manage Arade plataform',
+          title='ScalarGIS API',
+          description='REST API to manage ScalarGIS plataform',
           authorizations=authorizations,
           security='apikey'
           # All API metadatas

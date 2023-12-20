@@ -6,8 +6,8 @@ from app.utils.security import authorizations
 log = logging.getLogger(__name__)
 
 api = Api(version='1.0',
-          title='Arade API',
-          description='REST API to manage Arade plataform',
+          title='ScalarGIS API',
+          description='REST API to manage ScalarGIS plataform',
           authorizations=authorizations,
           security='apikey',
           doc='/docs'

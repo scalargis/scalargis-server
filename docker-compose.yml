@@ -12,6 +12,7 @@ services:
     extra_hosts:
       - "host.docker.internal:host-gateway"
     volumes:
+      - ./docker:/var/scalargis/scalargis/configs
       - ./scalargis/instance:/var/scalargis/scalargis/instance
       - ./scalargis/tmp:/var/scalargis/scalargis/tmp
       - ./scalargis/uploads:/var/scalargis/scalargis/uploads
@@ -31,6 +32,31 @@ services:
       - URL_PREFIX=${URL_PREFIX}
     networks:
       - scalargis
+    depends_on:
+      - db
+
+  db:
+    image: postgis/postgis:15-3.3-alpine
+    container_name: ${CONTAINER_NAME}-db
+    hostname: ${CONTAINER_NAME}-db
+    env_file:
+      - docker/.env.docker
+    volumes:
+      - scalargis-db-data:/var/lib/postgresql/data
+    ports:
+      - 5001:5432
+    networks:
+      - scalargis
+    restart: on-failure
+    healthcheck:
+      test: "pg_isready -d scalargis -U scalargis"
+      interval: 60s
+      timeout: 10s
+      retries: 4
+
 
 networks:
   scalargis:
+
+volumes:
+  scalargis-db-data:

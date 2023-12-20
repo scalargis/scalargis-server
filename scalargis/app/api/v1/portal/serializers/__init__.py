@@ -142,7 +142,7 @@ viewer_api_model = api.model('Viewer Model', {
     'show_credits': fields.Boolean(required=False, description='Show credits'),
     'show_contact': fields.Boolean(required=False, description='Show contact'),
     'on_homepage': fields.Boolean(required=False, description='Show on homepage'),
-    'img_homepage': fields.String(required=False, description='Image to show on homepage'),
+    'img_homepage': fields.String(required=False, description='Image thumbnail to show on homepage'),
     'img_logo': fields.String(required=False, description='Image logo'),
     'img_logo_alt': fields.String(required=False, description='Image logo, alternative version'),
     'img_icon': fields.String(required=False, description='Image icon'),
