@@ -4,7 +4,7 @@ flask_ldap3_login
 flask_sqlalchemy
 flask-restx
 requests
-bcrypt
+bcrypt~=4.0.1
 email_validator
 psycopg2-binary
 GeoAlchemy2
