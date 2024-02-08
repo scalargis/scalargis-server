@@ -264,7 +264,8 @@ def calculate_bbox_geom(geom, img_w, img_h, dpi=90, scale_gap=100, min_scale=Non
     return [minx, miny, maxx, maxy], scale
 
 
-def calculate_scale_geom(geom, size_w, size_h, scale_gap=100, min_scale_denom=None, max_scale_denom=None):
+def calculate_scale_geom(geom, size_w, size_h, scale_gap=100, min_scale_denom=None, max_scale_denom=None,
+                         geom_buffer=None, paper_buffer=None):
     """Calculate scale based on geom and paper size
 
     Parameters:
@@ -275,6 +276,8 @@ def calculate_scale_geom(geom, size_w, size_h, scale_gap=100, min_scale_denom=No
     scale_gap (integer)
     min_scale_denom (integer)
     max_scale_denom (integer)
+    geom_buffer (integer): geom units
+    paper_buffer (num): in cm, approx.
 
     Returns:
     scale
@@ -289,10 +292,17 @@ def calculate_scale_geom(geom, size_w, size_h, scale_gap=100, min_scale_denom=No
     else:
         gm = geom
 
+    if geom_buffer:
+        gm = gm.buffer(geom_buffer)
+
     bbox = gm.bounds
 
     dx = bbox[2] - bbox[0]
     dy = bbox[3] - bbox[1]
+
+    if paper_buffer:
+        size_w = size_w - (paper_buffer * 2)
+        size_h = size_h - (paper_buffer * 2)
 
     if dx / size_w > dy / size_h:
         scale = (dx * 100) / size_w
