@@ -210,8 +210,8 @@ class Pdf:
         self.images.append([path, x, y, width, page_id])
 
 
-    def add_table(self, x, y, width, height, data, table_style=None, page_id=None):
-        self.tables.append([x, y, width, height, data, table_style, page_id])
+    def add_table(self, x, y, width, height, data, table_style=None, page_id=None, table_style_def=None):
+        self.tables.append([x, y, width, height, data, table_style, page_id, table_style_def])
 
 
     def populate_string(self, string_name, txt, page_id=None):
@@ -267,15 +267,13 @@ class Pdf:
             logger.warning("Can't generate: object is closed. Exiting...")
             return
 
-        # config_file_path = os.path.join(APP_RESOURCES, config_file)
-        # with open(config_file_path, encoding='utf-8') as data_file:
-        #    self.configs = json.load(data_file,)
         try:
-            self.configs = json.loads(config_file)
+            self.configs = json.loads(config_file) # default, config is a string
             logger.debug("JSON config loaded...")
         except Exception as err:
-            logger.error(str(err) + " :: can't load json config. Check json structure. Exiting...")
-            raise Exception(err)
+            logger.debug(str(err) + " :: config file is not a string, using as python dict")
+            # allow to pass python dict config in generate
+            self.configs = config_file
 
         need_append = False
         nb_confgis = len(self.configs)
@@ -964,7 +962,8 @@ class Pdf:
                     tb_height = table[3]
                     tb_data = table[4]
                     tb_table_style = table[5]
-                    self.insert_table(tb_x, tb_y, tb_width, tb_height, tb_data, tb_table_style)
+                    table_style_def = table[7]
+                    self.insert_table(tb_x, tb_y, tb_width, tb_height, tb_data, tb_table_style, table_style_def)
 
             # coords corner bbox
             if 'map' in config:
@@ -1140,6 +1139,10 @@ class Pdf:
                 coords = f['geometry']['coordinates']
                 x = (coords[0] - xmin) / xfactor
                 y = (coords[1] - ymin) / yfactor
+
+                paper_shift_x = f['geometry']['paper_shift_x'] if 'paper_shift_x' in f['geometry'] else 0
+                paper_shift_y = f['geometry']['paper_shift_y'] if 'paper_shift_y' in f['geometry'] else 0
+
                 if f['properties']['type'] == 'Point':
                     point_radius = f['properties']['_style']['image']['radius']
                     stroke = f['properties']['_style']['image']['stroke']
@@ -1147,12 +1150,33 @@ class Pdf:
                     fill = f['properties']['_style']['image']['fill']
                     fill_color = self.get_color_array_from_rgba_string(fill['color'])
                     self.draw_circle(x, y, point_radius/4, stroke_color, fill=True, fillcolor=fill_color)
+
+
+                elif f['properties']['type'] == 'Paragraph':
+                    txt = f['properties']['_style']['text']['text']
+                    txt_size = f['properties']['_style']['text']['width']
+                    color = f['properties']['_style']['text']['stroke']['color']
+                    width = f['properties']['_style']['width']
+                    height = f['properties']['_style']['height']
+                    txt_color = self.get_color_array_from_rgba_string(color)
+
+                    options = f['properties']['_style']['options'] if 'options' in f['properties']['_style'] else {}
+
+                    self.insert_paragraph(x,y,width,height,txt,fontsize=txt_size, fontcolor=txt_color, options=options,
+                                          paper_shift_x=paper_shift_x, paper_shift_y=paper_shift_y)
+
                 elif f['properties']['type'] == 'Text':
                     txt = f['properties']['_style']['text']['text']
                     txt_size = f['properties']['_style']['text']['width']
                     color = f['properties']['_style']['text']['stroke']['color']
                     txt_color = self.get_color_array_from_rgba_string(color)
-                    self.insert_string(x, y, txt, font="Helvetica", fontsize=txt_size, fontcolor=txt_color, mode=None, rotation=0)
+
+                    if 'mode' in f['properties']['_style']['text']:
+                        txt_mode = f['properties']['_style']['text']['mode']
+                    else:
+                        txt_mode = None
+
+                    self.insert_string(x, y, txt, font="Helvetica", fontsize=txt_size, fontcolor=txt_color, mode=txt_mode, rotation=0)
                 elif f['properties']['type'] == 'Symbol':
                     sy_type = f['properties']['_style']['shape']['type']
                     if sy_type == 'circle':
@@ -1509,36 +1533,41 @@ class Pdf:
 
 
     def insert_paragraph(self, x, y, width, height, txt, font="Helvetica", fontsize=8, fontcolor=None, leading=9,
-                         style="default"):
+                         style="default",options={}, paper_shift_x=0, paper_shift_y=0):
+        # paper_shift: shift x and y in mm
+
+        x = x + paper_shift_x
+        y = y + paper_shift_y
+
         if fontcolor is None:
             fontcolor = [0, 0, 0, 1]
         styles = {
             'default': ParagraphStyle(
                 'default',
-                fontName=font,
-                fontSize=fontsize,
-                leading=leading,  # =9,
-                leftIndent=0,
-                rightIndent=0,
-                firstLineIndent=0,
-                alignment=TA_JUSTIFY,
-                spaceBefore=0,
-                spaceAfter=0,
-                bulletFontName='Times-Roman',
-                bulletFontSize=10,
-                bulletIndent=0,
-                textColor=fontcolor,
-                backColor=None,
-                wordWrap=None,
-                borderWidth=0,
-                borderPadding=0,
-                borderColor=None,
-                borderRadius=None,
-                allowWidows=1,
-                allowOrphans=0,
-                textTransform=None,  # 'uppercase' | 'lowercase' | None
-                endDots=None,
-                splitLongWords=1,
+                fontName= options['fontName'] if 'fontName' in options else font,
+                fontSize=options['fontSize'] if 'fontSize' in options else fontsize,
+                leading=options['leading'] if 'leading' in options else leading,  # =9,
+                leftIndent=options['leftIndent'] if 'leftIndent' in options else 0,
+                rightIndent=options['rightIndent'] if 'rightIndent' in options else 0,
+                firstLineIndent=options['firstLineIndent'] if 'firstLineIndent' in options else 0,
+                alignment=options['alignment'] if 'alignment' in options else TA_JUSTIFY,
+                spaceBefore=options['spaceBefore'] if 'spaceBefore' in options else 0,
+                spaceAfter=options['spaceAfter'] if 'spaceAfter' in options else 0,
+                bulletFontName=options['bulletFontName'] if 'bulletFontName' in options else 'Times-Roman',
+                bulletFontSize=options['bulletFontSize'] if 'bulletFontSize' in options else 10,
+                bulletIndent=options['bulletIndent'] if 'bulletIndent' in options else 0,
+                textColor=options['textColor'] if 'textColor' in options else fontcolor,
+                backColor= options['backColor'] if 'backColor' in options else None,
+                wordWrap=options['wordWrap'] if 'wordWrap' in options else None,
+                borderWidth=options['borderWidth'] if 'borderWidth' in options else 0,
+                borderPadding=options['borderPadding'] if 'borderPadding' in options else 0,
+                borderColor=options['borderColor'] if 'borderColor' in options else None,
+                borderRadius=options['borderRadius'] if 'borderRadius' in options else None,
+                allowWidows=options['allowWidows'] if 'allowWidows' in options else 1,
+                allowOrphans=options['allowOrphans'] if 'allowOrphans' in options else 0,
+                textTransform=options['textTransform'] if 'textTransform' in options else None,  # 'uppercase' | 'lowercase' | None
+                endDots=options['endDots'] if 'endDots' in options else None,
+                splitLongWords=options['splitLongWords'] if 'splitLongWords' in options else 1,
             ),
         }
 
@@ -1923,7 +1952,7 @@ class Pdf:
                 break
 
 
-    def insert_table(self, x, y, width, height, data, table_style):
+    def insert_table(self, x, y, width, height, data, table_style, table_style_def=None):
         # ----------------  named styles
         # grided, first row merged title, second row with fields gray bck.
         tab_style_generic1 = TableStyle([
@@ -1970,16 +1999,19 @@ class Pdf:
 
         t = Table(data)
 
-        if table_style == "tab_style_generic1":
-            t.setStyle(tab_style_generic1)
-        if table_style == "tab_style_simple_green":
-            t.setStyle(tab_style_simple_green)
-        if table_style == "tab_style_simple_red":
-            t.setStyle(tab_style_simple_red)
-        if table_style == "tab_style_simple_gray":
-            t.setStyle(tab_style_simple_gray)
-        if table_style == "tab_style_all_txt_middle":
-            t.setStyle(tab_style_all_txt_middle)
+        if table_style_def:
+            t.setStyle(TableStyle(table_style_def))
+        else:
+            if table_style == "tab_style_generic1":
+                t.setStyle(tab_style_generic1)
+            if table_style == "tab_style_simple_green":
+                t.setStyle(tab_style_simple_green)
+            if table_style == "tab_style_simple_red":
+                t.setStyle(tab_style_simple_red)
+            if table_style == "tab_style_simple_gray":
+                t.setStyle(tab_style_simple_gray)
+            if table_style == "tab_style_all_txt_middle":
+                t.setStyle(tab_style_all_txt_middle)
 
         t.wrap(width * mm, height * mm)
         t.drawOn(self.canvas, x * mm, y * mm)
