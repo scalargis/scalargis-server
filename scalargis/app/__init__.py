@@ -5,7 +5,7 @@ import logging.config
 from flask import Flask
 from flask_mail import Mail
 
-__version__ = '0.1.0.dev'
+__version__ = '0.1.0'
 
 base_path = os.path.join(os.path.dirname(os.path.abspath(__file__)))
 instance_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'instance')
