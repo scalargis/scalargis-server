@@ -87,16 +87,38 @@ class GeoserverRestRequests():
         return r.text
 
 
-    def cleanLayerTileCacheByBbox(self, ws_name, service_name, bbox=""):
-        url = '%s/gwc/rest/seed/%s:%s' % (self.url, ws_name, service_name)
-        headers = {'Content-Type': 'text/xml'}
+    def truncateLayerTileCache(self, ws_name, service_name, format, srs):
+        # empty gwc layer cache (no bbox)
+
+        url = '%s/gwc/rest/seed/%s:%s.json' % (self.url, ws_name, service_name)
+        headers = {'Content-Type': 'application/json'}
         auth = (self.username, self.password)
 
-        
         data = """
-        {'seedRequest':{'name':'%s:%s','bounds':{'coords':{ 'double':['-124.0','22.0','66.0','72.0']}},
-        'srs':{'number':3857},'zoomStart':1,'zoomStop':20,'format':'image\/png','type':'truncate','threadCount':1}}} 
-        """ % (self.url, ws_name, service_name)
+        {'seedRequest':{'name':'%s:%s',
+        'format':'%s',
+        'srs':{'number': %s},
+        'zoomStart':1,'zoomStop':20,
+        'type':'truncate','threadCount':1}}} 
+        """ % ( ws_name, service_name, format, srs)
 
         r = requests.post(url, headers=headers, auth=auth, data=data)
-        return r.text
+        return {"status": r.status_code, "reason": r.reason}
+
+    def seedLayerTileCache(self, ws_name, service_name, srs, format,zoomStart, zoomStop, threadCount):
+        # seed gwc layer
+
+        url = '%s/gwc/rest/seed/%s:%s.json' % (self.url, ws_name, service_name)
+        headers = {'Content-Type': 'application/json'}
+        auth = (self.username, self.password)
+
+        data = """
+        {'seedRequest':{'name':'%s:%s',
+        'format':'%s',
+        'srs':{'number':%s},
+        'zoomStart':%s,'zoomStop':%s,
+        'type':'seed','threadCount':%s}}} 
+        """ % ( ws_name, service_name, format, srs, zoomStart, zoomStop, threadCount)
+
+        r = requests.post(url, headers=headers, auth=auth, data=data)
+        return {"status": r.status_code, "reason": r.reason}
