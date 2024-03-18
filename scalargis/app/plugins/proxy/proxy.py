@@ -41,6 +41,9 @@ def proxy():
         if h.lower() == 'http_referer':
             s.headers.update({'referer': request.headers.environ.get(h)})
 
+    if request.range:
+        s.headers.update({'range': request.range.to_header()})
+
     if request.method == 'POST':
         r = s.post(url, data=request.data, cookies=cookies, verify=False)
     else:
