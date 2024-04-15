@@ -8,6 +8,7 @@ from reportlab.lib.styles import ParagraphStyle
 from reportlab.platypus import Paragraph
 from reportlab.platypus import Table, TableStyle
 from reportlab.lib.enums import TA_JUSTIFY  # , TA_LEFT, TA_CENTER
+from reportlab.lib.colors import Color
 
 #from PyPDF2 import PdfFileWriter, PdfFileReader, PdfFileMerger
 from PyPDF2 import PdfWriter, PdfReader, PdfMerger
@@ -1557,7 +1558,6 @@ class Pdf:
                 bulletFontSize=options['bulletFontSize'] if 'bulletFontSize' in options else 10,
                 bulletIndent=options['bulletIndent'] if 'bulletIndent' in options else 0,
                 textColor=options['textColor'] if 'textColor' in options else fontcolor,
-                backColor= options['backColor'] if 'backColor' in options else None,
                 wordWrap=options['wordWrap'] if 'wordWrap' in options else None,
                 borderWidth=options['borderWidth'] if 'borderWidth' in options else 0,
                 borderPadding=options['borderPadding'] if 'borderPadding' in options else 0,
@@ -1568,6 +1568,9 @@ class Pdf:
                 textTransform=options['textTransform'] if 'textTransform' in options else None,  # 'uppercase' | 'lowercase' | None
                 endDots=options['endDots'] if 'endDots' in options else None,
                 splitLongWords=options['splitLongWords'] if 'splitLongWords' in options else 1,
+                backColor=Color(options['backColor'][0], options['backColor'][1],
+                                options['backColor'][2],
+                                alpha=options['backColor'][3] if len(options['backColor']) == 4 else 1) if 'backColor' in options else None
             ),
         }
 
