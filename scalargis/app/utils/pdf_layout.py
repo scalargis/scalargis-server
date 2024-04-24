@@ -183,9 +183,9 @@ class Pdf:
         # quality: factor for wms, dpi for esri_rest
         self.maps.append([serv_type, url, layers, page_id, img_format, quality, transparent, cql_filter, style, opacity])
 
-    def add_legend(self, url, layer, x, y, width, gs_vendor_option="", serv_type="wms", style="" ):
+    def add_legend(self, url, layer, x, y, width, gs_vendor_option="", serv_type="wms", style="", page_id=None):
         # add service legend
-        self.legends.append([url, layer, x, y, width, gs_vendor_option, serv_type, style])
+        self.legends.append([url, layer, x, y, width, gs_vendor_option, serv_type, style, page_id])
 
     def add_widget_input(self, widget_input):
         # add widget_inputs to be merged
@@ -752,7 +752,7 @@ class Pdf:
 
             # dynamic legend  ----------------------------------
             for dlegend in self.legends:
-                if dlegend[6] == 'wms':
+                if dlegend[6] == 'wms' and (dlegend[8] is None or dlegend[8] == config["page_id"]) :
                     self.insert_legend('wms', dlegend[0], dlegend[1], dlegend[2], dlegend[3], dlegend[4],
                                        gs_vendor_options=dlegend[5],
                                        style=dlegend[7])
