@@ -1346,22 +1346,28 @@ class Pdf:
                 if gm.geom_type == 'Polygon':
                     gm = geometry.MultiPolygon([gm])
 
-                for i in range(len(gm.geoms)):
-                    logger.debug(gm.geoms[i])
+                if polygon_stroke_dash:
+                    self.canvas.setDash(6, 3)
+                self.canvas.setLineWidth(polygon_stroke_width)
+
+                def draw_geom_ring(ring):
+                    logger.debug(ring)
                     path = self.canvas.beginPath()
-                    ox = (float(gm.geoms[i].exterior.coords[0][0]) - xmin) / xfactor
-                    oy = (float(gm.geoms[i].exterior.coords[0][1]) - ymin) / yfactor
-                    path.moveTo(ox * mm, oy * mm)
-                    for p in gm.geoms[i].exterior.coords:
+                    start_x = (float(ring.coords[0][0]) - xmin) / xfactor
+                    start_y = (float(ring.coords[0][1]) - ymin) / xfactor
+                    path.moveTo(start_x * mm, start_y * mm)
+                    for p in ring.coords:
                         x = (p[0] - xmin) / xfactor
                         y = (p[1] - ymin) / yfactor
                         if polygon_vertice:
                             self.canvas.circle(x * mm, y * mm, vertice_size * mm, fill=0)
                         path.lineTo(x * mm, y * mm)
-                    self.canvas.setLineWidth(polygon_stroke_width)
-                    if polygon_stroke_dash:
-                        self.canvas.setDash(6, 3)
                     self.canvas.drawPath(path, stroke=1, fill=1)
+
+                for i in range(len(gm.geoms)): # draw exterior rings
+                    draw_geom_ring(gm.geoms[i].exterior)
+                    for ii in range(len(gm.geoms[i].interiors)):  # draw interior rings
+                        draw_geom_ring(gm.geoms[i].interiors[ii])
 
             else:
                 logger.warning("Bad geom type")
