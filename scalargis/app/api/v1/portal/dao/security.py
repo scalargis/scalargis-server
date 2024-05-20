@@ -33,7 +33,7 @@ def send_email_confirmation(user, subject=None, msg=None, template=None, redirec
 
     msg_subject = subject if subject else "Registo de Utilizador"
 
-    msg_text = msg if msg else render_template(template or 'security/email/confirm_registration.html',
+    msg_text = msg if msg else render_template(template or '/v1/security/email/confirm_registration.html',
                                                APP_HOST_URL=get_host_url(),
                                                APP_SCRIPT_ROOT=get_script_root(),
                                                APP_BASE_URL=get_base_url(),
@@ -131,11 +131,11 @@ def send_confirmation(request):
 
     if user is not None:
         redirect = redirect if redirect else user.default_viewer or ''
-        send_email_confirmation(user, subject="Registo de utilizador", redirect=redirect)
+        send_email_user_registration(user, subject="Registo de utilizador", redirect=redirect)
     else:
         return {'status': 401, 'error': True, 'message': 'Não existe nenhum registo de utilizador com o email indicado.'}, 401
 
-    return { 'message': 'Enviada confirmação de registo de utilizador para o email ricardogsena@gmail.com'}, 200
+    return {'message': 'Enviada confirmação de registo de utilizador para o email {}'.format(email), 'email': email}, 200
 
 
 def confirm_email(request):
