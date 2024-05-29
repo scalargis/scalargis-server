@@ -46,6 +46,8 @@ viewer_fields = [
 
 
 class TransCoordResult(db.Model):
+    __abstract__ = True
+
     code = db.Column(db.Text(), primary_key=True)
     srid = db.Column(db.Integer())
     name = db.Column(db.Text())
@@ -518,9 +520,9 @@ def app_transcoord(data):
 
     crs_list = db.session.query(CoordinateSystems).all()
 
-    records = db.session.query(TransCoordResult).from_statement(
-        sql.text("select code, srid, name, x, y, z from {schema}.transform_coordinates(:srid, :x, :y, 0)".format(schema=db_schema))). \
-        params(srid=srid, x=x, y=y, z=z).all()
+    records = db.session.execute(sql.text(
+        "select code, srid, name, x, y, z from {schema}.transform_coordinates(:srid, :x, :y, 0)". \
+            format(schema=db_schema)), dict(srid=srid, x=x, y=y, z=z)).all()
 
     results = {}
     for r in records:
