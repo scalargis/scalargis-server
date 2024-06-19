@@ -27,7 +27,7 @@
 
 # -- EXTENSIONS --
 # SCALARGIS_EXTENSIONS = []
-# SCALARGIS_PLUGINS_EXTENSIONS = []
+# SCALARGIS_EXTENSIONS_SERVICES = []
 
 # -- Geoserver Url replace [[From, To], [From, To]] --
 # SCALARGIS_ROUTE_GEOSERVER = []
