@@ -63,7 +63,13 @@ def configure_app(flask_app):
         flask_app.config.from_pyfile(os.path.join(instance_path, os.environ.get('APP_CONFIG_FILE')), silent=True)
 
     # Load backoffice configuration
-    flask_app.config.from_pyfile('config_backoffice.py')
+    if os.environ.get('BACKOFFICE_CONFIG_FILE') and os.path.exists(os.environ.get('BACKOFFICE_CONFIG_FILE')):
+        flask_app.config.from_pyfile(os.environ.get('BACKOFFICE_CONFIG_FILE'))
+    elif os.environ.get('BACKOFFICE_CONFIG_FILE') and os.path.exists(
+            os.path.join(instance_path, os.environ.get('BACKOFFICE_CONFIG_FILE'))):
+        flask_app.config.from_pyfile(os.path.join(instance_path, os.environ.get('BACKOFFICE_CONFIG_FILE')), silent=True)
+    else:
+        flask_app.config.from_pyfile('config_backoffice.py', silent=True)
 
 
 def setup_security(flask_app):
