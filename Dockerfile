@@ -14,7 +14,7 @@ ADD . /var/scalargis
 WORKDIR /var/scalargis
 
 # Install ScalarGIS dependencies
-RUN pip3 install -r requirements.txt --cache-dir .pip-cache && rm -rf .pip-cache
+RUN pip3 install --break-system-packages -r requirements.txt --cache-dir .pip-cache && rm -rf .pip-cache
 
 # Set source folder
 WORKDIR /var/scalargis/scalargis
