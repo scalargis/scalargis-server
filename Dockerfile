@@ -5,6 +5,7 @@ MAINTAINER ricardo.sena@wkt.pt
 RUN apt update && DEBIAN_FRONTEND=noninteractive apt install -y \
   iputils-ping \
   python3-pip \
+  libtiff-dev \
   && rm -rf /var/lib/apt/lists/*
 
 # Add app components
