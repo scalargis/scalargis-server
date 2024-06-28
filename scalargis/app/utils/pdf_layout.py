@@ -1567,13 +1567,17 @@ class Pdf:
                 wordWrap=options['wordWrap'] if 'wordWrap' in options else None,
                 borderWidth=options['borderWidth'] if 'borderWidth' in options else 0,
                 borderPadding=options['borderPadding'] if 'borderPadding' in options else 0,
-                borderColor=options['borderColor'] if 'borderColor' in options else None,
                 borderRadius=options['borderRadius'] if 'borderRadius' in options else None,
                 allowWidows=options['allowWidows'] if 'allowWidows' in options else 1,
                 allowOrphans=options['allowOrphans'] if 'allowOrphans' in options else 0,
                 textTransform=options['textTransform'] if 'textTransform' in options else None,  # 'uppercase' | 'lowercase' | None
                 endDots=options['endDots'] if 'endDots' in options else None,
                 splitLongWords=options['splitLongWords'] if 'splitLongWords' in options else 1,
+
+                #borderColor=options['borderColor'] if 'borderColor' in options else None,
+                borderColor=Color(options['borderColor'][0], options['borderColor'][1],
+                                options['borderColor'][2],
+                                alpha=options['borderColor'][3] if len(options['borderColor']) == 4 else 1) if 'borderColor' in options else None,
                 backColor=Color(options['backColor'][0], options['backColor'][1],
                                 options['backColor'][2],
                                 alpha=options['backColor'][3] if len(options['backColor']) == 4 else 1) if 'backColor' in options else None
