@@ -11,6 +11,9 @@
 # -- DATATABSE connection --
 # SQLALCHEMY_DATABASE_URI = "postgresql+psycopg2://postgres:postgres@localhost:5432/scalargis"
 
+# -- Other database connections --
+# SQLALCHEMY_BINDS = {}
+
 # -- SCALARGIS settings --
 # SCALARGIS_DB_SCHEMA = "scalargis"
 
