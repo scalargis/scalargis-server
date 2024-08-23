@@ -160,7 +160,11 @@ def save_viewer_session(viewer_id_or_slug, data):
 
     record.config_version = '1.0'
     config_json = json.loads(data['config_json']) if isinstance(data['config_json'], str) else data['config_json']
-    record.config_json = json.dumps(config_json)
+    session_layers = data.get("session_layers", [])
+    session_layers = json.loads(session_layers) if isinstance(session_layers, str) else session_layers
+
+    session_data = {"session_layers": session_layers, "config_json": config_json}
+    record.config_json = json.dumps(session_data)
 
     db.session.add(record)
     db.session.commit()
@@ -173,7 +177,7 @@ def save_viewer_session(viewer_id_or_slug, data):
             "success": True
         }
 
-    return  response, status
+    return response, status
 
 
 def send_viewer_contact_message(viewer_id, data):
@@ -469,7 +473,9 @@ def build_viewer_config(record, user_roles, user=None, session=False):
 
             if session:
                 session_cfg = json.loads(viewer_session.config_json)
-                viewer_cfg['config_json'] = session_cfg
+                viewer_cfg['config_json'] = session_cfg.get('config_json') if "config_json" in session_cfg \
+                    else session_cfg
+                viewer_cfg['session_layers'] = session_cfg.get('session_layers', [])
                 viewer_cfg['is_session'] = True
 
     '''
