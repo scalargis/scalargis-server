@@ -16,6 +16,7 @@ from PyPDF2 import PdfWriter, PdfReader, PdfMerger
 import qrcode
 
 from shapely import wkt, geometry
+import pyproj
 from sqlalchemy import text
 from PIL import Image
 from io import BytesIO
@@ -113,6 +114,7 @@ class Pdf:
         self.db_vars = {}
         self.widget_inputs = []
         self.drawing_features = None
+        self.drawings = None # Scalargis DrawTools features
 
         page_size_dict = {"A4": A4, "A3": A3, "A2": A2, "A1": A1, "A0": A0}
         try:
@@ -705,6 +707,16 @@ class Pdf:
                         self.draw_features(scale, mapcenter[0], mapcenter[1], width, height, ll_x, ll_y,
                                            self.drawing_features)
 
+            # Scalargis Drawtools elements --------------------------
+            if self.drawings:
+                if "draw_scalargis_drawings" in config["params"]:
+                    if config["params"]["draw_scalargis_drawings"]:
+                        try:
+                            self.insert_drawings(srid, scale, mapcenter[0], mapcenter[1], width, height, ll_x, ll_y,
+                                                   self.drawings)
+                        except:
+                            logger.warning('Print Scalargis drawings error')
+
             # clean feature outside map
             try:
                 clean = config["params"]["clean_arround_map"]
@@ -1098,6 +1110,132 @@ class Pdf:
 
                 if need_append:
                     self.append_pdf(self.tmp_output, self.output)
+
+
+    def get_color_from_drawtools_style(self, style_object):
+        return [float(style_object['r']) / 255,
+                  float(style_object['g']) / 255,
+                  float(style_object['b']) / 255,
+                  float(style_object['a'])]
+
+    def insert_drawings(self, srid, scale, mapcenter_x, mapcenter_y, width, height, ll_x, ll_y, drawing_features):
+        # Scalargis Drawtools elements
+
+        xmin, ymin, xmax, ymax = self.calc_bbox(scale, mapcenter_x, mapcenter_y, width, height)
+        xfactor = abs(xmax - xmin) / width
+        yfactor = abs(ymax - ymin) / height
+        self.canvas.saveState()
+        self.canvas.translate(ll_x * mm, ll_y * mm)
+
+        # polygons
+        for elt in drawing_features:
+            in_crs = pyproj.CRS(elt['crs']['properties']['name'])
+            geom_type = elt['geometry']['type']
+            coords = elt['geometry']['coordinates']
+            style = elt['properties']['state']
+            size = int(style['size'])
+            fill_color = self.get_color_from_drawtools_style(style['fill'])
+            stroke_color = self.get_color_from_drawtools_style(style['stroke'])
+            if geom_type == 'Polygon':
+                coords_paper = []
+                for coord in coords[0]:
+                    point = geometry.Point(coord)
+                    point_layout_srid = geo.transformGeom2(point, 'epsg:{0}'.format(in_crs.to_epsg()),
+                                                          'epsg:{0}'.format(srid))
+                    x = (point_layout_srid[0] - xmin) / xfactor
+                    y = (point_layout_srid[1] - ymin) / yfactor
+                    coords_paper.append([x, y])
+                self.draw_path(coords_paper, size, stroke_color, True, fill_color)
+
+
+        # lines
+        for elt in drawing_features:
+            in_crs = pyproj.CRS(elt['crs']['properties']['name'])
+            geom_type = elt['geometry']['type']
+            coords = elt['geometry']['coordinates']
+            style = elt['properties']['state']
+            size = int(style['size'])
+            fill_color = self.get_color_from_drawtools_style(style['fill'])
+            stroke_color = self.get_color_from_drawtools_style(style['stroke'])
+            if geom_type == 'LineString':
+                coords_paper = []
+                for coord in coords:
+                    point = geometry.Point(coord)
+                    point_layout_srid = geo.transformGeom2(point, 'epsg:{0}'.format(in_crs.to_epsg()),
+                                                          'epsg:{0}'.format(srid))
+                    x = (point_layout_srid[0] - xmin) / xfactor
+                    y = (point_layout_srid[1] - ymin) / yfactor
+                    coords_paper.append([x, y])
+                self.draw_path(coords_paper, size, stroke_color)
+
+        # points
+        for elt in drawing_features:
+            in_crs = pyproj.CRS(elt['crs']['properties']['name'])
+            geom_type = elt['geometry']['type']
+            coords = elt['geometry']['coordinates']
+            style = elt['properties']['state']
+            size = int(style['size'])
+            fill_color = self.get_color_from_drawtools_style(style['fill'])
+            stroke_color = self.get_color_from_drawtools_style(style['stroke'])
+            if geom_type == 'Point':
+                point = geometry.Point(coords)
+                point_layout_srid = geo.transformGeom2(point, 'epsg:{0}'.format(in_crs.to_epsg()), 'epsg:{0}'.format(srid))
+                x = (point_layout_srid[0] - xmin) / xfactor
+                y = (point_layout_srid[1] - ymin) / yfactor
+
+                if style['draw_geom']:
+                    self.draw_circle(x, y, size / 4, stroke_color, fill=True, fillcolor=fill_color)
+
+                if style['draw_symbol']:
+                    if style['symbol_type'] == 'triangle':
+                        self.draw_triangle(x, y, size / 4, fill_color, stroke_color, rotate=90)
+                    if style['symbol_type'] == 'circle':
+                        self.draw_circle(x, y, size / 4, stroke_color, fill=True, fillcolor=fill_color)
+                    if style['symbol_type'] == 'star':
+                        self.draw_star(x, y, size / 3, fill_color, stroke_color)
+                    if style['symbol_type'] == 'square':
+                        self.draw_rectangle(x, y,size / 3, size / 3, fill_color, stroke_color)
+                    if style['symbol_type'] == 'x':
+                        self.draw_cross(x, y,size / 3, stroke_color, rotate=45)
+                    if style['symbol_type'] == 'cross':
+                        self.draw_cross(x, y, size / 3, stroke_color)
+
+        # text
+        for elt in drawing_features:
+            in_crs = pyproj.CRS(elt['crs']['properties']['name'])
+            geom_type = elt['geometry']['type']
+            coords = elt['geometry']['coordinates']
+            style = elt['properties']['state']
+            size = int(style['size'])
+
+            fill_color = self.get_color_from_drawtools_style(style['fill'])
+            del fill_color[-1]  # need remove alfa to work
+            stroke_color = self.get_color_from_drawtools_style(style['stroke'])
+            stroke_color[3] = 0.4 # fixed transparency for background color
+
+            if style['draw_text']:
+                point = geometry.Point(coords)
+                point_layout_srid = geo.transformGeom2(point, 'epsg:{0}'.format(in_crs.to_epsg()), 'epsg:{0}'.format(srid))
+                x = (point_layout_srid[0] - xmin) / xfactor
+                y = (point_layout_srid[1] - ymin) / yfactor
+                txt_value = style['text_value']
+                txt_size = int(style['text_size'][:-2]) - 1
+                txt_style = style['text_style']
+                txt_font = style['text_font']
+                txt_width = (txt_size / 5.5) * len(str(txt_value))
+                txt_options = {"borderColor": stroke_color, "backColor": stroke_color,
+                               "borderPadding": (1,2,2+(txt_size - 7),2),
+                               "borderRadius": 3, "borderWidth": 1}
+
+                self.insert_paragraph(x, y, txt_width, txt_size * 4, txt_value,
+                                      font="Helvetica", fontsize=txt_size, fontcolor=fill_color,
+                                      leading=9, style="default", options=txt_options,
+                                      paper_shift_x=0, paper_shift_y=0)
+
+
+        # ending:
+        self.canvas.restoreState()
+
 
 
     def draw_features(self,scale, mapcenter_x, mapcenter_y, width, height, ll_x, ll_y,features):
@@ -1548,6 +1686,7 @@ class Pdf:
 
         if fontcolor is None:
             fontcolor = [0, 0, 0, 1]
+
         styles = {
             'default': ParagraphStyle(
                 'default',
@@ -1828,7 +1967,7 @@ class Pdf:
         self.canvas.setStrokeColor(colors.Color(strokecolor[0],strokecolor[1],strokecolor[2],strokecolor[3]))
         self.canvas.setFillColor(colors.Color(fillcolor[0],fillcolor[1],fillcolor[2],fillcolor[3]))
         p.close()
-        self.canvas.drawPath(p)
+        self.canvas.drawPath(p, fill=1)
 
     def draw_cross(self, xcenter, ycenter, radius, strokecolor, rotate=0):
         # rotate angle in degree
@@ -1865,7 +2004,7 @@ class Pdf:
         self.canvas.setStrokeColor(colors.Color(strokecolor[0],strokecolor[1],strokecolor[2],strokecolor[3]))
         self.canvas.setFillColor(colors.Color(fillcolor[0],fillcolor[1],fillcolor[2],fillcolor[3]))
         p.close()
-        self.canvas.drawPath(p)
+        self.canvas.drawPath(p, fill=1)
 
     def draw_path(self, coords, line_width, color, fill=False, fillcolor=None):
         # Draw path

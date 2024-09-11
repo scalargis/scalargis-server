@@ -334,6 +334,13 @@ def viewer_generate_pdf(code, user):
         except Exception as e:
             logger.debug('Form fields: ' + str(e))
 
+    drawings = None # scalargis drawtools elements
+    if 'userDrawings' in request.values:
+        try:
+            drawings = json.loads(request.values['userDrawings'])
+        except Exception as e:
+            logger.debug('User Drawings: ' + str(e))
+
     extentWKT = request.values['extentWKT'] if 'extentWKT' in request.values else None
     geomWKT = request.values['geomWKT'] if 'geomWKT' in request.values else None
     if geomWKT is None:
@@ -396,6 +403,9 @@ def viewer_generate_pdf(code, user):
 
     if drawing_features:
         p.drawing_features = drawing_features
+
+    if drawings:
+        p.drawings = drawings
 
     # widgets for layouts
     widget_layout_list = json.loads(request.values['widget_layout_list']) if 'widget_layout_list' in request.values else None
