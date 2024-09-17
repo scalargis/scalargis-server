@@ -53,6 +53,11 @@ def send_mail(app, receiver_email, subject, message_html, message_text=None, att
             if mail_settings:
                 send_async_message(app, mail_settings, receiver_email, message)
 
+            try:
+                logger.info("Email sent to {0}".format(receiver_email))
+            except Exception:
+                pass
+
     except Exception as e:
         logger.error('Send mail: ' + str(e))
 
