@@ -53,27 +53,28 @@ def send_mail(app, receiver_email, subject, message_html, message_text=None, att
             if mail_settings:
                 send_async_message(app, mail_settings, receiver_email, message)
 
-            try:
-                logger.info("Email sent to {0}".format(receiver_email))
-            except Exception:
-                pass
-
     except Exception as e:
         logger.error('Send mail: ' + str(e))
 
 
 @async_task
 def send_async_message(app, mail_settings, receiver_email, message):
+    logger = logging.getLogger(__name__)
+
     with app.app_context():
-        with smtplib.SMTP(mail_settings.get('smtp_server'), mail_settings.get('smtp_port')) as server:
-            if mail_settings.get('smtp_username'):
-                server.login(mail_settings.get('smtp_username'), mail_settings.get('smtp_password'))
+        smtp_server = mail_settings.get('smtp_server')
+        smtp_port = mail_settings.get('smtp_port')
+        try:
+            with smtplib.SMTP(smtp_server, smtp_port) as server:
+                if mail_settings.get('smtp_username'):
+                    server.login(mail_settings.get('smtp_username'), mail_settings.get('smtp_password'))
 
-            sender = mail_settings.get('sender_username') or mail_settings.get('sender_email')
+                sender = mail_settings.get('sender_username') or mail_settings.get('sender_email')
 
-            for to_email in receiver_email:
-                server.sendmail(sender, to_email, message.as_string())
-
+                for to_email in receiver_email:
+                    server.sendmail(sender, to_email, message.as_string())
+        except Exception as e:
+            logger.error(str(e))
 
 def get_mail_settings():
     site_settings = {}
