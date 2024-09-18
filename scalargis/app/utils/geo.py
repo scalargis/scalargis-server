@@ -1,6 +1,9 @@
 import math
 from functools import partial
 
+import shapely
+import shapely.geometry
+import shapefile
 import pyproj  # pyproj 1
 #from pyproj import Transformer  # pyproj 2 syntax
 from shapely.ops import transform
@@ -83,6 +86,58 @@ def dd2dm(longitude, latitude):
       }
 
     return dm
+
+
+def shapely_to_pyshp(shapelygeom):
+    # first convert shapely to geojson
+    try:
+        shapelytogeojson = shapely.geometry.mapping
+    except:
+        #import shapely.geometry
+        shapelytogeojson = shapely.geometry.mapping
+    geoj = shapelytogeojson(shapelygeom)
+    # create empty pyshp shape
+    try:
+        record = shapefile._Shape()
+    except:
+        record = shapefile.Shape()
+    # set shapetype
+    if geoj["type"] == "Null":
+        pyshptype = 0
+    elif geoj["type"] == "Point":
+        pyshptype = 1
+    elif geoj["type"] == "LineString":
+        pyshptype = 3
+    elif geoj["type"] == "Polygon":
+        pyshptype = 5
+    elif geoj["type"] == "MultiPoint":
+        pyshptype = 8
+    elif geoj["type"] == "MultiLineString":
+        pyshptype = 3
+    elif geoj["type"] == "MultiPolygon":
+        pyshptype = 5
+    record.shapeType = pyshptype
+    # set points and parts
+    if geoj["type"] == "Point":
+        record.points = geoj["coordinates"]
+        record.parts = [0]
+    elif geoj["type"] in ("MultiPoint","Linestring"):
+        record.points = geoj["coordinates"]
+        record.parts = [0]
+    elif geoj["type"] in ("Polygon"):
+        record.points = geoj["coordinates"][0]
+        record.parts = [0]
+    elif geoj["type"] in ("MultiPolygon","MultiLineString"):
+        index = 0
+        points = []
+        parts = []
+        for eachmulti in geoj["coordinates"]:
+            points.extend(eachmulti[0])
+            parts.append(index)
+            index += len(eachmulti[0])
+        record.points = points
+        record.parts = parts
+    return record
 
 
 def transformGeom(geom, source_proj, dest_proj):
