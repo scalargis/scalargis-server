@@ -52,8 +52,8 @@ def send_email_password_reset(user, subject=None, msg=None, template=None, redir
     msg_subject = subject if subject else "Recuperação de Password"
     msg_text = msg if msg else render_template(template or '/v1/security/email/reset_instructions.html',
                                             APP_HOST_URL=get_host_url(),
-                                            APP_SCRIPT_ROOT=request.script_root or '',
-                                            APP_BASE_URL=main_app.config.get('SCALARGIS_BASE_URL').rstrip('\/') or '',
+                                            APP_SCRIPT_ROOT=get_script_root(),
+                                            APP_BASE_URL=get_base_url(),
                                             security=_security,
                                             user=user, token=token, redirect=redirect)
 
@@ -69,8 +69,8 @@ def send_email_user_registration(user, subject=None, msg=None, template=None, re
     msg_subject = subject if subject else "Registo de utilizador"
     msg_text = msg if msg else render_template(template or '/v1/security/email/registration_instructions.html',
                                     APP_HOST_URL=get_host_url(),
-                                    APP_SCRIPT_ROOT=request.script_root or '',
-                                    APP_BASE_URL=main_app.config.get('SCALARGIS_BASE_URL').rstrip('\/') or '',
+                                    APP_SCRIPT_ROOT=get_script_root(),
+                                    APP_BASE_URL=get_base_url(),
                                     security=_security,
                                     user=user, token=token, redirect=redirect)
 
