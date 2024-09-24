@@ -9,6 +9,7 @@ email_validator
 psycopg2-binary
 GeoAlchemy2
 pyproj
+pyshp
 GDAL
 fiona
 Shapely
