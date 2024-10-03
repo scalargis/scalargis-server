@@ -32,6 +32,22 @@ from.notification import get_new_notifications
 
 logger = logging.getLogger(__name__)
 
+
+def get_site_config():
+    data = None
+    status = 200
+
+    record = SiteSettings.query.filter(SiteSettings.code.ilike('SITE_CONFIG')).one_or_none()
+    if record:
+        try:
+            data = json.loads(record.setting_value)
+            return data, status
+        except:
+            pass
+
+    return None, status
+
+
 def get_viewer_record(viewer_id_or_slug):
     record = None
 

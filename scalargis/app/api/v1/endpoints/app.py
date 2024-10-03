@@ -10,6 +10,28 @@ from ..endpoints import check_user, ns_app as ns
 logger = logging.getLogger(__name__)
 
 
+@ns.route('/site/config')
+@ns.response(404, 'Todo not found')
+class AppSiteConfig(Resource):
+    def options(self):
+        return {'Allow': 'GET'}, 200, \
+               {'Access-Control-Allow-Origin': '*',
+                'Access-Control-Allow-Methods': 'GET, POST',
+                'Access-Control-Allow-Headers': 'Origin, X-Requested-With, Content-Type, Accept, X-API-KEY'
+                }
+
+    '''Get a viewer'''
+
+    @ns.doc('get_site_config')
+    def get(self):
+        '''Fetch a given resource'''
+        item, status = dao_app.get_site_config()
+        return item, status, {'Access-Control-Allow-Origin': '*',
+                              'Access-Control-Allow-Methods': 'GET, POST',
+                              'Access-Control-Allow-Headers': 'Origin, X-Requested-With, Content-Type, Accept'
+                              }
+
+
 @ns.route('/viewer')
 @ns.response(404, 'Todo not found')
 class AppDefaultViewer(Resource):
