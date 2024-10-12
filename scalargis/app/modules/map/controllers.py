@@ -8,7 +8,6 @@ from app.utils.settings import get_default_locale
 from app.utils.http import get_script_root, get_base_url
 
 
-@mod.route('/')
 @mod.route('/<path:path>')
 @mod.route('/map', defaults={'path': ''})
 @mod.route('/map/', defaults={'path': ''})
