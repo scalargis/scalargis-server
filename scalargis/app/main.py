@@ -153,6 +153,9 @@ def init_wsgi():
 
 @app.route("/")
 def home():
+    logger = logging.getLogger(__name__)
+    logger.debug('Main page request')
+
     if 'DEFAULT_APP_PAGE' in app.config and app.config['DEFAULT_APP_PAGE']:
         action = app.config['DEFAULT_APP_PAGE'].lower()
 
@@ -160,12 +163,11 @@ def home():
             return redirect(url_for(action), 302)
         elif '/' in action:
             return redirect(action, 302)
-        elif action == 'home':
-            return redirect(url_for('map.home'), 302)
         else:
             return redirect(url_for('map.index'), 302)
     else:
-        return redirect(url_for('map.index'), 302)
+        from app.modules.map.controllers import index
+        return index(path=None)
 
 
 @app.route("/check_path")
