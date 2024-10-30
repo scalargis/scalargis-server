@@ -709,10 +709,12 @@ def get_users(request):
                 qy = qy.filter(or_(*conditions))
             else:
                 if isinstance(field.property.columns[0].type, Boolean):
-                    if filter[key]:
-                        qy = qy.filter(field == True)
-                    else:
-                        qy = qy.filter(or_(field == False, field == None))
+                    if filter[key] is True:
+                        qy = qy.filter(field == True) # noqa
+                    elif filter[key] is False:
+                        qy = qy.filter(or_(field == False, field == None)) # noqa
+                elif isinstance(field.property.columns[0].type, Integer):
+                    qy = qy.filter(field == filter[key])
                 else:
                     qy = qy.filter(cast(field, sqlalchemy.String).ilike('%' + str(filter[key]) + '%'))
 

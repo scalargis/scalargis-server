@@ -5,7 +5,7 @@ import logging
 from flask import request
 import sqlalchemy
 from sqlalchemy.orm import aliased
-from sqlalchemy import cast, or_, Integer
+from sqlalchemy import cast, or_, Integer, Boolean
 from sqlalchemy.exc import IntegrityError
 from shapely.wkt import loads
 from geoalchemy2 import shape
@@ -393,7 +393,12 @@ def get_print_viewers_by_filter(print_id, request):
                         conditions.append(cast(field, sqlalchemy.String).ilike('%' + str(val) + '%'))
                 qy = qy.filter(or_(*conditions))
             else:
-                if isinstance(field.property.columns[0].type, Integer):
+                if isinstance(field.property.columns[0].type, Boolean):
+                    if filter[key] is True:
+                        qy = qy.filter(field == True) # noqa
+                    elif filter[key] is False:
+                        qy = qy.filter(or_(field == False, field == None)) # noqa
+                elif isinstance(field.property.columns[0].type, Integer):
                     qy = qy.filter(field == filter[key])
                 else:
                     qy = qy.filter(cast(field, sqlalchemy.String).ilike('%' + str(filter[key]) + '%'))
