@@ -387,6 +387,7 @@ def check_viewer_permissions(viewer, user):
             status = 401
 
     if user and user.is_authenticated and viewer.owner_id == user.id:
+        user_roles.append(constants.ROLE_OWNER)
         has_permission = True
         status = 200
 
@@ -507,7 +508,37 @@ def build_viewer_config(record, user_roles, user=None, session=False):
 
         viewer_cfg['config_json']['components'] = cmps
 
+    '''
+    Apply layers permissions
+    '''
+    if 'config_json' in viewer_cfg:
+        layers = viewer_cfg.get('config_json').get('layers', [])
+        exclude_layers = []
+        for lyr in layers:
+            lyr_roles = lyr.get('roles', [])
+            if len(lyr_roles) > 0:
+                if constants.ROLE_ADMIN not in user_roles and constants.ROLE_OWNER not in user_roles \
+                        and len(set(user_roles).intersection(lyr_roles)) == 0:
+                    exclude_layers.append(lyr['id'])
+                    if lyr.get('type', None) == 'GROUP':
+                        children = lyr.get('children', [])
+                        for child in children:
+                            exclude_layers.append(child)
 
+        # Remove unauthorized layers
+        if len(exclude_layers) > 0:
+            final_layers = filter(lambda _l: _l.get('id', None) not in exclude_layers, layers)
+            viewer_cfg['config_json']['layers'] = list(final_layers)
+
+            checked_layers = viewer_cfg.get('config_json').get('checked', [])
+            viewer_cfg['config_json']['checked'] = list(filter(lambda _c: _c not in exclude_layers, checked_layers))
+
+            opened_layers = viewer_cfg.get('config_json').get('opened', [])
+            viewer_cfg['config_json']['opened'] = list(filter(lambda _c: _c not in exclude_layers, opened_layers))
+
+    '''
+    Printing
+    '''
     viewer_cfg['printing'] = {}
 
     viewer_cfg['printing']['prints'] = []
