@@ -53,6 +53,16 @@ viewer_role_api_model = api.model('Viewer Role Model', {
 
 #---
 
+account_api_model = api.model('Account Model', {
+    'username': fields.String(required=True, description='Username'),
+    'email': fields.String(required=True, description='Email'),
+    'name': fields.String(required=True, description='Name'),
+    'first_name': fields.String(required=False, description='First Name'),
+    'last_name': fields.String(required=False, description='Last Name'),
+    'auth_token': fields.String(required=False, description='Authentication Token'),
+    'auth_token_expire': fields.DateTime(required=False, description='Authentication Token Expiration Date'),
+})
+
 user_simple_api_model = api.model('User Model', {
     'id': fields.Integer(required=True, description='Id'),
     'email': fields.String(required=True, description='Email'),

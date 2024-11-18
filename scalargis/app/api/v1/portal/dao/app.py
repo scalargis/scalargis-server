@@ -881,7 +881,7 @@ def get_app_backoffice():
 
         return ret_actions
 
-    backoffice_cfg = json.loads( json.dumps( current_app.config.get('BACKOFFICE_CONFIG')))
+    backoffice_cfg = json.loads( json.dumps(current_app.config.get('BACKOFFICE_CONFIG')))
     menu_actions = backoffice_cfg.get('config').get('menu')
 
     menu_actions_filter = filter_actions(menu_actions)
@@ -918,6 +918,9 @@ def get_app_backoffice():
                 viewers_data = list(map(lambda r: {"value": str(r.id), "label": r.name}, viewers_records))
 
                 backoffice_cfg.get('config')['stats']['viewers'] = viewers_data
+
+    # UserId
+    backoffice_cfg['user'] = {"id": user.id}
 
     auditoria.log_backoffice_async(current_app._get_current_object(), auditoria.EnumAuditOperation.BackOffice,
                                    user.id if user else None)

@@ -90,6 +90,26 @@ def authenticate_ldap_user(username, password, domain):
     return False
 
 
+def get_token(username):
+    """
+    Returns the authentication token.
+
+    Args:
+        username (str): Username.
+    Returns:
+        string: Authentication token
+    """
+
+    token = None
+
+    user = user_datastore.get_user(username)
+
+    if user and user.is_active:
+        token = user.get_auth_token()
+
+    return token
+
+
 def get_user_token(username, password):
     """
     Authenticates user with the specified credentials and returns the authentication token.
