@@ -7,9 +7,11 @@ from werkzeug.local import LocalProxy
 from sqlalchemy import cast, or_, Integer, Boolean, func
 from flask_security.utils import encrypt_password
 from flask_security.confirmable import generate_confirmation_token, confirm_email_token_status
+from flask_restx import marshal
 from ..parsers import *
 from app.models.portal import *
 from ...endpoints import check_user, get_user
+from ..serializers import account_api_model
 from . import get_record_by_id
 from sqlalchemy.exc import IntegrityError
 from app.utils.constants import ROLE_ANONYMOUS, ROLE_AUTHENTICATED
@@ -17,7 +19,7 @@ from app.utils.mailing import send_mail
 from app.models.security import Role, Group, User
 from instance import settings
 from app.utils import constants
-from app.utils.security import get_user_token
+from app.utils.security import get_token, get_user_token
 from app.utils.http import get_host_url, get_script_root, get_base_url
 
 
@@ -309,6 +311,86 @@ def set_password(request):
         return {'status': 401, 'error': True, 'message': 'Confirmação de alteração de password inválida.'}, 401
 
     return data, 200
+
+
+def update_password(request):
+
+    password = request.json.get("password", None)
+
+    if not password:
+        return {}, 400
+
+    user = get_user(request)
+
+    if not user or not user.is_authenticated or not user.is_active:
+        return {}, 401
+
+    user.password = encrypt_password(password)
+    db.session.add(user)
+    db.session.commit()
+
+    token = get_user_token(user.username, password)
+
+    data = {'data': {'token': token}, 'status': 200, 'success': True, 'message': 'Password alterada com sucesso.'}
+
+    return data, 200
+
+
+def get_account(request):
+
+    user = get_user(request)
+
+    if not user or not user.is_authenticated or not user.is_active:
+        return {}, 401
+
+    return user, 200
+
+
+def update_account(request):
+
+    user = get_user(request)
+
+    if not user or not user.is_authenticated or not user.is_active:
+        return {}, 401
+
+
+    try:
+        data = request.json
+
+        '''
+        model = User
+    
+        record = db.session.query(model).filter(model.id == id).one()
+        '''
+
+        user.first_name = data['first_name'] if 'first_name' in data  else None
+        user.last_name = data['last_name'] if 'last_name' in data else None
+        user.name = data['name'] if 'name' in data else None
+        user.username = data['username'] if 'username' in data else None
+        user.email = data['email'] if 'email' in data else None
+        if 'auth_token' in data and data['auth_token'] is not None:
+            user.auth_token = data['auth_token']
+            user.auth_token_expire = data['auth_token_expire'] if 'auth_token_expire' in data else None
+        else:
+            user.auth_token = None
+            user.auth_token_expire = None
+
+        db.session.add(user)
+        db.session.commit()
+        db.session.refresh(user)
+
+        token = get_token(user.username)
+
+        item = marshal(user, account_api_model)
+        item['token'] = token
+
+        return item, 200
+    except IntegrityError as e:
+        return {'status': 409, 'error': True,
+                'message': 'Já existe um utilizador com o username ou email indicado.'}, 409
+    except Exception as e:
+        return {'status': 422, 'error': True,
+                'message': 'Ocorreu um erro ao alterar o registo.'}, 422
 
 
 def get_roles_by_filter(request):

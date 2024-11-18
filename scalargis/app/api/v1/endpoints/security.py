@@ -104,6 +104,35 @@ class SecurityToken(Resource):
 
 # --------------------------------------------------------------------
 
+@ns_security.route('/account')
+class Account(Resource):
+    """Account"""
+    def options(self):
+        return {'Allow': 'GET, PUT'}, 200, \
+               {'Access-Control-Allow-Origin': '*',
+                'Access-Control-Allow-Methods': 'PUT, GET',
+                'Access-Control-Allow-Headers': 'Origin, X-Requested-With, Content-Type, Accept'
+                }
+
+    @ns_security.doc('get_account_info')
+    @ns_security.marshal_with(account_api_model)
+    def get(self):
+        item, status = dao_security.get_account(request)
+        return item, status, {'Access-Control-Allow-Origin': '*',
+                              'Access-Control-Allow-Methods': 'GET',
+                              'Access-Control-Allow-Headers': 'Origin, X-Requested-With, Content-Type, Accept'
+                              }
+
+    @ns_security.expect(account_api_model)
+    def put(self):
+        '''Update account'''
+        item, status = dao_security.update_account(request)
+        return item, status, {'Access-Control-Allow-Origin': '*',
+                           'Access-Control-Allow-Methods': 'PUT',
+                           'Access-Control-Allow-Headers': 'Origin, X-Requested-With, Content-Type, Accept'
+                           }
+
+#---------------------------------------------------------------------
 
 @ns_security.route('/reset_password')
 class ResetPassword(Resource):
@@ -161,6 +190,27 @@ class SetPassword(Resource):
         """Reset password"""
 
         data, status = dao_security.set_password(request)
+
+        return data, status, {'Access-Control-Allow-Origin': '*',
+                              'Access-Control-Allow-Methods': 'POST, GET',
+                              'Access-Control-Allow-Headers': 'Origin, X-Requested-With, Content-Type, Accept'
+                              }
+
+
+@ns_security.route('/update_password')
+class UpdatePassword(Resource):
+    """Reset password"""
+    def options(self):
+        return {'Allow': 'POST'}, 200, \
+               {'Access-Control-Allow-Origin': '*',
+                'Access-Control-Allow-Methods': 'POST',
+                'Access-Control-Allow-Headers': 'Origin, X-Requested-With, Content-Type, Accept'
+                }
+
+    def put(self):
+        """Change password"""
+
+        data, status = dao_security.update_password(request)
 
         return data, status, {'Access-Control-Allow-Origin': '*',
                               'Access-Control-Allow-Methods': 'POST, GET',
