@@ -115,7 +115,7 @@ def register_user(request):
 
     send_email_user_registration(user, subject='Registo de utilizador', redirect=redirect)
 
-    return {'message': 'Foi enviado um email para ' + email + ' com as instruções para confirmação e conclusão do registo.'}, 200
+    return {'success': True, 'message': 'Foi enviado um email para ' + email + ' com as instruções para confirmação e conclusão do registo.'}, 200
 
 
 
