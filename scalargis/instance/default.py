@@ -8,6 +8,8 @@ SECURITY_USER_IDENTITY_ATTRIBUTES = ('username', 'email')
 SECURITY_PASSWORD_HASH = 'bcrypt'
 SECURITY_PASSWORD_SALT = SECRET_KEY
 SECURITY_TRACKABLE = True
+# Avoid conflicts with client endpoints
+SECURITY_URL_PREFIX = "/server"
 
 # -- DATATABSE connection --
 SQLALCHEMY_DATABASE_URI = "postgresql+psycopg2://postgres:postgres@localhost:5432/scalargis"

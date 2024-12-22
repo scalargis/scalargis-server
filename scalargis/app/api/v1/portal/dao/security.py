@@ -137,7 +137,7 @@ def send_confirmation(request):
     else:
         return {'status': 401, 'error': True, 'message': 'Não existe nenhum registo de utilizador com o email indicado.'}, 401
 
-    return {'message': 'Enviada confirmação de registo de utilizador para o email {}'.format(email), 'email': email}, 200
+    return {'message': 'A confirmação de registo de utilizador foi enviada para o email {}'.format(email), 'email': email}, 200
 
 
 def confirm_email(request):
