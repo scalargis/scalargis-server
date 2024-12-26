@@ -232,9 +232,9 @@ class RegistrationUser(Resource):
         """User registration and validation code"""
         resp, code = dao_security.register_user(request)
         return resp, code, {'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Methods': 'POST',
-        'Access-Control-Allow-Headers': 'Origin, X-Requested-With, Content-Type, Accept, X-API-KEY'
-        }
+                            'Access-Control-Allow-Methods': 'POST',
+                            'Access-Control-Allow-Headers': 'Origin, X-Requested-With, Content-Type, Accept, X-API-KEY'
+                            }
 
 
 @ns_security.route('/registration/send_confirmation')
