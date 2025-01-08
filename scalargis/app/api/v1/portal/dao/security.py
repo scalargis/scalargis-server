@@ -240,15 +240,18 @@ def password_reset_validation(request):
     if token:
         expired, invalid, user = confirm_email_token_status(token)
     else:
-        return { 'status': 401, 'error': True, 'message': 'Confirmação de alteração de palavra-passe inválida.'}, 401
+        return {'status': 401, 'error': True, 'message': 'Confirmação de alteração de palavra-passe inválida.'}, 401
 
     if expired:
-        return { 'status': 401, 'error': True, 'message': 'Confirmação de alteração de password expirada.'}, 401
+        return {'status': 401, 'error': True, 'message': 'Confirmação de alteração de password expirada.'}, 401
 
     if invalid:
         return {'status': 401, 'error': True, 'message': 'Confirmação de alteração de password inválida.'}, 401
 
     if user:
+        if not user.is_active:
+            return {'status': 401, 'error': True, 'message': 'Confirmação de alteração de palavra-passe inválida.'}, 401
+
         data = {
             'username': user.username,
             'name': user.name,
