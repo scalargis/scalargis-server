@@ -587,6 +587,18 @@ class Pdf:
                             self.insert_map('wms', scale, srid, mapcenter[0], mapcenter[1], width, height,
                                             dmap[4], ll_x, ll_y, dmap[1], dmap[2], dmap[5], cql_filter=cql_filter, style=style, opacity=opacity)
 
+
+                            if have_extra_conf and "strings" in item:
+                                try:
+                                    layer_strings = item["strings"]
+                                    for layer_string in layer_strings:
+                                        self.add_string(layer_string["x"],layer_string["y"],layer_string["value"],layer_string["font"],
+                                                        layer_string["fontsize"],layer_string["fontcolor"],
+                                                        layer_string["page_id"] if "page_id" in layer_string else None)
+                                except Exception as err:
+                                    logger.warning('Insert layer string error')
+
+
                             if have_extra_conf:
                                 try:
                                     logo = item["logo"]
