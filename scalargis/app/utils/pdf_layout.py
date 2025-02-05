@@ -213,8 +213,8 @@ class Pdf:
         self.images.append([path, x, y, width, page_id])
 
 
-    def add_table(self, x, y, width, height, data, table_style=None, page_id=None, table_style_def=None):
-        self.tables.append([x, y, width, height, data, table_style, page_id, table_style_def])
+    def add_table(self, x, y, width, height, data, table_style=None, page_id=None, table_style_def=None, colWidth=None):
+        self.tables.append([x, y, width, height, data, table_style, page_id, table_style_def, colWidth])
 
 
     def populate_string(self, string_name, txt, page_id=None):
@@ -988,7 +988,8 @@ class Pdf:
                     tb_data = table[4]
                     tb_table_style = table[5]
                     table_style_def = table[7]
-                    self.insert_table(tb_x, tb_y, tb_width, tb_height, tb_data, tb_table_style, table_style_def)
+                    colWidth = table[8]
+                    self.insert_table(tb_x, tb_y, tb_width, tb_height, tb_data, tb_table_style, table_style_def, colWidth)
 
             # coords corner bbox
             if 'map' in config:
@@ -2116,7 +2117,7 @@ class Pdf:
                 break
 
 
-    def insert_table(self, x, y, width, height, data, table_style, table_style_def=None):
+    def insert_table(self, x, y, width, height, data, table_style, table_style_def=None, colWidth=None):
         # ----------------  named styles
         # grided, first row merged title, second row with fields gray bck.
         tab_style_generic1 = TableStyle([
@@ -2161,7 +2162,11 @@ class Pdf:
         # ['Regadio', '21', '22', '23'],
         # ['Sequeiro', '31', '32', '33']]
 
-        t = Table(data)
+        if colWidth:
+            t = Table(data, colWidth)
+        else:
+            t = Table(data)
+
 
         if table_style_def:
             t.setStyle(TableStyle(table_style_def))
