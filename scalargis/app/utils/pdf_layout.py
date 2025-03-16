@@ -213,8 +213,8 @@ class Pdf:
         self.images.append([path, x, y, width, page_id])
 
 
-    def add_table(self, x, y, width, height, data, table_style=None, page_id=None, table_style_def=None):
-        self.tables.append([x, y, width, height, data, table_style, page_id, table_style_def])
+    def add_table(self, x, y, width, height, data, table_style=None, page_id=None, table_style_def=None, colWidth=None):
+        self.tables.append([x, y, width, height, data, table_style, page_id, table_style_def, colWidth])
 
 
     def populate_string(self, string_name, txt, page_id=None):
@@ -586,6 +586,18 @@ class Pdf:
                         if scale >= mindenomscale and scale <= maxdenomscale and authorized_format:
                             self.insert_map('wms', scale, srid, mapcenter[0], mapcenter[1], width, height,
                                             dmap[4], ll_x, ll_y, dmap[1], dmap[2], dmap[5], cql_filter=cql_filter, style=style, opacity=opacity)
+
+
+                            if have_extra_conf and "strings" in item:
+                                try:
+                                    layer_strings = item["strings"]
+                                    for layer_string in layer_strings:
+                                        self.add_string(layer_string["x"],layer_string["y"],layer_string["value"],layer_string["font"],
+                                                        layer_string["fontsize"],layer_string["fontcolor"],
+                                                        layer_string["page_id"] if "page_id" in layer_string else None)
+                                except Exception as err:
+                                    logger.warning('Insert layer string error')
+
 
                             if have_extra_conf:
                                 try:
@@ -976,7 +988,8 @@ class Pdf:
                     tb_data = table[4]
                     tb_table_style = table[5]
                     table_style_def = table[7]
-                    self.insert_table(tb_x, tb_y, tb_width, tb_height, tb_data, tb_table_style, table_style_def)
+                    colWidth = table[8]
+                    self.insert_table(tb_x, tb_y, tb_width, tb_height, tb_data, tb_table_style, table_style_def, colWidth)
 
             # coords corner bbox
             if 'map' in config:
@@ -2112,7 +2125,7 @@ class Pdf:
                 break
 
 
-    def insert_table(self, x, y, width, height, data, table_style, table_style_def=None):
+    def insert_table(self, x, y, width, height, data, table_style, table_style_def=None, colWidth=None):
         # ----------------  named styles
         # grided, first row merged title, second row with fields gray bck.
         tab_style_generic1 = TableStyle([
@@ -2157,7 +2170,11 @@ class Pdf:
         # ['Regadio', '21', '22', '23'],
         # ['Sequeiro', '31', '32', '33']]
 
-        t = Table(data)
+        if colWidth:
+            t = Table(data, colWidth)
+        else:
+            t = Table(data)
+
 
         if table_style_def:
             t.setStyle(TableStyle(table_style_def))
