@@ -1813,12 +1813,12 @@ class Pdf:
         if styles is None:
             styles = ''
 
-        if (server_url[:7] == 'http://') or (server_url[:8] == 'https://'):
-            url = server_url + "?"
-        else:
-            url = 'http://%s?' % server_url
+        url = replace_geoserver_url(server_url)
 
-        url = replace_geoserver_url(url)
+        if (url[:7] == 'http://') or (url[:8] == 'https://'):
+            url = url + "?"
+        else:
+            url = 'http://%s?' % url
 
         url = url.replace('/gwc/service/', '/')  # for urls using GeoWebCache !
 
@@ -1852,12 +1852,20 @@ class Pdf:
 
     @staticmethod
     def wms_GetLegendGraphic(server_url, layer, img_format="image/png", version='1.1.1',gs_vendor_options='', style=''):
+        '''
         if (server_url[:7] == 'http://') or (server_url[:8] == 'https://'):
             url = server_url + "?"
         else:
             url = 'http://%s?' % server_url
 
         url = replace_geoserver_url(url)
+        '''
+        url = replace_geoserver_url(server_url)
+
+        if (url[:7] == 'http://') or (url[:8] == 'https://'):
+            url = url + "?"
+        else:
+            url = 'http://%s?' % url
 
         url += 'service=WMS'
         url += '&request=GetLegendGraphic'

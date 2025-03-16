@@ -32,7 +32,7 @@
 # SCALARGIS_EXTENSIONS = []
 # SCALARGIS_EXTENSIONS_SERVICES = []
 
-# -- Geoserver Url replace [[From, To], [From, To]] --
+# -- Geoserver Url replace [[From, To, Mode (optional)], [From, To, Mode (optional)]] --
 # SCALARGIS_ROUTE_GEOSERVER = []
 
 # -- PROXY (Access-Control-Allow-Origin - CORS) --

@@ -324,16 +324,30 @@ def replace_geoserver_url(url):
 
     try:
         if isinstance(current_app.config.get('SCALARGIS_ROUTE_GEOSERVER'), list) \
-                and len(current_app.config.get('SCALARGIS_ROUTE_GEOSERVER')):
+                and len(current_app.config.get('SCALARGIS_ROUTE_GEOSERVER')) > 0:
             if isinstance(current_app.config.get('SCALARGIS_ROUTE_GEOSERVER')[0], list):
                 for s in current_app.config.get('SCALARGIS_ROUTE_GEOSERVER'):
-                    new_url = new_url.replace(s[0], s[1])
+                    if len(s) > 2:
+                        if s[2] == 'start':
+                            if new_url.startswith(s[0]):
+                                new_url = new_url.replace(s[0], s[1])
+                        else:
+                            new_url = new_url.replace(s[0], s[1])
+                    else:
+                        new_url = new_url.replace(s[0], s[1])
             else:
-                new_url = new_url.replace(current_app.config.get('SCALARGIS_ROUTE_GEOSERVER')[0],
-                                          current_app.config.get('SCALARGIS_ROUTE_GEOSERVER')[1])
-        logger.info('WMS Url replace: ' + new_url)
+                s = current_app.config.get('SCALARGIS_ROUTE_GEOSERVER')
+                if len(s) > 2:
+                    if s[2] == 'start':
+                        if new_url.startswith(s[0]):
+                            new_url = new_url.replace(s[0], s[1])
+                        else:
+                            new_url = new_url.replace(s[0], s[1])
+                else:
+                    new_url = new_url.replace(s[0], s[1])
+        logging.info('WMS Url replace: ' + new_url)
     except AttributeError:
-        logger.info('WMS Url replace: error')
+        logging.info('WMS Url replace: error')
         pass
 
     return new_url
