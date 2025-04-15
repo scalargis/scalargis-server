@@ -10,6 +10,8 @@ from flask import Blueprint, request
 from app.main import app
 from app.utils import http
 
+from .database.schema import setup_db
+
 from .api.v1.endpoints import ns as v1_spatial_toolbox_ns
 from .api.restx import api
 from .utils.vector import convert_to_geojson_create_layer
@@ -28,7 +30,6 @@ module_code = 'spatial_toolbox'
 api.init_app(module_api)
 api.add_namespace(v1_spatial_toolbox_ns)
 
-
 # Set PROJ and GDAL paths
 venv_folder = site.getsitepackages()[1]
 if 'PROJ_LIB_PATH' in app.config.keys() and app.config['PROJ_LIB_PATH']:
@@ -45,6 +46,12 @@ else:
     if os.path.isdir(os.path.join(venv_folder, 'osgeo/data/gdal')):
         os.environ['GDAL_DATA'] = os.path.join(venv_folder, 'osgeo/data/gdal')
 
+try:
+    created = setup_db()
+    if created:
+        logger.info('SpatialToolbox API: schema created!')
+except Exception as e:
+    logger.error('SpatialToolbox API - Database Initialization error: {}'.format(str(e)))
 
 @module.route('/index', methods=['GET'])
 def index():

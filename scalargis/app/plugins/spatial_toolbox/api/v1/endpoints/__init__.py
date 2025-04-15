@@ -5,7 +5,8 @@ from app.plugins.spatial_toolbox.api.restx import api as api_spatial_toolbox
 
 logger = logging.getLogger(__name__)
 
-ns = api_spatial_toolbox.namespace('spatial_toolbox', description='Plugin Spatial Toolbox', path='/v1')
+#ns = api_spatial_toolbox.namespace('spatial_toolbox', description='Plugin Spatial Toolbox', path='/v1')
+ns = api_spatial_toolbox.namespace('spatial_toolbox', description='Plugin Spatial Toolbox', path='/')
 
 api_module_config = {}
 api_module_config['APIisOpen'] = True  # for all GET requests
@@ -36,3 +37,4 @@ def check_user(request):
 
 
 from .data import *
+from .analysis import *
