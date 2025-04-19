@@ -19,8 +19,6 @@ def get_intersect_results(config_code, geom_wkt, geom_srid, buffer, buffer_srid,
     ibuffer = buffer or 0
     ibuffer_srid = buffer_srid or 3857
 
-    print(db_schema)
-
     # get layers def
     sql = "select * from {0}.site_settings where code like '{1}'".format(db_schema, config_code or 'config_intersect')
     result = db.session.execute(text(sql)).fetchall()
@@ -40,6 +38,7 @@ def get_intersect_results(config_code, geom_wkt, geom_srid, buffer, buffer_srid,
 
     # Filter empty layers
     record_filtered = OrderedDict()
+    record_filtered['groups'] = record.get('groups', [])
     record_filtered['layers'] = []
     record_filtered['output_geom'] = record['output_geom']
 
