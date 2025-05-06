@@ -175,7 +175,7 @@ class Pdf:
 
 
     def add_map(self, serv_type, url, layers, page_id=None, img_format='image/png', quality=2, transparent=True,
-                cql_filter=None, style=None, opacity=1):
+                cql_filter=None, style=None, opacity=1, url_params=[]):
         # add map.
         # serv_type: wms or esri_rest supported
         # layers: listof  geoserver url
@@ -183,7 +183,8 @@ class Pdf:
         # p.add_map('wms','195.95.237.222/geoserver/cm_faro/wms','cm_faro:municipal_ln,cm_faro:equipamentos')
         # page_id limit to one page. Page_id is an element in json config
         # quality: factor for wms, dpi for esri_rest
-        self.maps.append([serv_type, url, layers, page_id, img_format, quality, transparent, cql_filter, style, opacity])
+        self.maps.append([serv_type, url, layers, page_id, img_format, quality, transparent, cql_filter, style,
+                          opacity, url_params])
 
     def add_legend(self, url, layer, x, y, width, gs_vendor_option="", serv_type="wms", style="", page_id=None):
         # add service legend
@@ -585,7 +586,8 @@ class Pdf:
 
                         if scale >= mindenomscale and scale <= maxdenomscale and authorized_format:
                             self.insert_map('wms', scale, srid, mapcenter[0], mapcenter[1], width, height,
-                                            dmap[4], ll_x, ll_y, dmap[1], dmap[2], dmap[5], cql_filter=cql_filter, style=style, opacity=opacity)
+                                            dmap[4], ll_x, ll_y, dmap[1], dmap[2], dmap[5], cql_filter=cql_filter,
+                                            style=style, opacity=opacity, url_params=dmap[10] if len(dmap) > 10 else [])
 
 
                             if have_extra_conf and "strings" in item:
@@ -1556,14 +1558,15 @@ class Pdf:
 
 
     def insert_map(self, serv_type, scale, srid, mapcenter_x, mapcenter_y, width, height, img_format,
-                   ll_x, ll_y, url, layers, quality=2, transparent=True, style=None, cql_filter=None, opacity=1):
+                   ll_x, ll_y, url, layers, quality=2, transparent=True, style=None, cql_filter=None, opacity=1,
+                   url_params=[]):
         # insert map to canvas. Need savepdf() if used without generate
         xmin, ymin, xmax, ymax = self.calc_bbox(scale, mapcenter_x, mapcenter_y, width, height)
 
         if serv_type == 'wms':
             img = self.wms_getmap(url, layers, [xmin, ymin, xmax, ymax],
                                   quality * width * mm, quality * height * mm, srid, img_format, style,
-                                  cql_filter=cql_filter, opacity=opacity)
+                                  cql_filter=cql_filter, opacity=opacity, url_params=url_params)
 
         elif serv_type == 'esri_rest':
             img = self.esri_rest_getmap(url, layers, [xmin, ymin, xmax, ymax], width * mm, height * mm, srid,
@@ -1822,7 +1825,8 @@ class Pdf:
 
 
     @staticmethod
-    def wms_getmap(server_url, layers, bbox, width, height, srs, img_format, styles=None, version='1.1.1', cql_filter=None, opacity=1):
+    def wms_getmap(server_url, layers, bbox, width, height, srs, img_format, styles=None, version='1.1.1',
+                   cql_filter=None, opacity=1, url_params=[]):
         if styles is None:
             styles = ''
 
@@ -1848,6 +1852,9 @@ class Pdf:
         url += '&format=%s' % img_format  # image/jpeg
         if (cql_filter):
             url += '&cql_filter=%s' % urllib.parse.quote_plus(cql_filter)
+        if url_params and len(url_params) > 0:
+            for p in url_params:
+                url += '&{0}={1}'.format(p[0], p[1])
 
         logger.info("WMS: " + url)
         try:
