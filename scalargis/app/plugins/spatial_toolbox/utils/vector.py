@@ -27,6 +27,14 @@ def convert_to_geojson_create_layer(file, persist=True):
 
     metadata['size'] = os.stat(filepath).st_size
 
+    # KML fix- remove a blank line at the beginning of the file if it exists
+    if os.path.splitext(file.filename)[1].lower() == '.kml':
+        with open(filepath, "r+", encoding="utf-8") as f:
+            content = f.read().lstrip('\n')
+            f.seek(0)
+            f.write(content)
+            f.truncate()
+
     #dd = open(filepath, 'rb').read()
 
     if os.path.splitext(file.filename)[1].lower() == '.zip':
