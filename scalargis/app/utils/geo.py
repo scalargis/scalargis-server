@@ -1,12 +1,10 @@
 import math
-from functools import partial
 
 import shapely
+import shapely.ops
 import shapely.geometry
 import shapefile
-import pyproj  # pyproj 1
-#from pyproj import Transformer  # pyproj 2 syntax
-from shapely.ops import transform
+import pyproj
 from shapely.wkt import loads
 
 
@@ -141,21 +139,16 @@ def shapely_to_pyshp(shapelygeom):
 
 
 def transformGeom(geom, source_proj, dest_proj):
+    transform = pyproj.Transformer.from_crs(source_proj, dest_proj, always_xy=True).transform
 
-    # FutureWarning: This function is deprecated.
-    # See: https://pyproj4.github.io/pyproj/stable/gotchas.html#upgrading-to-pyproj-2-from-pyproj-1
+    g2 = shapely.ops.transform(transform, geom)
 
-    project = partial(
-        pyproj.transform,
-        pyproj.Proj(source_proj),  # source coordinate system
-        pyproj.Proj(dest_proj))  # destination coordinate system
-
-    g2 = transform(project, geom)  # apply projection
     return g2
+
 
 def transformGeom2(geom, source_proj, dest_proj):
     # pyproj 2 syntax, return coords tuple, not geom
-    transformer = pyproj.Transformer.from_crs(source_proj, dest_proj)
+    transformer = pyproj.Transformer.from_crs(source_proj, dest_proj, always_xy=True)
     point_coords = transformer.transform(geom.x, geom.y)
     return point_coords
 
