@@ -13,7 +13,8 @@ pyshp
 GDAL
 fiona
 Shapely
-reportlab==3.6.13
+reportlab
+xhtml2pdf
 PyPDF2
 qrcode
 jsonmerge
