@@ -1,0 +1,63 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
+<html>
+    <head>
+        <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+        <title>{{ data.title or "Relatório de Interseção de Temas" }}</title>
+        <style type="text/css">
+            @page {
+                size: letter portrait;
+                margin: 2cm;
+            }
+
+            th {
+                background: gray;
+            }
+
+            table {
+                margin-bottom: 50px;
+            }
+
+            p.title {
+                text-align: center;
+                font-size: 1.5rem;
+            }
+
+            h1.group {
+                text-decoration: underline;
+            }
+        </style>
+    </head>
+    <body>
+        <p class="title">{{ data.title or "Relatório de Interseção de Temas" }}</p>
+        {% for group in data.groups %}
+            <h1 class="group">{{ group.name }}</h1>
+            {% for layer in data.layers %}
+                {% if layer.group == group.name %}
+                <h2>{{ layer.title }}</h2>
+                <table repeat="1" width="100%" border="1" cellspacing="0" cellpadding="5">
+                    <tr>
+                        {% for field in layer.fields %}
+                        <th>{{ field.alias or field.field or field.title }}</th>
+                        {% endfor %}
+                        {% if "POLYGON" in data.output_geom %}
+                        <th width="15%">Área (m2)</th>
+                        <th width="15%">Percentagem</th>
+                        {% endif %}
+                    </tr>
+                    {% for row in layer.results %}
+                        <tr>
+                        {% for field in layer.fields %}
+                            <td>{{ row[field.field] }}</td>
+                        {% endfor %}
+                        {% if "POLYGON" in data.output_geom %}
+                            <td>{{'%0.2f'| format(row.area|float)}}</td>
+                            <td>{{'%0.2f'| format(row.percent|float)}}</td>
+                        {% endif %}
+                        </tr>
+                    {% endfor %}
+                </table>
+                {% endif %}
+            {% endfor %}
+        {% endfor %}
+    </body>
+</html>

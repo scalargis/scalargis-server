@@ -2,15 +2,17 @@ import os
 import json
 from collections import OrderedDict
 import uuid
-from flask import redirect, url_for, send_file, make_response
+from flask import redirect, url_for, send_file, make_response, render_template, render_template_string
+from flask_restx import abort
 from sqlalchemy import text
 from pyexcel_xls import save_data as save_xls
 from pyexcel_io import save_data as save_csv
+from xhtml2pdf import pisa
 
 from app.database import db
 from app.database.schema import db_schema
 from instance import settings
-
+from app.utils.settings import get_config_value
 
 def get_intersect_results(config_code, geom_wkt, geom_srid, buffer, buffer_srid, out_srid):
 
@@ -46,8 +48,17 @@ def get_intersect_results(config_code, geom_wkt, geom_srid, buffer, buffer_srid,
         if len(row['results']):
             record_filtered['layers'].append(row)
 
+    if 'title' in json_cfg:
+        record_filtered['title'] = json_cfg['title']
+
     if 'description' in json_cfg:
         record_filtered['description'] = json_cfg['description']
+
+    if 'pdf_template' in json_cfg:
+        record_filtered['pdf_template'] = json_cfg['pdf_template']
+
+    if 'pdf_template_code' in json_cfg:
+        record_filtered['pdf_template_code'] = json_cfg['pdf_template_code']
 
     return record_filtered
 
@@ -110,8 +121,21 @@ def export_intersect_results(record, out_format):
     # Default filename
     file_name = "intersect_layers"
 
+    # Send PDF file
+    if out_format == 'pdf':
+        outfile = file_name + ".pdf"
+        file_name = "{0}-{1}.{2}".format(file_name, uuid.uuid4(), out_format)
+        filename = os.path.join(settings.APP_TMP_DIR, file_name)
+        if os.path.exists(filename):
+            os.remove(filename)
+
+        if create_pdf_intersect_results(record, filename):
+            return send_file(filename, download_name=outfile)
+        else:
+            abort(500, custom='value')
+
     # Send XLS file
-    if out_format == 'xls':
+    elif out_format == 'xls':
         outfile = file_name + ".xls"
         file_name = "{0}-{1}.{2}".format(file_name, uuid.uuid4(), out_format)
         filename = os.path.join(settings.APP_TMP_DIR, file_name)
@@ -130,3 +154,32 @@ def export_intersect_results(record, out_format):
             os.remove(os.path.join(settings.APP_TMP_DIR, outfile))
 
         return send_file(filename, download_name=outfile)
+
+def create_pdf_intersect_results(record, filename):
+    # enable logging
+    pisa.showLogging()
+
+    template_file = record.get('pdf_template', 'intersect_pdf_report.html')
+
+    if record.get('pdf_template_code'):
+        template_html = get_config_value(record.get('pdf_template_code'))
+        if template_html:
+            html_source = render_template_string(template_html, data=record)
+        else:
+            html_source = render_template(template_file, data=record)
+    else:
+        html_source = render_template(template_file, data=record)
+
+    with open(filename, "w+b") as result_file:
+        # convert HTML to PDF
+        pisa_status = pisa.CreatePDF(
+            html_source,  # page data
+            dest=result_file,  # destination file
+        )
+
+        # Check for errors
+        if pisa_status.err:
+            print("An error occurred!")
+            return False
+
+    return True
