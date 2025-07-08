@@ -21,3 +21,4 @@ jsonmerge
 waitress
 Werkzeug==2.3.0
 pyexcel-xls==0.7.0
+pymupdf
