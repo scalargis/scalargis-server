@@ -54,7 +54,7 @@ def getmap_url(server_url, layers, bbox, width, height, geom_wkt=None, geom_srid
     url += '&bbox=%s,%s,%s,%s' % (mapextent[0], mapextent[1], mapextent[2], mapextent[3])
     url += '&width=%s' % int(width)
     url += '&height=%s' % int(height)
-    url += '&srs=EPSG:%s' % geom_srid
+    url += '&srs=EPSG:%s' % geom_srid if version.startswith('1.1') else '&crs=EPSG:%s' % geom_srid
     url += '&transparent=%s' % transparent
     url += '&format=%s' % format
     if 'cql_filter' in kwargs:
@@ -105,7 +105,7 @@ def getmap_url_by_bbox(server_url, layers, bbox, width, height, geom_wkt=None, g
     url += '&bbox=%s,%s,%s,%s' % (bbox[0], bbox[1], bbox[2], bbox[3])
     url += '&width=%s' % int(width)
     url += '&height=%s' % int(height)
-    url += '&srs=EPSG:%s' % geom_srid
+    url += '&srs=EPSG:%s' % geom_srid if version.startswith('1.1') else '&crs=EPSG:%s' % geom_srid
     url += '&transparent=%s' % transparent
     url += '&format=%s' % format
     if 'cql_filter' in kwargs:
@@ -120,13 +120,13 @@ def getmap_url_by_bbox(server_url, layers, bbox, width, height, geom_wkt=None, g
 
 def getmap_image(server_url, layers, bbox, width, height, geom_wkt=None, geom_srid=None, scale=None, buffer=None, opacity=1, **kwargs):
 
-    url = getmap_url(server_url, layers, bbox, width, height, geom_wkt, geom_srid, scale, buffer, opacity, **kwargs)
+    url, extent = getmap_url(server_url, layers, bbox, width, height, geom_wkt, geom_srid, scale, buffer, opacity, **kwargs)
 
     try:
         #For performance reasons, only change alpha pixel value if opacity is lower than one (changed by user)
         if opacity == 1:
             response = requests.get(url)
-            img =response.content
+            img = response.content
         else:
             img = get_image_with_opacity(url, opacity)
 
