@@ -94,12 +94,13 @@ def export_intersect_results(record, out_format):
         data['Descricao'].append([record['description']])
 
     data['Resultados'] = []
-    data['Resultados'].append(['Grupo', 'Título', 'Área', '%', 'Campos'])
+    data['Resultados'].append(['Grupo', 'Título', 'Área', 'Comprimento', '%', 'Campos'])
     for row in record['layers']:
         records = []
         group = row['title_alias'].replace(" ", "") if row.get('title_alias') else row['title'].replace(" ", "")
         column_names = ['Grupo', 'Título']
         column_names.append('Área')
+        column_names.append('Comprimento')
         column_names.append('%')
 
         for field in row['fields']:
@@ -112,6 +113,7 @@ def export_intersect_results(record, out_format):
             l.append(row['group'])
             l.append(row['title'])
             l.append(round(item['area'], 3))
+            l.append(round(item['length'], 3))
             l.append(round(item['percent'], 3))
             for field in row['fields']:
                 l.append(item[field['field']])
@@ -122,6 +124,7 @@ def export_intersect_results(record, out_format):
             rl.append(row['group'])
             rl.append(row['title'])
             rl.append(round(item['area'], 3))
+            rl.append(round(item['length'], 3))
             rl.append(round(item['percent'], 3))
 
             # Build row summary

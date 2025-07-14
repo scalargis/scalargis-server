@@ -34,13 +34,29 @@
             {% for layer in data.layers %}
                 {% if layer.group == group.name %}
                 <h2>{{ layer.title }}</h2>
+
+                 {% set ns = namespace(is_line=false, is_area=false) %}
+
+                {% for row in layer.results %}
+		            {% if row.dimension == 1 %}
+                        {% set ns.is_line = true %}
+			        {% endif %}
+			        {% if row.dimension == 2 %}
+                        {% set ns.is_area = true %}
+		            {% endif %}
+		        {% endfor %}
+
                 <table repeat="1" width="100%" border="1" cellspacing="0" cellpadding="5">
                     <tr>
                         {% for field in layer.fields %}
                         <th>{{ field.alias or field.field or field.title }}</th>
                         {% endfor %}
-                        {% if "POLYGON" in data.output_geom %}
+                        {% if ns.is_area %}
                         <th width="15%">Área (m2)</th>
+                        <th width="15%">Percentagem</th>
+                        {% endif %}
+                        {% if ns.is_line %}
+                        <th width="15%">Comprimento (m)</th>
                         <th width="15%">Percentagem</th>
                         {% endif %}
                     </tr>
@@ -49,8 +65,12 @@
                         {% for field in layer.fields %}
                             <td>{{ row[field.field] }}</td>
                         {% endfor %}
-                        {% if "POLYGON" in data.output_geom %}
+                        {% if ns.is_area %}
                             <td>{{'%0.2f'| format(row.area|float)}}</td>
+                            <td>{{'%0.2f'| format(row.percent|float)}}</td>
+                        {% endif %}
+                        {% if ns.is_line %}
+                            <td>{{'%0.2f'| format(row.length|float)}}</td>
                             <td>{{'%0.2f'| format(row.percent|float)}}</td>
                         {% endif %}
                         </tr>

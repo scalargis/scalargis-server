@@ -9,6 +9,7 @@ DECLARE
 	g Geometry; -- = ST_Transform(p_geom_ewkt::Geometry, 3763);
 
 	area_geom double precision = 0;
+	length_geom  double precision = 0;
 	_sql text;
 	_r record;
 	my_json jsonb;
@@ -44,7 +45,7 @@ BEGIN
 
 		--raise notice '_i=%', _i;
 		_my_table_sql = (_i->>'schema') || '.' || (_i->>'table'); -- create table name for sql exec
-		raise notice 'my_table=%', _my_table_sql;
+		--raise notice 'my_table=%', _my_table_sql;
 		_my_fields_sql = '';
 
 		For _ii in select jsonb_array_elements(_i->'fields') Loop
@@ -56,17 +57,18 @@ BEGIN
 		_my_fields_sql = right(_my_fields_sql,-1);
 		end if;
 
-		raise notice 'my_fields_sql=%', _my_fields_sql;
+		--raise notice 'my_fields_sql=%', _my_fields_sql;
 
 		Select srid Into _in_layer_srid from geometry_columns where
 		f_table_schema like (_i->>'schema') and f_table_name like (_i->>'table') and f_geometry_column like (_i->>'geom_field');
-		raise notice '_in_layer_srid=%', _in_layer_srid;
+		--raise notice '_in_layer_srid=%', _in_layer_srid;
 
 		g = ST_Transform(_geom_ewkt::Geometry, _in_layer_srid);
 		--g = ST_Transform(_geom_ewkt::Geometry, data_srid);
 
 		area_geom = ST_Area(g);
-		raise notice 'g=%', g::text;
+		length_geom = ST_Length(g);
+		--raise notice 'g=%', g::text;
 
 		if length(_my_fields_sql) = 0 then
 			_sql = '
@@ -77,7 +79,11 @@ BEGIN
 			)
 			select row_number() over () id, t.*,
 			ST_Dimension(geom) dimension, ST_ASEWKT(ST_Transform(geom,'|| _out_srid::text ||')) geom,
-			ST_Area(geom) area, CASE ST_Dimension(geom) WHEN 2 THEN (ST_Area(geom) * 100)/'|| area_geom::text ||' ELSE 0::double precision END as percent
+			ST_Area(geom) area, ST_Length(geom) length,
+			CASE ST_Dimension(geom)
+				WHEN 2 THEN (ST_Area(geom) * 100)/'|| area_geom::text ||'
+				WHEN 1 THEN (ST_Length(geom) * 100)/'|| length_geom::text ||'
+				ELSE 0::double precision END as percent
 			from t';
 		else
 			_sql = '
@@ -89,11 +95,15 @@ BEGIN
 			)
 			select row_number() over () id, t.*,
 			ST_Dimension(geom) dimension, ST_ASEWKT(ST_Transform(geom,'|| _out_srid::text ||')) geom,
-			ST_Area(geom) area, CASE ST_Dimension(geom) WHEN 2 THEN (ST_Area(geom) * 100)/'|| area_geom::text ||' ELSE 0::double precision END as percent
+			ST_Area(geom) area, ST_Length(geom) length,
+			CASE ST_Dimension(geom)
+				WHEN 2 THEN (ST_Area(geom) * 100)/'|| area_geom::text ||'
+				WHEN 1 THEN (ST_Length(geom) * 100)/'|| length_geom::text ||'
+				ELSE 0::double precision END as percent
 			from t';
 		end if;
 
-		raise notice '_sql=%', _sql;
+		--raise notice '_sql=%', _sql;
 
 		For _r In Execute _sql Loop
 			--raise notice '_r=%', jsonb_agg(_r)->>0; --> first element.
@@ -110,7 +120,7 @@ BEGIN
 		End Loop;
 
 		_id=_id+1; -- id nb of element increment
-		raise notice '-----------------------------------------------------------------------------';
+		--raise notice '-----------------------------------------------------------------------------';
 
 		-- add geom to result (buffered)
 		result_json = jsonb_set(result_json,'{output_geom}'::text[], to_jsonb(ST_AsEWKT(st_transform(_geom_ewkt,_out_srid))));
