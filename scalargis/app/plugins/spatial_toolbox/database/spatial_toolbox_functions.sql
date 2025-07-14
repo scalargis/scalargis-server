@@ -80,9 +80,9 @@ BEGIN
 			select row_number() over () id, t.*,
 			ST_Dimension(geom) dimension, ST_ASEWKT(ST_Transform(geom,'|| _out_srid::text ||')) geom,
 			ST_Area(geom) area, ST_Length(geom) length,
-			CASE ST_Dimension(geom)
-				WHEN 2 THEN (ST_Area(geom) * 100)/'|| area_geom::text ||'
-				WHEN 1 THEN (ST_Length(geom) * 100)/'|| length_geom::text ||'
+			CASE
+				WHEN ST_Dimension(geom) = 2 and '|| area_geom || ' > 0 THEN (ST_Area(geom) * 100)/'|| area_geom::text ||'
+				WHEN ST_Dimension(geom) = 1 and '|| length_geom || ' > 0 THEN (ST_Length(geom) * 100)/'|| length_geom::text ||'
 				ELSE 0::double precision END as percent
 			from t';
 		else
@@ -96,9 +96,9 @@ BEGIN
 			select row_number() over () id, t.*,
 			ST_Dimension(geom) dimension, ST_ASEWKT(ST_Transform(geom,'|| _out_srid::text ||')) geom,
 			ST_Area(geom) area, ST_Length(geom) length,
-			CASE ST_Dimension(geom)
-				WHEN 2 THEN (ST_Area(geom) * 100)/'|| area_geom::text ||'
-				WHEN 1 THEN (ST_Length(geom) * 100)/'|| length_geom::text ||'
+			CASE
+				WHEN ST_Dimension(geom) = 2 and '|| area_geom || ' > 0 THEN (ST_Area(geom) * 100)/'|| area_geom::text ||'
+				WHEN ST_Dimension(geom) = 1 and '|| length_geom || ' > 0 THEN (ST_Length(geom) * 100)/'|| length_geom::text ||'
 				ELSE 0::double precision END as percent
 			from t';
 		end if;
