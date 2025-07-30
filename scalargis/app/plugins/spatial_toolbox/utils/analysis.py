@@ -5,7 +5,7 @@ from collections import OrderedDict
 import uuid
 import base64
 import io
-from flask import redirect, url_for, send_file, make_response, render_template, render_template_string
+from flask import Request, request, send_file, render_template, render_template_string
 from flask_restx import abort
 from sqlalchemy import text
 from pyexcel_xls import save_data as save_xls
@@ -13,8 +13,6 @@ from pyexcel_io import save_data as save_csv
 from reportlab.pdfgen import canvas
 from reportlab.lib import colors
 from reportlab.lib.utils import ImageReader
-from reportlab.lib.pagesizes import A4
-from reportlab.lib.units import mm, inch
 from xhtml2pdf import pisa
 from PIL import Image as PILImage
 import fitz
@@ -24,9 +22,13 @@ from app.database import db
 from app.database.schema import db_schema
 from instance import settings
 from app.utils.settings import get_config_value
+from app.models.portal import Viewer, PrintGroup, Print
+from app.api.v1.portal.dao.app import get_user, filter_print_group, fill_layouts_from_print_group
+from app.modules.print.controllers import viewer_generate_pdf, viewer_merge_pdf
 from app.utils.geo import getGeometryFromWKT, transformGeom
-from app.utils.wms import (replace_geoserver_url, calculate_bbox, calculate_bbox_geom, center_map, getmap_image,
-                           get_image_with_opacity, getmap_url, getmap_url_by_bbox)
+from app.utils.wms import (calculate_bbox, calculate_bbox_geom, getmap_url)
+
+from app.utils.constants import ROLE_ADMIN
 
 
 logger = logging.getLogger(__name__)
@@ -80,6 +82,9 @@ def get_intersect_results(config_code, geom_wkt, geom_srid, buffer, buffer_srid,
 
     if 'maps' in json_cfg:
         record_filtered['maps'] = json_cfg['maps']
+
+    if 'attachments' in json_cfg:
+        record_filtered['attachments'] = json_cfg['attachments']
 
     return record_filtered
 
@@ -154,7 +159,12 @@ def export_intersect_results(record, out_format):
             os.remove(filename)
 
         if create_pdf_intersect_results(record, filename):
-            return send_file(filename, download_name=outfile)
+            prints_filename = create_intersect_attachments(record, file_name)
+            if prints_filename:
+                return send_file(prints_filename, download_name=outfile)
+            else:
+                return send_file(filename, download_name=outfile)
+
         else:
             abort(500, custom='value')
 
@@ -178,6 +188,7 @@ def export_intersect_results(record, out_format):
             os.remove(os.path.join(settings.APP_TMP_DIR, outfile))
 
         return send_file(filename, download_name=outfile)
+
 
 def create_pdf_intersect_results(record, filename):
     # enable logging
@@ -356,7 +367,7 @@ def draw_geometry(canvas, scale, mapcenter_x, mapcenter_y, width, height, ll_x, 
                 gm = geometry.MultiPoint([gm])
 
             for i in range(len(gm.geoms)):
-                logger.debug(gm.geoms[i])
+                #logger.debug(gm.geoms[i])
                 x = (gm.geoms[i].x - xmin) / xfactor
                 y = (gm.geoms[i].y - ymin) / yfactor
                 canvas.circle(x * mm, y * mm, point_size * mm, fill=1)
@@ -369,7 +380,7 @@ def draw_geometry(canvas, scale, mapcenter_x, mapcenter_y, width, height, ll_x, 
                 gm = geometry.MultiLineString([gm])
 
             for i in range(len(gm.geoms)):
-                logger.debug(gm.geoms[i])
+                #logger.debug(gm.geoms[i])
                 path = canvas.beginPath()
                 ox = (float(gm.geoms[i].coords[0][0]) - xmin) / xfactor
                 oy = (float(gm.geoms[i].coords[0][1]) - ymin) / yfactor
@@ -401,7 +412,7 @@ def draw_geometry(canvas, scale, mapcenter_x, mapcenter_y, width, height, ll_x, 
             canvas.setLineWidth(polygon_stroke_width)
 
             def draw_geom_ring(ring):
-                logger.debug(ring)
+                #logger.debug(ring)
                 path = canvas.beginPath()
                 start_x = (float(ring.coords[0][0]) - xmin) / xfactor
                 start_y = (float(ring.coords[0][1]) - ymin) / xfactor
@@ -423,3 +434,159 @@ def draw_geometry(canvas, scale, mapcenter_x, mapcenter_y, width, height, ll_x, 
             logger.warning("Bad geom type")
 
         canvas.restoreState()
+
+
+def create_intersect_attachments(record, filename):
+
+    viewer_id = int(request.args.get('viewerId', None))
+
+    if viewer_id is None:
+        return None
+
+    geom_ewkt = record.get('output_geom', None)
+    if geom_ewkt is None:
+        return None
+
+    geom_srid = int(geom_ewkt.split(';')[0].split('=')[1])
+    geom_wkt = geom_ewkt.split(';')[1]
+
+    user = get_user(request)
+
+    viewer = db.session.query(Viewer).filter(Viewer.id == viewer_id).one_or_none()
+
+    attachments = record.get("attachments", [])
+
+    if len(attachments) == 0:
+        return None
+
+    files = []
+
+    for att in attachments:
+        attach_type = att.get('type', '').lower()
+        if attach_type == 'print':
+            print_id = att.get("id", None)
+
+            if print_id is None:
+                continue
+
+            prt = db.session.query(Print).filter(Print.id == print_id).one_or_none()
+
+            if prt is None:
+                continue
+
+            print_code = prt.code
+
+            geom = getGeometryFromWKT(geom_wkt)
+
+            out_srid = prt.srid or geom_srid
+
+            geom = transformGeom(geom, f'EPSG:{geom_srid}', f'EPSG:{out_srid}')
+
+            out_geom_wkt = str(geom)
+
+            data = {
+                "viewerId": viewer_id,
+                "printId": print_id,
+                "srid": out_srid,
+                "layout": "A4|Retrato",
+                "formFields": {},
+                "geomWKT[]": out_geom_wkt
+            }
+
+            req = Request.from_values(data=data, method="POST")
+
+            print_obj = viewer_generate_pdf(print_code, user, request=req)
+
+            if print_obj is not None and print_obj.get('Success', False):
+                prt_filename = print_obj.get('Data').get('filename')
+                files.append(prt_filename)
+            else:
+                logger.warning("Attachments: could not generate print attachment (id: {0})".format(print_id))
+
+        elif attach_type == "printgroup":
+            group_id = att.get("id", None)
+
+            if group_id is None:
+                continue
+
+            group = db.session.query(PrintGroup).filter(PrintGroup.id == group_id).one_or_none()
+
+            if group is None:
+                return None
+
+            group_cfg = filter_print_group(viewer, group, geom_wkt, geom_srid, [ROLE_ADMIN],
+                                           group.show_all_prints or False)
+
+            if not group_cfg:
+                return None
+
+            #-- Layouts --#
+            groups_layouts = []
+            for l in group.layouts:
+                groups_layouts.append({'id': l.id, 'format': l.format, 'orientation': l.orientation})
+
+            prints_layouts = []
+            fill_layouts_from_print_group(group, prints_layouts)
+
+            group_cfg['layouts'] = {'group': groups_layouts, 'prints': prints_layouts}
+            # -- End Layouts --#
+
+            for p in group_cfg.get('prints'):
+                group_id = group_cfg.get('id')
+                print_id = p.get('id')
+                print_code = p.get('code')
+
+                geom = getGeometryFromWKT(geom_wkt)
+
+                out_srid = p.get('srid', geom_srid)
+
+                geom = transformGeom(geom, f'EPSG:{geom_srid}', f'EPSG:{out_srid}')
+
+                out_geom_wkt = str(geom)
+
+                data = {
+                    "viewerId": viewer_id,
+                    "printId": print_id,
+                    "groupId": group_id,
+                    "srid": out_srid,
+                    "layout": "A4|Retrato",
+                    "formFields": {},
+                    "geomWKT[]": out_geom_wkt
+                }
+
+                req = Request.from_values(data=data, method="POST")
+
+                print_obj = viewer_generate_pdf(print_code, user, request=req)
+
+                if print_obj is not None and print_obj.get('Success', False):
+                    prt_filename = print_obj.get('Data').get('filename')
+                    files.append(prt_filename)
+                else:
+                    logger.warning("Attachments: could not generate print group attachment (id: {0})".format(group_id))
+
+        elif attach_type == 'file':
+            att_filepath = att.get('filepath', None)
+            if not att_filepath:
+                logger.warning("Attachments: filepath not defined")
+                continue
+            if not os.path.exists(att_filepath):
+                logger.warning("Attachments filepath does not exists ({0})".format(att_filepath))
+                continue
+            files.append(att_filepath)
+
+    if len(files) > 0:
+        files.insert(0, filename)
+        data = {
+            "viewerId": viewer_id,
+            "files": files
+        }
+        req = Request.from_values(headers={'Content-Type': 'application/json'}, data=json.dumps(data), method="POST")
+
+        resp = viewer_merge_pdf(user, request=req)
+
+        if resp and resp.get('Success'):
+            final_filename = resp.get('Data', {}).get('filename', None)
+            if final_filename:
+                return os.path.join(settings.APP_TMP_DIR, final_filename)
+
+    return None

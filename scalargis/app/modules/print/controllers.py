@@ -271,7 +271,7 @@ def generate_pdf(code):
     return jsonify(Success=True, Message=None, Data=data)
 
 
-def viewer_generate_pdf(code, user):
+def viewer_generate_pdf(code, user, request=request):
     logger = logging.getLogger(__name__)
 
     print = db.session.query(Print).filter(Print.code == code).first()
@@ -538,7 +538,7 @@ def merge_pdf():
         return jsonify(Success=False, Message=None, Data=None)
 
 
-def viewer_merge_pdf(user):
+def viewer_merge_pdf(user, request=request):
     data = request.get_json()
 
     viewer_id = None

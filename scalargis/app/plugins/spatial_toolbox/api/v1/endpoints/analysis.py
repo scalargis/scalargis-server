@@ -33,10 +33,11 @@ class Intersect(Resource):
                                          buffer_srid=buffer_srid, out_srid=out_srid)
 
             if (format != 'json'):
+                return {}, 500
                 return export_intersect_results(data, format)
 
             return data, 200, {'Access-Control-Allow-Origin': '*',
-                               'Access-Control-Allow-Methods': 'POST',
+                               'Access-Control-Allow-Methods': 'GET',
                                'Access-Control-Allow-Headers': 'Origin, X-Requested-With, Content-Type, Accept, X-API-KEY'
                                }
         except Exception as e:
