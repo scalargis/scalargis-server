@@ -514,7 +514,8 @@ def create_intersect_attachments(record, filename):
             if group is None:
                 return None
 
-            group_cfg = filter_print_group(viewer, group, geom_wkt, geom_srid, [ROLE_ADMIN],
+            geom = getGeometryFromWKT(geom_wkt)
+            group_cfg = filter_print_group(viewer, group, geom, geom_srid, [ROLE_ADMIN],
                                            group.show_all_prints or False)
 
             if not group_cfg:
