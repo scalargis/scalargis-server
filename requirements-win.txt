@@ -21,8 +21,8 @@ fiona @ https://github.com/cgohlke/geospatial-wheels/releases/download/v2024.1.1
 fiona @ https://github.com/cgohlke/geospatial-wheels/releases/download/v2024.1.1/fiona-1.9.5-cp311-cp311-win_amd64.whl;python_version=="3.11"
 fiona @ https://github.com/cgohlke/geospatial-wheels/releases/download/v2024.1.1/fiona-1.9.5-cp312-cp312-win_amd64.whl;python_version=="3.12"
 Shapely
-reportlab
-xhtml2pdf
+reportlab==4.4.1
+xhtml2pdf==0.2.17
 PyPDF2
 qrcode
 jsonmerge
