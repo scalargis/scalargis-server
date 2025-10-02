@@ -14,6 +14,9 @@ ADD . /var/scalargis
 # Set working dir
 WORKDIR /var/scalargis
 
+# Install python dependencies
+RUN apt install libcairo2-dev pkg-config python3-dev
+
 # Install ScalarGIS dependencies
 RUN pip3 install --break-system-packages -r requirements.txt --cache-dir .pip-cache && rm -rf .pip-cache
 
