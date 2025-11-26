@@ -77,6 +77,54 @@ def config_admin_user():
         db.session.add(user)
 
 
+def update_schema():
+    """
+    Update existing database schema with new columns.
+    This function checks if columns exist before adding them to avoid errors.
+    """
+    updated = False
+
+    try:
+        # Check if NIF column exists in user table
+        nif_exists_query = text("""
+            SELECT EXISTS (
+                SELECT 1
+                FROM information_schema.columns
+                WHERE table_schema = :schema
+                AND table_name = 'user'
+                AND column_name = 'nif'
+            )
+        """)
+
+        nif_exists = db.session.execute(nif_exists_query, {'schema': db_schema}).scalar()
+
+        if not nif_exists:
+            # Add NIF column to user table
+            alter_query = text("""
+                ALTER TABLE {schema}.user
+                ADD COLUMN nif VARCHAR(9) UNIQUE
+            """.format(schema=db_schema))
+
+            db.session.execute(alter_query)
+
+            # Create index on NIF column
+            index_query = text("""
+                CREATE INDEX IF NOT EXISTS ix_{schema}_user_nif
+                ON {schema}.user (nif)
+            """.format(schema=db_schema))
+
+            db.session.execute(index_query)
+
+            db.session.commit()
+            updated = True
+
+    except Exception as e:
+        db.session.rollback()
+        raise e
+
+    return updated
+
+
 def load_sample_data():
     from .sample_data import load_data
 
