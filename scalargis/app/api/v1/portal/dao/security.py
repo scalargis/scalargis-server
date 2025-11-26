@@ -21,6 +21,11 @@ from instance import settings
 from app.utils import constants
 from app.utils.security import get_token, get_user_token
 from app.utils.http import get_host_url, get_script_root, get_base_url
+# NIF Validation
+import doctest
+
+DIGITOS_NIF = 9
+DIGITOS_CONTROLO = 8
 
 
 # Convenient references
@@ -78,6 +83,51 @@ def send_email_user_registration(user, subject=None, msg=None, template=None, re
 
     send_mail(main_app, [user.email], msg_subject, msg_text)
 
+# calcular_digito_controlo e valida_nif retirados de: wikipedia, numero de identificação fiscal.
+# utilizamos com valida_nif(nif) para validar o NIF fornecido no registo de utilizador.
+def calcular_digito_controlo(digitos: str) -> str:
+    """Calcula o digito de controle de um NIF Ex. 99999999[0]
+    >>> calcular_digito_controlo('99999999')
+    '0'
+    >>> calcular_digito_controlo('74089837')
+    '0'
+    >>> calcular_digito_controlo('28702400')
+    '8'
+    """
+    if not digitos.isdigit():
+        raise ValueError("Nem todos os caracteres são digitos")
+    if not len(digitos) == DIGITOS_CONTROLO:
+        raise ValueError(f"Número de digitos diferente de {DIGITOS_CONTROLO}")
+
+    soma = (
+        int(digitos[0]) * 9
+        + int(digitos[1]) * 8
+        + int(digitos[2]) * 7
+        + int(digitos[3]) * 6
+        + int(digitos[4]) * 5
+        + int(digitos[5]) * 4
+        + int(digitos[6]) * 3
+        + int(digitos[7]) * 2
+    )
+    resto = soma % 11
+    if resto == 0 or resto == 1:
+        return "0"
+    return str(11 - resto)
+
+
+def valida_nif(nif: str) -> bool:
+    """Validação do número de identificação fiscal
+    >>> valida_nif('999999990')
+    True
+    >>> valida_nif('999999999')
+    False
+    >>> valida_nif('501442600')
+    True
+    """
+    if not nif.isdigit() or len(nif) != DIGITOS_NIF:
+        return False
+    return nif[-1] == calcular_digito_controlo(nif[:DIGITOS_CONTROLO])
+
 
 def register_user(request):
     if request.is_json:
@@ -86,6 +136,7 @@ def register_user(request):
         username = request.json.get('username')
         password = request.json.get('password')
         redirect = request.json.get('redirect')
+        nif = request.json.get('nif')
     else:
         cred = json.loads(request.data.decode('utf-8'))
         name = cred.get('name')
@@ -93,6 +144,7 @@ def register_user(request):
         username = cred.get('username')
         password = cred.get('password')
         redirect = cred.get('redirect')
+        nif = cred.get('nif')
 
     user = User.query.filter(or_(func.lower(User.username) == func.lower(username),
                                  func.lower(User.email) == func.lower(email))).first()
@@ -101,17 +153,41 @@ def register_user(request):
         return {'status': 409, 'error': True,
                 'message': 'Já existe um utilizador com o username ou email indicado.'}, 409
 
+    # Check for duplicate NIF if provided
+    if nif is not None and nif != '':
+        existing_nif_user = User.query.filter_by(nif=nif).first()
+        if existing_nif_user is not None:
+            return {'status': 409, 'error': True,
+                    'message': 'Já existe um utilizador com o NIF indicado.'}, 409
+
+    # NIF validation
+    # Can be null/empty or valid NIF
+    if nif is not None and nif != '':
+        if not valida_nif(nif):
+            return {'status': 400, 'error': True,
+                    'message': 'NIF inválido.'}, 400
+
     user = User()
 
     user.name = name
     user.username = username
     user.email = email
+    user.nif = nif if nif and nif != '' else None
     user.active = False
     user.password = encrypt_password(password)
 
-    db.session.add(user)
-    db.session.commit()
-    db.session.refresh(user)
+    #Poderia nao ter try except, e apenas o scope do try. 
+    # No entanto, a operacao na DB 'e o fiscalizador final de integridade.
+    # Ou seja, poderia eventualmente dar se o caso de a verificacao de duplicados acima falhar.
+    # E chegava aqui, sem except, e a excecao nao seria tratada.
+    try:
+        db.session.add(user)
+        db.session.commit()
+        db.session.refresh(user)
+    except IntegrityError:
+        db.session.rollback()
+        return {'status': 409, 'error': True,
+                'message': 'Já existe um utilizador com o username, email ou NIF indicado.'}, 409
 
     send_email_user_registration(user, subject='Registo de utilizador', redirect=redirect)
 
