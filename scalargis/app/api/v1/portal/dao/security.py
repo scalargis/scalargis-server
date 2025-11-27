@@ -173,7 +173,7 @@ def register_user(request):
     user.username = username
     user.email = email
     user.nif = nif if nif and nif != '' else None
-    user.active = False
+    user.active = True
     user.password = encrypt_password(password)
 
     #Poderia nao ter try except, e apenas o scope do try. 
@@ -189,7 +189,7 @@ def register_user(request):
         return {'status': 409, 'error': True,
                 'message': 'Já existe um utilizador com o username, email ou NIF indicado.'}, 409
 
-    send_email_user_registration(user, subject='Registo de utilizador', redirect=redirect)
+    #send_email_user_registration(user, subject='Registo de utilizador', redirect=redirect)
 
     return {'success': True, 'message': 'Foi enviado um email para ' + email + ' com as instruções para confirmação e conclusão do registo.'}, 200
 
