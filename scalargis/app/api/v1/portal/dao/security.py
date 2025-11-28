@@ -164,8 +164,8 @@ def register_user(request):
     if nif is not None and nif != '':
         existing_nif_user = User.query.filter_by(nif=nif).first()
         if existing_nif_user is not None:
-            return {'status': 409, 'error': True,
-                    'message': 'Já existe um utilizador com o NIF indicado.'}, 409
+            return {'status': 422, 'error': True,
+                    'message': 'Já existe um utilizador com o NIF indicado.'}, 422
 
     # ========================================
     # NIF OWNERSHIP VALIDATION
