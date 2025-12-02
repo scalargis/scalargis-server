@@ -85,7 +85,6 @@ class User(db.Model, PortalTable, UserMixin):
     name = db.Column(db.String(255))
     first_name = db.Column(db.String(255))
     last_name = db.Column(db.String(255))
-    nif = db.Column(db.String(9), unique=True, nullable=True, index=True)
     password = db.Column(db.String(255))
     active = db.Column(db.Boolean())
     confirmed_at = db.Column(db.DateTime())
