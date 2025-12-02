@@ -40,7 +40,7 @@ def initialize_app(flask_app):
     flask_app.register_blueprint(map_bp)
     flask_app.register_blueprint(file_bp)
 
-    from app.database.schema import create_schema, update_schema
+    from app.database.schema import create_schema
 
     # -- Create database schema
     with app.app_context():
@@ -49,11 +49,6 @@ def initialize_app(flask_app):
             created = create_schema()
             if created:
                 log.info('Database schema created!')
-            else:
-                # If schema already exists, check for updates
-                updated = update_schema()
-                if updated:
-                    log.info('Database schema updated!')
         except Exception as e:
             log.error('Database Initialization error: {}'.format(str(e)))
             raise
