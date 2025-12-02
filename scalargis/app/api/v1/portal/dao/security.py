@@ -23,13 +23,10 @@ from app.utils.security import get_token, get_user_token
 from app.utils.http import get_host_url, get_script_root, get_base_url
 # NIF Validation
 import doctest
-from app.extensions.authama.utils import validate_nif_ownership
-import logging
 
 DIGITOS_NIF = 9
 DIGITOS_CONTROLO = 8
 
-logger = logging.getLogger(__name__)
 
 # Convenient references
 _security = LocalProxy(lambda: current_app.extensions['security'])
@@ -140,8 +137,6 @@ def register_user(request):
         password = request.json.get('password')
         redirect = request.json.get('redirect')
         nif = request.json.get('nif')
-        oauth_token = request.json.get('oauth_token')
-        oauth_context_id = request.json.get('oauth_context_id')
     else:
         cred = json.loads(request.data.decode('utf-8'))
         name = cred.get('name')
@@ -150,8 +145,6 @@ def register_user(request):
         password = cred.get('password')
         redirect = cred.get('redirect')
         nif = cred.get('nif')
-        oauth_token = cred.get('oauth_token')
-        oauth_context_id = cred.get('oauth_context_id')
 
     user = User.query.filter(or_(func.lower(User.username) == func.lower(username),
                                  func.lower(User.email) == func.lower(email))).first()
@@ -166,35 +159,6 @@ def register_user(request):
         if existing_nif_user is not None:
             return {'status': 409, 'error': True,
                     'message': 'Já existe um utilizador com o NIF indicado.'}, 409
-
-    # ========================================
-    # NIF OWNERSHIP VALIDATION
-    # ========================================
-    # If NIF is provided, OAuth credentials MUST be present and NIF ownership MUST be validated
-    # If NIF is NOT provided, registration proceeds normally (admin use case)
-    if nif is not None and nif != '':
-        # Check OAuth credentials are provided
-        if not oauth_token or not oauth_context_id:
-            logger.warning(f'Registration attempted with NIF {nif} but missing OAuth credentials')
-            return {'status': 400, 'error': True,
-                    'message': 'Validação de NIF requerida. Por favor, registe-se através de Autenticação.Gov.'}, 400
-
-        # Validate NIF ownership by calling FA API
-        FA_API_URL = 'https://autenticacao.gov.pt/OAuthResourceServer/Api/AttributeManager'
-
-        is_valid, error_msg = validate_nif_ownership(
-            nif=nif,
-            oauth_token=oauth_token,
-            oauth_context_id=oauth_context_id,
-            fa_api_url=FA_API_URL
-        )
-
-        if not is_valid:
-            logger.warning(f'NIF ownership validation failed for NIF {nif}: {error_msg}')
-            return {'status': 403, 'error': True,
-                    'message': 'Falha na validação do NIF. O NIF fornecido não corresponde ao utilizado na autenticação.'}, 403
-
-        logger.info(f'NIF {nif} ownership validated successfully for user registration')
 
     # NIF validation
     # Can be null/empty or valid NIF
