@@ -20,6 +20,7 @@ from shapely import wkt, geometry
 
 from app.database import db
 from app.database.schema import db_schema
+from app.utils.pdf_layout import get_image
 from instance import settings
 from app.utils.settings import get_config_value
 from app.models.portal import Viewer, PrintGroup, Print
@@ -290,7 +291,7 @@ def create_map_image(geom_ewkt, map_config):
 
             map_extent = extent
 
-            img = ImageReader(url)
+            img = get_image(url)
 
             can.drawImage(img, 0, 0, width=width, height=height, mask='auto')
         except Exception as err:

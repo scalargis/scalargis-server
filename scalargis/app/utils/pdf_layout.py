@@ -68,6 +68,16 @@ def merge_pdf_files(filename, files):
 
     return True
 
+def get_image(url):
+    response = requests.get(url)
+    response.raise_for_status()
+
+    image_bytes = BytesIO(response.content)
+
+    output_img = ImageReader(image_bytes)
+
+    return output_img
+
 def get_image_with_opacity(url, opacity):
     output_img = None
 
@@ -1860,7 +1870,7 @@ class Pdf:
         try:
             #For performance reasons, only change alpha pixel value if opacity is lower than one (changed by user)
             if opacity == 1:
-                img = ImageReader(url)
+                img = get_image(url)
             else:
                 img = get_image_with_opacity(url, opacity)
 
@@ -1903,7 +1913,7 @@ class Pdf:
 
         logger.info("WMS: " + url)
         try:
-            img = ImageReader(url)
+            img = get_image(url)
         except Exception as err:
             img = None
             logger.warning(err)
@@ -1938,7 +1948,7 @@ class Pdf:
         try:
             #For performance reasons, only change alpha pixel value if opacity is lower than one (changed by user)
             if opacity == 1:
-                img = ImageReader(url)
+                img = get_image(url)
             else:
                 img = get_image_with_opacity(url, opacity)
         except Exception as err:
