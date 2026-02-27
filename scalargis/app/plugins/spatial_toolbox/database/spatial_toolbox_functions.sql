@@ -63,6 +63,17 @@ BEGIN
 		f_table_schema like (_i->>'schema') and f_table_name like (_i->>'table') and f_geometry_column like (_i->>'geom_field');
 		--raise notice '_in_layer_srid=%', _in_layer_srid;
 
+		if _in_layer_srid = 0 then
+		    EXECUTE format(
+			    'SELECT ST_SRID(%I) FROM %I.%I LIMIT1',
+		        _i->>'geom_field',
+				_i->>'schema',
+		        _i->>'table'
+		    )
+			INTO _in_layer_srid;
+			--raise notice '_in_layer_srid=%', _in_layer_srid;
+		end if;
+
 		g = ST_Transform(_geom_ewkt::Geometry, _in_layer_srid);
 		--g = ST_Transform(_geom_ewkt::Geometry, data_srid);
 
