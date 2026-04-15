@@ -18,3 +18,5 @@ scalargis/app/plugins/*
 !scalargis/app/plugins/geonames/
 !scalargis/app/plugins/spatial_toolbox/
 
+# Instance-specific config
+scalargis/instance/development_local*.py
