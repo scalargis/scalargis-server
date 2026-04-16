@@ -29,6 +29,9 @@ services:
       - APP_CONFIG_FILE=${APP_CONFIG_FILE}
       - PYTHONPATH=/var/scalargis/scalargis
       - PORT=${PORT}
+      - THREADS=${THREADS}
+      - CHANNEL_TIMEOUT=${CHANNEL_TIMEOUT}
+      - CONNECTION_LIMIT=${CONNECTION_LIMIT}
       - URL_PREFIX=${URL_PREFIX}
     networks:
       - scalargis
