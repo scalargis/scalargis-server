@@ -14,6 +14,7 @@ from flask_principal import Identity, identity_changed
 from flask_security.core import verify_hash
 from flask_security.utils import verify_and_update_password
 from flask_ldap3_login import LDAP3LoginManager, AuthenticationResponseStatus
+from ldap3.utils.conv import escape_filter_chars
 from app.utils.decorators import async_task
 from . import constants
 
@@ -49,6 +50,8 @@ def init_ldap(app):
 
         cfg = app.config.get('LDAP_CONFIG')
 
+        logger = logging.getLogger(__name__)
+
         if isinstance(cfg, list):
             for c in cfg:
                 manager = LDAPLoginManager()
@@ -80,7 +83,9 @@ def authenticate_ldap_user(username, password, domain):
             try:
                 ldap_user = ldap.get_user_info_for_username(username)
                 if ldap_user:
-                    res = ldap.authenticate(username, password)
+                    ldap_username = ldap_user.get('username', None) or username
+
+                    res = ldap.authenticate(ldap_username, password)
                     if res.status and res.status == AuthenticationResponseStatus.success:
                         return True
             except:
@@ -258,7 +263,7 @@ class LDAPLoginManager(LDAP3LoginManager):
         Overrides several methods of LDAP3LoginManager Class
     """
 
-    def get_user_info_for_username(self, username, _connection=None):
+    def get_user_info_for_username(self, username):
         """
         Gets info about a user at a specified username by searching the
         Users DN. Username attribute is the same as specified as
@@ -266,24 +271,55 @@ class LDAPLoginManager(LDAP3LoginManager):
 
         Args:
             username (str): Username of the user to search for.
-            _connection (ldap3.Connection): A connection object to use when
-                searching. If not given, a temporary connection will be
-                created, and destroyed after use.
         Returns:
             dict: A dictionary of the user info from LDAP
         """
-        ldap_filter = '(&{0}({1}={2}))'.format(
-            self.config.get('LDAP_USER_OBJECT_FILTER'),
-            self.config.get('LDAP_USER_LOGIN_ATTR'),
-            username
+
+        logger = logging.getLogger(__name__)
+
+        try:
+            connection = self.connection
+        except Exception as e:
+            logger.exception(e)
+            return None
+
+        safe_username = escape_filter_chars(username)
+
+        login_attr = self.config.get('LDAP_USER_LOGIN_ATTR', 'sAMAccountName')
+        email_attr = self.config.get('LDAP_USER_EMAIL_ATTR', None)
+
+        if (email_attr):
+            # username or email
+            search_filter  = '(&{0}(|({1}={3})({2}={3})))'.format(
+                self.config.get('LDAP_USER_OBJECT_FILTER'),
+                login_attr,
+                email_attr,
+                safe_username
+            )
+        else:
+            # only username
+            search_filter  = '(&{0}({1}={2}))'.format(
+                self.config.get('LDAP_USER_OBJECT_FILTER'),
+                login_attr,
+                safe_username
+            )
+
+        connection.search(
+            search_base=self.full_user_search_dn,
+            search_filter=search_filter,
+            attributes=self.config.get('LDAP_GET_USER_ATTRIBUTES')
         )
 
-        return self.get_object(
-            dn=self.full_user_search_dn,
-            filter=ldap_filter,
-            attributes=self.config.get("LDAP_GET_USER_ATTRIBUTES"),
-            _connection=_connection,
-        )
+        if len(connection.entries) == 0:
+            return None
+
+        entry = connection.entries[0]
+
+        return {
+            "dn": entry.entry_dn,
+            "username": entry[self.config['LDAP_USER_LOGIN_ATTR']],
+            "attributes": entry.entry_attributes_as_dict
+        }
 
     def authenticate(self, username, password):
         """

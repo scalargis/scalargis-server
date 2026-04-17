@@ -11,14 +11,20 @@ ldap_cfg = [{
         'LDAP_USER_RDN_ATTR': 'cn',
         # The Attribute you want users to authenticate to LDAP with.
         'LDAP_USER_LOGIN_ATTR': 'sAMAccountName',
+        # The Attribute to be used as user email. If filled, the login is executed with the username or email.
+        'LDAP_USER_EMAIL_ATTR': 'userPrincipalName',
         # The Username to bind to LDAP with
         'LDAP_BIND_USER_DN': 'mail@domain_name.pt',
         # The Password to bind to LDAP with
         'LDAP_BIND_USER_PASSWORD': 'password',
-        'LDAP_USER_SEARCH_SCOPE': 'SUBTREE'
-        # ldap_config['LDAP_USER_OBJECT_FILTER'] = '(objectClass=user)'
+        'LDAP_USER_SEARCH_SCOPE': 'SUBTREE',
+        #'LDAP_USER_OBJECT_FILTER': '(objectClass=user)',
+        #'LDAP_GET_USER_ATTRIBUTES': ['*']
     }]
 
 LDAP_CONFIG = ldap_cfg
+
+
+
 
 
