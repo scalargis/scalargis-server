@@ -9,7 +9,8 @@
 			"fields": [
 				{
 					"field": "designacao",
-					"alias": "Classe"
+					"alias": "Classe",
+					"allowNull": false
 				},
 				{
 					"field": "tema_o",
@@ -20,6 +21,7 @@
 					"alias": "Sub-tema"
 				}
 			],
+			"filter": "designacao IN ('VAL1', 'VAL2')",
 			"results":[]
 		},
 		{
