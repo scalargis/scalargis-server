@@ -82,6 +82,23 @@ class LDAPLoginManager(LDAP3LoginManager):
             host, port, use_ssl, user,
         )
 
+        # Guard: ldap3 raises LDAPUserNameIsMandatoryError with a misleading
+        # message if user is empty. Catch it here and emit a clear cause so
+        # operators immediately see "no bind user configured" instead of
+        # "user name is mandatory in simple bind" deep in a stack trace.
+        if not user:
+            logger.error(
+                "[_direct_connection] no bind user available "
+                "(bind_user arg empty AND LDAP_BIND_USER_DN not set in config). "
+                "This usually means the configured bind strategy does not use a "
+                "service account (Direct Credentials / Direct Bind), but a "
+                "code path that requires one (probe, search-then-bind) was "
+                "invoked anyway. Aborting bind."
+            )
+            raise ValueError(
+                "LDAP bind user is not configured (LDAP_BIND_USER_DN is empty)"
+            )
+
         try:
             server = Server(host, port=port, use_ssl=use_ssl, get_info=ALL)
             conn = Connection(
@@ -301,6 +318,19 @@ def test_ldap_connection(manager: LDAPLoginManager) -> bool:
     base_dn = manager.config.get('LDAP_BASE_DN')
     bind_dn = manager.config.get('LDAP_BIND_USER_DN')
 
+    # The probe requires a service account to do an authenticated search.
+    # Direct Credentials Bind and Direct Bind do not configure one, so
+    # skipping is the correct behavior — there is nothing to probe.
+    if not bind_dn:
+        logger.info(
+            "[ldap_probe] SKIPPED — no LDAP_BIND_USER_DN configured "
+            "(host=%s base_dn=%s). This is normal for Direct Credentials "
+            "and Direct Bind strategies; the probe only applies to "
+            "Search-then-Bind. Real bind attempts will be logged at login time.",
+            host, base_dn,
+        )
+        return True
+
     logger.info(
         "[ldap_probe] Testing connection — host=%s  base_dn=%s  bind_dn=%s",
         host, base_dn, bind_dn,
@@ -466,14 +496,46 @@ def get_user_token(username, password):
     authenticated = False
     token = None
 
+    # First try the raw input. get_user() matches both `username` and `email`
+    # columns, so local users named "foo@bar" or with email set to the AD UPN
+    # resolve here without any normalization.
     user = user_datastore.get_user(username)
+    ldap_username = username
+
+    # Fallback: only if the raw lookup missed AND LDAP is enabled AND the
+    # input looks like a UPN. Strip the domain to get the sAMAccountName
+    # form. We intentionally do NOT strip when LDAP is off, because
+    # local-only deployments may legitimately use '@' inside usernames.
+    if user is None:
+        ldap_enabled = current_app.config.get('SCALARGIS_LDAP_AUTHENTICATION', False)
+        if ldap_enabled and '@' in username:
+            ldap_username = username.split('@', 1)[0]
+            logger.debug(
+                "[get_user_token] raw lookup for '%s' missed; retrying as '%s' (UPN normalization)",
+                username, ldap_username,
+            )
+            user = user_datastore.get_user(ldap_username)
+            if user is not None:
+                logger.info(
+                    "[get_user_token] resolved UPN '%s' to local user '%s'",
+                    username, ldap_username,
+                )
+
+    if user is None:
+        logger.warning("[get_user_token] no local user matches '%s'", username)
+    elif not user.is_active:
+        logger.warning("[get_user_token] user '%s' is inactive", ldap_username)
 
     if user and user.is_active:
         if verify_and_update_password(password, user):
             authenticated = True
-            logger.debug("[get_user_token] local password OK for '%s'", username)
+            logger.debug("[get_user_token] local password OK for '%s'", ldap_username)
         else:
-            if authenticate_ldap_user(username, password, None):
+            logger.debug(
+                "[get_user_token] local password rejected for '%s'; trying LDAP",
+                ldap_username,
+            )
+            if authenticate_ldap_user(ldap_username, password, None):
                 authenticated = True
                 # Sync the LDAP-verified password into the local DB.
                 # This means future logins succeed via verify_and_update_password
@@ -484,12 +546,12 @@ def get_user_token(username, password):
                     user_datastore.commit()
                     logger.info(
                         "[get_user_token] local password refreshed for '%s' after LDAP auth",
-                        username,
+                        ldap_username,
                     )
                 except Exception as exc:
                     logger.warning(
                         "[get_user_token] could not refresh local password for '%s': %s",
-                        username, exc,
+                        ldap_username, exc,
                     )
 
         if authenticated:
