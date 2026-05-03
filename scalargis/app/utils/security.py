@@ -500,41 +500,23 @@ def get_user_token(username, password):
     # columns, so local users named "foo@bar" or with email set to the AD UPN
     # resolve here without any normalization.
     user = user_datastore.get_user(username)
-    ldap_username = username
-
-    # Fallback: only if the raw lookup missed AND LDAP is enabled AND the
-    # input looks like a UPN. Strip the domain to get the sAMAccountName
-    # form. We intentionally do NOT strip when LDAP is off, because
-    # local-only deployments may legitimately use '@' inside usernames.
-    if user is None:
-        ldap_enabled = current_app.config.get('SCALARGIS_LDAP_AUTHENTICATION', False)
-        if ldap_enabled and '@' in username:
-            ldap_username = username.split('@', 1)[0]
-            logger.debug(
-                "[get_user_token] raw lookup for '%s' missed; retrying as '%s' (UPN normalization)",
-                username, ldap_username,
-            )
-            user = user_datastore.get_user(ldap_username)
-            if user is not None:
-                logger.info(
-                    "[get_user_token] resolved UPN '%s' to local user '%s'",
-                    username, ldap_username,
-                )
 
     if user is None:
         logger.warning("[get_user_token] no local user matches '%s'", username)
     elif not user.is_active:
-        logger.warning("[get_user_token] user '%s' is inactive", ldap_username)
+        logger.warning("[get_user_token] user '%s' is inactive", username)
 
     if user and user.is_active:
         if verify_and_update_password(password, user):
             authenticated = True
-            logger.debug("[get_user_token] local password OK for '%s'", ldap_username)
+            logger.debug("[get_user_token] local password OK for '%s'", username)
         else:
             logger.debug(
                 "[get_user_token] local password rejected for '%s'; trying LDAP",
-                ldap_username,
+                username,
             )
+            # Always use username for LDAP authentication
+            ldap_username = user.username
             if authenticate_ldap_user(ldap_username, password, None):
                 authenticated = True
                 # Sync the LDAP-verified password into the local DB.
