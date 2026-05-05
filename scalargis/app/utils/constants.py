@@ -11,6 +11,7 @@ RECORDS_CONTACT_MSG_CLOSED_SUCCESS = 'Mensagem encerrada'
 RECORDS_CONTACT_MSG_REOPENED_SUCCESS = 'Mensagem reaberta'
 
 AUDIT_INSERT_ERROR = 'Não foi possível inserir o registo de auditoria'
+LOGIN_AUDIT_INSERT_ERROR = 'Não foi possível inserir o registo de auditoria de login'
 
 RECORDS_PAGINATION_SUMMARY = "Registos {0} a {1} de {2}"
 

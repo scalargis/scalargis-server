@@ -5,6 +5,7 @@ from flask_restx import Resource
 from app.utils.security import get_user_token
 from app.utils.security import get_user_from_token, get_user_from_auth_token
 from app.utils.login_blocking import check_ip_blocked, record_failure, record_success
+from app.utils.login_audit import log_login_attempt
 from app.utils import constants
 from ..portal.parsers import *
 from ..portal.serializers import *
@@ -85,6 +86,7 @@ class SecurityToken(Resource):
         if token:
             authenticated = True
             record_success(ip)
+            log_login_attempt(ip, username, True)
             user = get_user_from_token(token)
 
             user_roles = []
@@ -94,6 +96,7 @@ class SecurityToken(Resource):
 
         else:
             record_failure(ip)
+            log_login_attempt(ip, username, False)
             return 'Bad credentials', 401, {'Access-Control-Allow-Origin': '*',
                 'Access-Control-Allow-Methods': 'POST',
                 'Access-Control-Allow-Headers': 'Origin, X-Requested-With, Content-Type, Accept'
