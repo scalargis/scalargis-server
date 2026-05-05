@@ -6,6 +6,7 @@ from flask_security.utils import hash_password
 
 from app.models.common import *
 from app.models.security import *
+from app.models.login_attempt import *
 from app.models.logging import *
 from app.models.files import *
 from app.models.portal import *

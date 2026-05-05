@@ -24,6 +24,10 @@
 
 # SCALARGIS_LDAP_AUTHENTICATION = False
 
+# -- Brute-force login protection --
+# SCALARGIS_LOGIN_BLOCK_THRESHOLD = 100
+# SCALARGIS_LOGIN_BLOCK_DURATION_MINUTES = 30
+
 # -- PLUGINS --
 # SCALARGIS_PLUGINS = ['proxy', 'geonames', 'spatial_toolbox']
 # SCALARGIS_PLUGINS_SERVICES = []

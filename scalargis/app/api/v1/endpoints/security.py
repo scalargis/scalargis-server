@@ -4,6 +4,7 @@ from flask import request
 from flask_restx import Resource
 from app.utils.security import get_user_token
 from app.utils.security import get_user_from_token, get_user_from_auth_token
+from app.utils.login_blocking import check_ip_blocked, record_failure, record_success
 from app.utils import constants
 from ..portal.parsers import *
 from ..portal.serializers import *
@@ -59,6 +60,16 @@ class SecurityToken(Resource):
     def post(self):
         """Authenticates user and returns authentication token"""
 
+        ip = request.remote_addr or "unknown"
+        is_blocked, retry_after = check_ip_blocked(ip)
+        if is_blocked:
+            return 'Too many failed login attempts', 429, {
+                'Access-Control-Allow-Origin': '*',
+                'Access-Control-Allow-Methods': 'POST',
+                'Access-Control-Allow-Headers': 'Origin, X-Requested-With, Content-Type, Accept',
+                'Retry-After': str(retry_after),
+            }
+
         authenticated = False
 
         if request.is_json:
@@ -73,6 +84,7 @@ class SecurityToken(Resource):
 
         if token:
             authenticated = True
+            record_success(ip)
             user = get_user_from_token(token)
 
             user_roles = []
@@ -81,7 +93,7 @@ class SecurityToken(Resource):
             user_roles.append(constants.ROLE_AUTHENTICATED)
 
         else:
-            #ns_authentication.abort(401, 'Bad credencials')
+            record_failure(ip)
             return 'Bad credentials', 401, {'Access-Control-Allow-Origin': '*',
                 'Access-Control-Allow-Methods': 'POST',
                 'Access-Control-Allow-Headers': 'Origin, X-Requested-With, Content-Type, Accept'
