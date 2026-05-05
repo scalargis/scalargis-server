@@ -33,6 +33,8 @@ services:
       - CHANNEL_TIMEOUT=${CHANNEL_TIMEOUT}
       - CONNECTION_LIMIT=${CONNECTION_LIMIT}
       - URL_PREFIX=${URL_PREFIX}
+      - TRUSTED_PROXY=${TRUSTED_PROXY}
+      - URL_SCHEME=${URL_SCHEME}
     networks:
       - scalargis
     depends_on:

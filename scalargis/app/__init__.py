@@ -11,6 +11,10 @@ base_path = os.path.join(os.path.dirname(os.path.abspath(__file__)))
 instance_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'instance')
 app = Flask(__name__, instance_path=instance_path, instance_relative_config=True)
 
+if os.environ.get('TRUSTED_PROXY'):
+    from werkzeug.middleware.proxy_fix import ProxyFix
+    app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1)
+
 
 def get_db_schema():
     db_schema = app.config.get('SCALARGIS_DB_SCHEMA') or 'scalargis'
