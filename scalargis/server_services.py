@@ -29,5 +29,6 @@ if __name__ == "__main__":
           channel_timeout=channel_timeout,
           connection_limit=connection_limit,
           url_prefix=url_prefix, trusted_proxy=trusted_proxy,
+          trusted_proxy_headers={'x-forwarded-for'} if trusted_proxy else set(),
           url_scheme=url_scheme)
 
