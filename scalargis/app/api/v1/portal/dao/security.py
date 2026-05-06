@@ -2,6 +2,7 @@ import json
 import sqlalchemy
 import uuid
 from datetime import datetime
+from app.utils import utc_now
 from flask import current_app, request, render_template, url_for
 from werkzeug.local import LocalProxy
 from sqlalchemy import cast, or_, Integer, Boolean, func
@@ -182,7 +183,7 @@ def confirm_email(request):
 
         if not already_confirmed:
             user.active = True
-            user.confirmed_at = datetime.utcnow()
+            user.confirmed_at = utc_now()
 
             db.session.add(user)
             db.session.commit()

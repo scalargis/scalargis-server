@@ -1,4 +1,11 @@
 import os
+from datetime import datetime, timezone
+
+
+def utc_now():
+    # To migrate to timezone-aware datetimes, remove .replace(tzinfo=None)
+    return datetime.now(timezone.utc).replace(tzinfo=None)
+
 
 def to_bool(bool_str):
     """Parse the string and return the boolean value encoded or raise an exception"""

@@ -1,6 +1,7 @@
 import ipaddress
 import logging
-from datetime import datetime, timedelta
+from datetime import timedelta
+from app.utils import utc_now
 
 from flask import current_app
 
@@ -51,7 +52,7 @@ def check_ip_blocked(ip):
         return False, 0
 
     if row.blocked_until is not None:
-        now = datetime.utcnow()
+        now = utc_now()
         if row.blocked_until > now:
             seconds_remaining = int((row.blocked_until - now).total_seconds()) + 1
             logger.info(
@@ -72,7 +73,7 @@ def record_failure(ip):
 
     threshold = _get_threshold()
     block_minutes = _get_block_duration_minutes()
-    now = datetime.utcnow()
+    now = utc_now()
 
     row = db.session.query(LoginAttemptIP).get(ip)
 
