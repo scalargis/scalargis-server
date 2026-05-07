@@ -19,6 +19,7 @@ PyPDF2
 qrcode
 jsonmerge
 waitress
+Flask-Limiter>=3.0,<4.0
 Werkzeug==2.3.0
 pyexcel-xls==0.7.0
 pymupdf
