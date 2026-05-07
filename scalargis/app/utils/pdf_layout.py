@@ -960,12 +960,16 @@ class Pdf:
                         leading = paragraph["leading"]
                     except KeyError:
                         leading = 9
+                    try:
+                        valign = paragraph["valign"]
+                    except KeyError:
+                        valign = None
                     if pgp_name in self.config_paragraphs.keys():
                         page_id = self.config_paragraphs[pgp_name][1]
                         if (page_id is None) or (page_id == config["page_id"]):
                             txt = self.config_paragraphs[pgp_name][0]
                     if txt is not None:
-                        self.insert_paragraph(x, y, width, height, txt, font, fontsize, fontcolor, leading)
+                        self.insert_paragraph(x, y, width, height, txt, font, fontsize, fontcolor, leading, valign=valign)
 
             # images
             for image in self.images:
@@ -1704,7 +1708,7 @@ class Pdf:
 
 
     def insert_paragraph(self, x, y, width, height, txt, font="Helvetica", fontsize=8, fontcolor=None, leading=9,
-                         style="default",options={}, paper_shift_x=0, paper_shift_y=0):
+                         style="default",options={}, paper_shift_x=0, paper_shift_y=0, valign=None):
         # paper_shift: shift x and y in mm
 
         x = x + paper_shift_x
@@ -1757,9 +1761,15 @@ class Pdf:
             leading=42
         )
 
+        valign = valign or ''
+
         p = Paragraph(txt, styles[style])
         p.wrap(width * mm, height * mm)
-        p.drawOn(self.canvas, x * mm, y * mm)
+        if valign.lower() == 'top':
+            lines = len(p.blPara.lines)
+            p.drawOn(self.canvas, x * mm, (y * mm) - (lines - 1) * p.style.leading if lines > 1 else (y * mm))
+        else:
+            p.drawOn(self.canvas, x * mm, y * mm)
 
 
     def insert_img(self, path, x, y, width):
