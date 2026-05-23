@@ -1,72 +1,244 @@
-# Instalação
+# ScalarGIS Server
 
-> git clone https://github.com/scalargis/scalargis-server.git
+Backend for the ScalarGIS platform. Built with Python/Flask, SQLAlchemy, PostGIS, and served by Waitress in production.
 
-> cd scalargis-server
+## Two-Repo Setup
 
+ScalarGIS is split into two repositories that work together:
 
-### Instalar a aplicação em virtualenv
+| Repo | Role | README |
+| --- | --- | --- |
+| **scalargis-server** (this repo) | Python backend -- API, database, serves production builds | You are here |
+| **scalargis-client** | React frontend -- viewer and backoffice apps | [scalargis-client README](../scalargis-client/README.md) |
 
-##### Windows 
-> x:\Python3x\python -m venv venv  
-> venv\scripts\activate  
-> (venv) python -m pip install --upgrade pip
+**Setup order:** Install and run the server first (this README), then set up the client (see the client README). The frontend dev server proxies all API calls to this backend, so it must be running.
 
-##### Linux
-> python3 -m venv venv  
-> source venv/bin/activate  
-> (venv) pip install --upgrade pip
+## Prerequisites
 
-### Instalar dependências de pyhton
+| Requirement | Version | Notes |
+| --- | --- | --- |
+| **Python** | 3.12 | 3.9 - 3.12 supported; 3.12 recommended |
+| **PostgreSQL** | 12+ | With the **PostGIS** extension installed |
+| **Git** | any recent | |
 
-##### Windows
-> (venv) pip install -r requirements-win.txt
+### Installing Python
 
-##### Linux
-> (venv) pip install -r requirements.txt
+Download Python 3.12 from [python.org](https://www.python.org/downloads/). During installation, check **"Add Python to PATH"**.
 
-### Criar base de dados e instalar extensão Postgis  
+Verify:
 
-Criar a base de dados através do pgAdim
+```powershell
+python --version   # Should show Python 3.12.x
+```
 
+### Installing PostgreSQL + PostGIS
 
-### Inicializar a BD
+1. Download PostgreSQL from [postgresql.org](https://www.postgresql.org/downloads/windows/) or use the [EDB installer](https://www.enterprisedb.com/downloads/postgres-postgresql-downloads).
+2. During installation (or after, via Stack Builder), install the **PostGIS** bundle.
+3. Note your PostgreSQL **username**, **password**, **port** (default: 5432), and **host** (default: localhost).
 
-##### Windows 
-> (venv) set FLASK_APP=app.main  
-> (venv) set APP_CONFIG_FILE=<config_file_name>    
-> (venv) cd scalargis  
-> (venv) flask init-db
+## Setup
 
-##### Linux
-> (venv) export FLASK_APP=app.main  
-> (venv) export APP_CONFIG_FILE=<config_file_name>  
-> (venv) cd scalargis  
-> (venv) flask init-db  
+### 1. Clone the repository
 
-### Executar app
+```powershell
+git clone https://github.com/scalargis/scalargis-server.git
+cd scalargis-server
+```
 
-##### Windows 
-> (venv) set PYTHONPATH=\<path\>\scalargis-server\scalargis;\<path\>\scalargis-server\scalargis\app   
-> (venv) cd web\app  
-> (venv) python main.py
+### 2. Create a Python virtual environment
 
-##### Linux
-> (venv) export PYTHONPATH=/<path\>/scalargis-server/scalargis:/<path\>/scalargis-server/scalargis/app  
-> (venv) cd web/app  
-> (venv) python main.py
+```powershell
+python -m venv venv
+```
 
-### Utilizar a aplicação
-Abir no browser o url http://localhost:5000/mapa
+### 3. Activate the virtual environment
 
+```powershell
+venv\Scripts\activate
+```
 
-## Instalação de componente cliente
+You should see `(venv)` at the start of your prompt. All following commands assume the venv is active.
 
-Instalar o repositório da componente cliente ao lado da diretoria scalargis-server 
+### 4. Install Python dependencies
 
-> git clone https://github.com/scalargis/scalargis-client.git
+```powershell
+pip install --upgrade pip
+pip install -r requirements-win.txt
+```
 
-> cd scalargis_client
+> **Note:** The `requirements-win.txt` file includes pre-built Windows wheels for GDAL and Fiona. On Linux, use `requirements.txt` instead.
 
-> yarn install
+### 5. Create the database
 
+Using **pgAdmin** or **psql**, create a new PostgreSQL database and enable PostGIS:
+
+```sql
+CREATE DATABASE scalargis;
+\c scalargis
+CREATE EXTENSION postgis;
+```
+
+### 6. Create a local config file
+
+Create the file `scalargis/instance/development_local.py` with your database connection:
+
+```python
+SQLALCHEMY_DATABASE_URI = "postgresql+psycopg2://<user>:<password>@<host>:<port>/<db_name>"
+```
+
+Replace the placeholders with your PostgreSQL credentials. Example:
+
+```python
+SQLALCHEMY_DATABASE_URI = "postgresql+psycopg2://postgres:postgres@localhost:5432/scalargis"
+```
+
+This file overrides the defaults in `scalargis/instance/default.py`. It is not committed to Git.
+
+### 7. Set the config environment variable
+
+```powershell
+$env:APP_CONFIG_FILE = "development_local.py"
+```
+
+### 8. Run the server
+
+```powershell
+cd scalargis
+python server.py
+```
+
+On first run, the database schema is automatically created (tables, default data, etc.).
+
+The server starts on **http://localhost:5000** with Waitress (6 threads by default).
+
+### Verify it works
+
+| URL | Description |
+| --- | --- |
+| http://localhost:5000/mapa/demo | Demo map viewer |
+| http://localhost:5000/backoffice | Admin backoffice (credentials: `admin` / `admin`) |
+
+## Configuration Reference
+
+The config file (`development_local.py`) supports these commonly used settings:
+
+```python
+# Enable debug mode (auto-reload, detailed errors)
+DEBUG = True
+
+# Database connection
+SQLALCHEMY_DATABASE_URI = "postgresql+psycopg2://postgres:postgres@localhost:5432/scalargis"
+
+# Additional database connections (for extensions that use their own DB)
+SQLALCHEMY_BINDS = {
+    "demo": "sqlite:///path/to/demo.db",
+}
+
+# Default locale
+SCALARGIS_DEFAULT_LOCALE = 'pt'
+
+# Plugins to load (built-in server plugins)
+SCALARGIS_PLUGINS = ['proxy', 'geonames', 'spatial_toolbox']
+
+# Extensions to load (see "Extensions" section below)
+SCALARGIS_EXTENSIONS = []
+
+# CORS origins allowed by the proxy plugin
+SCALARGIS_PROXY_CORS = ['http://localhost:3000', 'http://localhost:4200']
+```
+
+See `scalargis/instance/default.py` for the full list of defaults.
+
+### Using a project-specific config
+
+You can create multiple config files for different projects (e.g., `development_local_mapaspt.py`, `development_local_snic3.py`) and switch between them:
+
+```powershell
+$env:APP_CONFIG_FILE = "development_local_mapaspt.py"
+cd scalargis
+python server.py
+```
+
+## Extensions (Backend)
+
+Extensions add project-specific backend functionality (API endpoints, database models, etc.). They live in `scalargis/app/extensions/` and are loaded at startup based on the `SCALARGIS_EXTENSIONS` config.
+
+### Installing extensions
+
+Clone each extension repository into the extensions directory:
+
+```powershell
+cd scalargis/app/extensions
+
+# Example: install authama, keycloaksso, and mapaspt extensions
+git clone <authama-repo-url> authama
+git clone <keycloaksso-repo-url> keycloaksso
+git clone <mapaspt-repo-url> mapaspt
+```
+
+> Extension repositories are hosted on GitLab. Contact the project maintainers for access.
+
+### Activating extensions
+
+Add the extension folder names to `SCALARGIS_EXTENSIONS` in your `development_local.py`:
+
+```python
+SCALARGIS_EXTENSIONS = ['authama', 'keycloaksso', 'mapaspt']
+```
+
+Restart the server after changing extensions.
+
+> **Note:** Extension folder names are the directory names inside `app/extensions/` and are case-sensitive.
+
+### Extension structure
+
+Each extension provides a `__init__.py` that creates a Flask Blueprint and exposes it as `module_api` (for REST API routes) and/or `module` (for template routes). Extensions may also have their own configuration keys (e.g., `KEYCLOAK_*`, `INTELIGT_*`) documented in their respective README or ARCHITECTURE files.
+
+## Server Environment Variables
+
+| Variable | Default | Description |
+| --- | --- | --- |
+| `APP_CONFIG_FILE` | (none) | Config filename inside `scalargis/instance/` |
+| `PORT` | `5000` | HTTP listen port |
+| `THREADS` | `6` | Waitress worker threads |
+| `CHANNEL_TIMEOUT` | `120` | Waitress channel timeout (seconds) |
+| `CONNECTION_LIMIT` | `100` | Max concurrent connections |
+| `URL_PREFIX` | `""` | URL prefix (for reverse proxy deployments) |
+| `URL_SCHEME` | `http` | URL scheme (`http` or `https`) |
+| `TRUSTED_PROXY` | (none) | Trusted proxy IP for X-Forwarded-For |
+
+## Deploying Frontend to Server
+
+After building the frontend client, the compiled files are placed directly into the server's static folders. See the [scalargis-client README](../scalargis-client/README.md) for build commands. The output lands at:
+
+- `scalargis/app/static/viewer/`
+- `scalargis/app/static/backoffice/`
+
+Once deployed, the server serves the frontend at the same URLs (no separate frontend server needed in production).
+
+## Quick Start (TL;DR)
+
+```powershell
+# Clone
+git clone https://github.com/scalargis/scalargis-server.git
+cd scalargis-server
+
+# Python venv
+python -m venv venv
+venv\Scripts\activate
+pip install -r requirements-win.txt
+
+# Database (create "scalargis" DB with PostGIS extension in pgAdmin/psql)
+
+# Config
+# Create scalargis/instance/development_local.py with:
+#   SQLALCHEMY_DATABASE_URI = "postgresql+psycopg2://postgres:postgres@localhost:5432/scalargis"
+
+# Run
+$env:APP_CONFIG_FILE = "development_local.py"
+cd scalargis
+python server.py
+
+# Open http://localhost:5000/backoffice (admin/admin)
+```
