@@ -1,47 +1,6 @@
-version: '3'
-
 services:
-  scalargis:
-    build:
-      context: .
-    image: ${IMAGE_NAME}
-    expose:
-      - ${PORT}
-    ports:
-      - ${HOST_PORT}:${PORT}
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
-    volumes:
-      - ./docker:/var/scalargis/scalargis/configs
-      - ./scalargis/instance:/var/scalargis/scalargis/instance
-      - ./scalargis/tmp:/var/scalargis/scalargis/tmp
-      - ./scalargis/uploads:/var/scalargis/scalargis/uploads
-      - ./scalargis/resources:/var/scalargis/scalargis/resources
-      - ./scalargis/logs:/var/scalargis/scalargis/logs
-      - ./scalargis/app/plugins:/var/scalargis/scalargis/app/plugins
-      - ./scalargis/app/static:/var/scalargis/scalargis/app/static
-      - ${HOST_DATA_DIR}:/var/scalargis/data
-    container_name: ${CONTAINER_NAME}
-    hostname: ${CONTAINER_NAME}
-    command: ["sh", "-c", "python3 /var/scalargis/scalargis/server.py 2>&1"]
-    restart: always
-    environment:
-      - APP_CONFIG_FILE=${APP_CONFIG_FILE}
-      - PYTHONPATH=/var/scalargis/scalargis
-      - PORT=${PORT}
-      - THREADS=${THREADS}
-      - CHANNEL_TIMEOUT=${CHANNEL_TIMEOUT}
-      - CONNECTION_LIMIT=${CONNECTION_LIMIT}
-      - URL_PREFIX=${URL_PREFIX}
-      - TRUSTED_PROXY=${TRUSTED_PROXY}
-      - URL_SCHEME=${URL_SCHEME}
-    networks:
-      - scalargis
-    depends_on:
-      - db
-
   db:
-    image: postgis/postgis:15-3.3-alpine
+    image: postgis/postgis:17-3.5-alpine
     container_name: ${CONTAINER_NAME}-db
     hostname: ${CONTAINER_NAME}-db
     env_file:
@@ -53,15 +12,68 @@ services:
     networks:
       - scalargis
     restart: on-failure
+    shm_size: '256Mb'
     healthcheck:
       test: "pg_isready -d scalargis -U scalargis"
       interval: 60s
       timeout: 10s
       retries: 4
 
+  scalargis:
+    build:
+      context: .
+      args:
+        HTTP_PROXY: ${HTTP_PROXY}
+        HTTPS_PROXY: ${HTTPS_PROXY}
+        NO_PROXY: ${NO_PROXY}
+    image: ${IMAGE_NAME}
+    expose:
+      - ${PORT}
+    ports:
+      - ${HOST_PORT}:${PORT}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - ./docker:/var/scalargis/scalargis/configs
+      - ./scalargis/instance:/var/scalargis/scalargis/instance
+      - ./scalargis/app/extensions:/var/scalargis/scalargis/app/extensions
+      - ./scalargis/app/plugins:/var/scalargis/scalargis/app/plugins
+      - ./scalargis/app/static:/var/scalargis/scalargis/app/static
+      - ./scalargis/resources:/var/scalargis/scalargis/resources
+      - ${HOST_DATA_DIR}:/var/scalargis/data
+      - scalargis-tmp:/var/scalargis/scalargis/tmp
+      - scalargis-uploads:/var/scalargis/scalargis/uploads
+      - scalargis-logs:/var/scalargis/scalargis/logs
+    container_name: ${CONTAINER_NAME}
+    hostname: ${CONTAINER_NAME}
+    command: ["sh", "-c", "python3 /var/scalargis/scalargis/server.py 2>&1"]
+    restart: on-failure
+    depends_on:
+      db:
+        condition: service_started
+    env_file:
+      - .env
+    environment:
+      - APP_CONFIG_FILE=${APP_CONFIG_FILE}
+      - PYTHONPATH=/var/scalargis/scalargis
+      - PORT=${PORT}
+      - THREADS=${THREADS}
+      - CHANNEL_TIMEOUT=${CHANNEL_TIMEOUT}
+      - CONNECTION_LIMIT=${CONNECTION_LIMIT}
+      - URL_PREFIX=${URL_PREFIX}
+      - TRUSTED_PROXY=${TRUSTED_PROXY}
+      - URL_SCHEME=${URL_SCHEME}
+      - HTTP_PROXY=${HTTP_PROXY}
+      - HTTPS_PROXY=${HTTPS_PROXY}
+      - NO_PROXY=${NO_PROXY}
+    networks:
+      - scalargis
 
 networks:
   scalargis:
 
 volumes:
   scalargis-db-data:
+  scalargis-tmp:
+  scalargis-uploads:
+  scalargis-logs:
