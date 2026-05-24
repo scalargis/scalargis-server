@@ -217,6 +217,62 @@ After building the frontend client, the compiled files are placed directly into 
 
 Once deployed, the server serves the frontend at the same URLs (no separate frontend server needed in production).
 
+## PyCharm Setup
+
+If you prefer using PyCharm instead of the command line, follow these steps.
+
+### 1. Open the project
+
+**File > Open** and select the `scalargis-server` folder.
+
+### 2. Create a Python 3.12 virtual environment
+
+1. Go to **File > Settings > Project: scalargis-server > Python Interpreter**.
+2. Click the gear icon (or **Add Interpreter**) > **Add Local Interpreter**.
+3. Choose **Virtualenv Environment > New**.
+4. Set **Base interpreter** to your Python 3.12 installation (e.g. `C:\Users\<you>\AppData\Local\Programs\Python\Python312\python.exe`).
+5. Leave the **Location** as the default (`venv` inside the project).
+6. Click **OK**.
+
+### 3. Install dependencies
+
+Open PyCharm's **Terminal** tab (bottom panel) — it auto-activates the venv. Run:
+
+```powershell
+pip install --upgrade pip
+pip install -r requirements-win.txt
+```
+
+> **Tip:** If pip fails on GDAL or Fiona, make sure you're using `requirements-win.txt` (not `requirements.txt`) — it includes pre-built Windows wheels.
+
+### 4. Create a Run Configuration
+
+1. Go to **Run > Edit Configurations > + > Python**.
+2. Set these fields:
+
+| Field | Value |
+| --- | --- |
+| **Name** | `ScalarGIS Server` |
+| **Script path** | `scalargis\server.py` |
+| **Working directory** | `<project-root>\scalargis` |
+| **Environment variables** | `APP_CONFIG_FILE=development_local.py` |
+
+3. Click **OK**.
+
+### 5. Database and config file
+
+Follow [Step 5 (Create the database)](#5-create-the-database) and [Step 6 (Create a local config file)](#6-create-a-local-config-file) from the CLI setup above — these are the same regardless of IDE.
+
+### 6. Run
+
+Click the green **Run** button (or press **Shift+F10**). The server starts on **http://localhost:5000**.
+
+### PyCharm tips
+
+- **Database tool:** You can connect PyCharm to your PostgreSQL database via **View > Tool Windows > Database** for browsing tables and running queries.
+- **Flask debug mode:** To use Flask's auto-reloader instead of Waitress, change the Run Configuration script to `flask` with parameters `run`, and add `FLASK_APP=app` to the environment variables.
+- **Mark sources root:** If PyCharm shows import errors for `app.*` or `instance.*`, right-click the `scalargis/` folder > **Mark Directory as > Sources Root**.
+
 ## Quick Start (TL;DR)
 
 ```powershell
