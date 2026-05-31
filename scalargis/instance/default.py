@@ -39,3 +39,16 @@ SCALARGIS_EXTENSIONS_SERVICES = []
 SCALARGIS_ROUTE_GEOSERVER = []
 
 SCALARGIS_PROXY_CORS = ['http://localhost:3000', 'http://localhost:3005']
+
+# -- Security Response Headers --
+# Set any value to '' (empty string) to suppress that header.
+SCALARGIS_SECURITY_HEADERS_X_FRAME_OPTIONS = 'SAMEORIGIN'
+SCALARGIS_SECURITY_HEADERS_X_CONTENT_TYPE_OPTIONS = 'nosniff'
+SCALARGIS_SECURITY_HEADERS_X_XSS_PROTECTION = '0'
+SCALARGIS_SECURITY_HEADERS_REFERRER_POLICY = 'strict-origin-when-cross-origin'
+SCALARGIS_SECURITY_HEADERS_CSP = "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https: http:; style-src 'self' 'unsafe-inline' https: http:; img-src 'self' data: blob: https: http:; font-src 'self' data:; connect-src 'self' blob: https: http:; frame-src 'self' https: http:; frame-ancestors 'self'; object-src 'none'; base-uri 'self'; form-action 'self'"
+SCALARGIS_SECURITY_HEADERS_CSP_REPORT_ONLY = False
+SCALARGIS_SECURITY_HEADERS_HSTS_MAX_AGE = 31536000
+SCALARGIS_SECURITY_HEADERS_HSTS_INCLUDE_SUBDOMAINS = False
+SCALARGIS_SECURITY_HEADERS_HSTS_PRELOAD = False
+SCALARGIS_SECURITY_HEADERS_HSTS_FORCE = False
