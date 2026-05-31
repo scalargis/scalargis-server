@@ -7,6 +7,7 @@ from app.utils.security import get_user_from_token, get_user_from_auth_token
 from app.utils.login_blocking import check_ip_blocked, record_failure, record_success
 from app.utils.login_audit import log_login_attempt
 from app.utils import constants
+from app.utils.rate_limit import limit_login, limit_email
 from ..portal.parsers import *
 from ..portal.serializers import *
 from ..portal.dao import security as dao_security
@@ -31,6 +32,8 @@ authentication_model = ns_authentication.model('Authentication Model', {
 @ns_authentication.route('/authenticate')
 class SecurityToken(Resource):
     """Get User Token"""
+    decorators = [limit_login()]
+
     def options(self):
         return {'Allow': 'GET, POST'}, 200, \
                {'Access-Control-Allow-Origin': '*',
@@ -152,6 +155,8 @@ class Account(Resource):
 @ns_security.route('/reset_password')
 class ResetPassword(Resource):
     """Password Reset"""
+    decorators = [limit_email()]
+
     def options(self):
         return {'Allow': 'POST'}, 200, \
                {'Access-Control-Allow-Origin': '*',
@@ -173,6 +178,8 @@ class ResetPassword(Resource):
 @ns_security.route('/reset_password_validation')
 class PageValidationPassword(Resource):
     """Password Reset"""
+    decorators = [limit_email()]
+
     def options(self):
         return {'Allow': 'POST'}, 200, \
                {'Access-Control-Allow-Origin': '*',
@@ -194,6 +201,8 @@ class PageValidationPassword(Resource):
 @ns_security.route('/set_password')
 class SetPassword(Resource):
     """Reset password"""
+    decorators = [limit_email()]
+
     def options(self):
         return {'Allow': 'POST'}, 200, \
                {'Access-Control-Allow-Origin': '*',
@@ -236,6 +245,8 @@ class UpdatePassword(Resource):
 @ns_security.route('/register_user')
 class RegistrationUser(Resource):
     """User Registration"""
+    decorators = [limit_email()]
+
     def options(self):
         return {'Allow': 'POST'}, 200, \
                {'Access-Control-Allow-Origin': '*',
@@ -255,6 +266,8 @@ class RegistrationUser(Resource):
 @ns_security.route('/registration/send_confirmation')
 class RegistrationSendEmail(Resource):
     """Send register confirmation"""
+    decorators = [limit_email()]
+
     def options(self):
         return {'Allow': 'POST'}, 200, \
                {'Access-Control-Allow-Origin': '*',
