@@ -547,7 +547,7 @@ def check_token(token):
         token, max_age=_security.token_max_age)
     user = _security.datastore.find_user(id=data[0])
     if not (user and verify_hash(data[1], user.password)):
-        return user
+        return False
     if user and user.is_active and user.is_authenticated:
         app = current_app._get_current_object()
         _request_ctx_stack.top.user = user
