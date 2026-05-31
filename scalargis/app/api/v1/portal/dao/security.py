@@ -135,10 +135,8 @@ def send_confirmation(request):
     if user is not None:
         redirect = redirect if redirect else user.default_viewer or ''
         send_email_user_registration(user, subject="Registo de utilizador", redirect=redirect)
-    else:
-        return {'status': 401, 'error': True, 'message': 'Não existe nenhum registo de utilizador com o email indicado.'}, 401
 
-    return {'message': 'A confirmação de registo de utilizador foi enviada para o email {}'.format(email), 'email': email}, 200
+    return {'message': 'Caso o email indicado esteja associado a uma conta, será enviada uma confirmação de registo.', 'email': email}, 200
 
 
 def confirm_email(request):
@@ -222,10 +220,8 @@ def send_password_reset(request):
     if user is not None:
         redirect = redirect if redirect else user.default_viewer or ''
         send_email_password_reset(user, subject="Recuperação de Password", redirect=redirect)
-    else:
-        return {'status': 401, 'error': True, 'message': 'Não existe nenhum utilizador com o username ou email indicado.'}, 401
 
-    return { 'message': 'Foi enviado um email para ' + user.email + ' com as instruções para recuperação da palavra-passe.'}, 200
+    return { 'message': 'Caso exista uma conta associada, será enviado um email com as instruções para recuperação da palavra-passe.'}, 200
 
 
 def password_reset_validation(request):
