@@ -99,8 +99,6 @@ user_api_model = api.model('User Model', {
     'first_name':  fields.String(required=False, description='First Name'),
     'last_name':  fields.String(required=False, description='First Name'),
     'active': fields.Boolean(required=False, description='Active'),
-    'auth_token':  fields.String(required=False, description='Authentication Token'),
-    'auth_token_expire':  fields.DateTime(required=False, description='Authentication Token Expiration Date'),
     'read_only': fields.Boolean(required=False, description='Read Only'),
     'all_roles': fields.List(fields.Nested(user_role_api_model))
 })
