@@ -61,6 +61,14 @@ SCALARGIS_SECURITY_HEADERS_HSTS_MAX_AGE = 31536000
 SCALARGIS_SECURITY_HEADERS_HSTS_INCLUDE_SUBDOMAINS = False
 SCALARGIS_SECURITY_HEADERS_HSTS_PRELOAD = False
 SCALARGIS_SECURITY_HEADERS_HSTS_FORCE = False
+# Cross-origin framing: clickjacking protection is ON for all routes by default.
+# To let specific routes be embedded (iframed) by other sites, list their path
+# prefixes here and set the allowed parents below. Empty = no embedding.
+# Example for an embedded-map deployment:
+#   SCALARGIS_SECURITY_HEADERS_EMBED_PATHS = ['/embedded', '/sso', '/map', '/mapa']
+#   SCALARGIS_SECURITY_HEADERS_EMBED_FRAME_ANCESTORS = '*'   # or "'self' https://parent.example"
+SCALARGIS_SECURITY_HEADERS_EMBED_PATHS = []
+SCALARGIS_SECURITY_HEADERS_EMBED_FRAME_ANCESTORS = '*'
 
 # -- Session / remember-cookie hardening (CSRF defence-in-depth, H1) --
 # SameSite=Lax stops the browser sending these cookies on cross-site POST/PUT/DELETE,

@@ -7,6 +7,7 @@ after_request hook.  All values are configurable via
 (empty string) to suppress that header entirely.
 """
 import logging
+import re
 
 from flask import request
 
@@ -35,6 +36,12 @@ _DEFAULTS = {
     'HSTS_PRELOAD': False,
     'HSTS_FORCE': False,
     'CSP_REPORT_ONLY': False,
+    # Cross-origin framing opt-in (embedded map). EMBED_PATHS is a list of path
+    # prefixes allowed to be iframed by other sites; empty = no embedding (the
+    # default). EMBED_FRAME_ANCESTORS is the frame-ancestors value applied to
+    # those paths (e.g. '*' for any site, or "'self' https://parent.example").
+    'EMBED_PATHS': [],
+    'EMBED_FRAME_ANCESTORS': '*',
 }
 
 
@@ -61,8 +68,15 @@ def init_security_headers(app):
     def _add_security_headers(response):
         cfg = app.config
 
+        # Is this request path opted-in for cross-origin framing (embedded map)?
+        # Match is aligned on a '/' boundary so '/sso' matches '/sso' and
+        # '/sso/callback' but not '/ssomething'.
+        embed_paths = _get(cfg, 'EMBED_PATHS') or []
+        path = request.path or ''
+        is_embed = any(path == p or path.startswith(p + '/') for p in embed_paths)
+
         val = _get(cfg, 'X_FRAME_OPTIONS')
-        if val:
+        if val and not is_embed:
             response.headers.setdefault('X-Frame-Options', val)
 
         val = _get(cfg, 'X_CONTENT_TYPE_OPTIONS')
@@ -79,6 +93,12 @@ def init_security_headers(app):
 
         csp = _get(cfg, 'CSP')
         if csp:
+            if is_embed:
+                # Relax only the framing directive for opted-in (embeddable)
+                # routes; every other CSP protection stays intact.
+                embed_fa = _get(cfg, 'EMBED_FRAME_ANCESTORS') or '*'
+                csp = re.sub(r"frame-ancestors[^;]*",
+                             "frame-ancestors " + embed_fa, csp)
             header = ('Content-Security-Policy-Report-Only'
                       if _get(cfg, 'CSP_REPORT_ONLY')
                       else 'Content-Security-Policy')
