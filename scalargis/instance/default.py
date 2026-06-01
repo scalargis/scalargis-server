@@ -61,3 +61,17 @@ SCALARGIS_SECURITY_HEADERS_HSTS_MAX_AGE = 31536000
 SCALARGIS_SECURITY_HEADERS_HSTS_INCLUDE_SUBDOMAINS = False
 SCALARGIS_SECURITY_HEADERS_HSTS_PRELOAD = False
 SCALARGIS_SECURITY_HEADERS_HSTS_FORCE = False
+
+# -- Session / remember-cookie hardening (CSRF defence-in-depth, H1) --
+# SameSite=Lax stops the browser sending these cookies on cross-site POST/PUT/DELETE,
+# which closes the file-upload/delete session-CSRF vector. The JSON API is header-auth
+# (X-API-KEY, no cookies) so it is unaffected; /server/login already carries a FlaskForm
+# CSRF token. SameSite/HttpOnly/Secure are applied unconditionally from config (independent
+# of request scheme), so they work behind a TLS-terminating reverse proxy. Secure stays
+# False here for local HTTP dev -- production config must override it to True.
+SESSION_COOKIE_SAMESITE = 'Lax'
+SESSION_COOKIE_HTTPONLY = True       # already Flask's default; set explicitly
+SESSION_COOKIE_SECURE = False        # prod per-box config -> True (HTTPS only)
+REMEMBER_COOKIE_SAMESITE = 'Lax'
+REMEMBER_COOKIE_HTTPONLY = True
+REMEMBER_COOKIE_SECURE = False       # prod per-box config -> True
