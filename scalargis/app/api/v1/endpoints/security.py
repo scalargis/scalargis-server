@@ -286,36 +286,36 @@ class RegistrationSendEmail(Resource):
                   }
 
 
-    @ns_security.route('/registration/confirmation')
-    class RegistrationConfirmation(Resource):
-        """Register confirmation"""
+@ns_security.route('/registration/confirmation')
+class RegistrationConfirmation(Resource):
+    """Register confirmation"""
 
-        def options(self):
-            return {'Allow': 'GET, POST'}, 200, \
-                   {'Access-Control-Allow-Origin': '*',
-                    'Access-Control-Allow-Methods': 'POST, GET',
-                    'Access-Control-Allow-Headers': 'Origin, X-Requested-With, Content-Type, Accept'
-                    }
+    def options(self):
+        return {'Allow': 'GET, POST'}, 200, \
+               {'Access-Control-Allow-Origin': '*',
+                'Access-Control-Allow-Methods': 'POST, GET',
+                'Access-Control-Allow-Headers': 'Origin, X-Requested-With, Content-Type, Accept'
+                }
 
-        def get(self):
-            """Confirm user registration with given token"""
+    def get(self):
+        """Confirm user registration with given token"""
 
-            data, status = dao_security.confirm_email(request)
+        data, status = dao_security.confirm_email(request)
 
-            return data, status, {'Access-Control-Allow-Origin': '*',
-                                  'Access-Control-Allow-Methods': 'POST, GET',
-                                  'Access-Control-Allow-Headers': 'Origin, X-Requested-With, Content-Type, Accept'
-                                  }
+        return data, status, {'Access-Control-Allow-Origin': '*',
+                              'Access-Control-Allow-Methods': 'POST, GET',
+                              'Access-Control-Allow-Headers': 'Origin, X-Requested-With, Content-Type, Accept'
+                              }
 
-        def post(self):
-            """Confirm user registration with given token and returns authentication token"""
+    def post(self):
+        """Confirm user registration with given token and returns authentication token"""
 
-            data, status = dao_security.confirm_email(request)
+        data, status = dao_security.confirm_email(request)
 
-            return data, status, {'Access-Control-Allow-Origin': '*',
-                                  'Access-Control-Allow-Methods': 'POST, GET',
-                                  'Access-Control-Allow-Headers': 'Origin, X-Requested-With, Content-Type, Accept'
-                                  }
+        return data, status, {'Access-Control-Allow-Origin': '*',
+                              'Access-Control-Allow-Methods': 'POST, GET',
+                              'Access-Control-Allow-Headers': 'Origin, X-Requested-With, Content-Type, Accept'
+                              }
 
 #---------------------------------------------------------------------
 

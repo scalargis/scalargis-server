@@ -494,7 +494,7 @@ def get_role_by_id(id):
 
 
 def create_role(data):
-    user = get_role(request)
+    user = get_user(request)
 
     model = Role
 
