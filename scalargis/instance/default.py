@@ -30,6 +30,15 @@ SCALARGIS_LOGIN_BLOCK_DURATION_MINUTES = 30
 SCALARGIS_RATELIMIT_LOGIN = "30/minute"
 SCALARGIS_RATELIMIT_EMAIL = "5/minute;20/hour"
 
+# -- Password complexity policy --
+# Enforced whenever a password is set (register, reset, admin user create/update).
+# Set any rule to False to disable it; existing passwords/logins are unaffected.
+SCALARGIS_PASSWORD_MIN_LENGTH = 12
+SCALARGIS_PASSWORD_REQUIRE_UPPERCASE = True
+SCALARGIS_PASSWORD_REQUIRE_LOWERCASE = True
+SCALARGIS_PASSWORD_REQUIRE_DIGIT = True
+SCALARGIS_PASSWORD_REQUIRE_SPECIAL = True
+
 SCALARGIS_PLUGINS = []
 SCALARGIS_PLUGINS_SERVICES = []
 

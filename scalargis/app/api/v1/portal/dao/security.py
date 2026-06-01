@@ -6,7 +6,8 @@ from app.utils import utc_now
 from flask import current_app, request, render_template, url_for
 from werkzeug.local import LocalProxy
 from sqlalchemy import cast, or_, Integer, Boolean, func
-from flask_security.utils import encrypt_password
+from flask_security.utils import hash_password
+from app.utils.password_policy import enforce_password_policy
 from flask_security.confirmable import generate_confirmation_token, confirm_email_token_status
 from flask_restx import marshal
 from ..parsers import *
@@ -108,7 +109,8 @@ def register_user(request):
     user.username = username
     user.email = email
     user.active = False
-    user.password = encrypt_password(password)
+    enforce_password_policy(password)
+    user.password = hash_password(password)
 
     db.session.add(user)
     db.session.commit()
@@ -285,7 +287,8 @@ def set_password(request):
         return { 'status': 401, 'error': True, 'message': 'Confirmação de alteração de password expirada.'}, 401
 
     if user:
-        user.password = encrypt_password(password)
+        enforce_password_policy(password)
+        user.password = hash_password(password)
         db.session.add(user)
         db.session.commit()
 
@@ -325,7 +328,8 @@ def update_password(request):
     if not user or not user.is_authenticated or not user.is_active:
         return {}, 401
 
-    user.password = encrypt_password(password)
+    enforce_password_policy(password)
+    user.password = hash_password(password)
     db.session.add(user)
     db.session.commit()
 
@@ -842,7 +846,8 @@ def create_user(data):
     record.email = data['email'] if 'email' in data else None
     record.active = data['active'] if 'active' in data else False
     if 'password' in data and data['password'] is not None:
-        record.password = encrypt_password(data['password'])
+        enforce_password_policy(data['password'])
+        record.password = hash_password(data['password'])
     if 'auth_token' in data and data['auth_token'] is not None:
         record.auth_token = data['auth_token']
         record.auth_token_expire = data['auth_token_expire'] if 'auth_token_expire' in data else None
@@ -892,7 +897,8 @@ def update_user(id, data):
     record.email = data['email'] if 'email' in data else None
     record.active = data['active'] if 'active' in data else False
     if 'password' in data and data['password'] is not None:
-        record.password = encrypt_password(data['password'])
+        enforce_password_policy(data['password'])
+        record.password = hash_password(data['password'])
     if 'auth_token' in data and data['auth_token'] is not None:
         record.auth_token = data['auth_token']
         record.auth_token_expire = data['auth_token_expire'] if 'auth_token_expire' in data else None
