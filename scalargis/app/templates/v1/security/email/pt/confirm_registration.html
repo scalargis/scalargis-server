@@ -1,0 +1,6 @@
+<p>Bem-vindo {{ user.email }}!</p>
+
+{% if security.confirmable %}
+    <p>Deverá confirmar o seu email através da seguinte ligação:</p>
+    <p><a href="{{APP_HOST_URL}}{{APP_SCRIPT_ROOT}}{{APP_BASE_URL}}/registration?token={{token}}&redirect={{redirect}}">Confirmar o seu registo</a></p>
+{% endif %}

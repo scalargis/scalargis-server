@@ -29,15 +29,51 @@ from app.utils.http import get_host_url, get_script_root, get_base_url
 _security = LocalProxy(lambda: current_app.extensions['security'])
 
 
-def send_email_confirmation(user, subject=None, msg=None, template=None, redirect=None):
+_SUPPORTED_LOCALES = ('pt', 'en', 'es', 'fr')
+
+_EMAIL_SUBJECTS = {
+    'registration': {
+        'pt': 'Registo de utilizador',
+        'en': 'User Registration',
+        'es': 'Registro de usuario',
+        'fr': 'Inscription utilisateur',
+    },
+    'password_reset': {
+        'pt': 'Recuperação de Password',
+        'en': 'Password Recovery',
+        'es': 'Recuperación de contraseña',
+        'fr': 'Récupération de mot de passe',
+    }
+}
+
+
+def _resolve_locale(locale):
+    if locale:
+        base = locale.split('-')[0].split('_')[0].lower()
+        if base in _SUPPORTED_LOCALES:
+            return base
+    return 'pt'
+
+
+def _get_email_subject(category, locale):
+    loc = _resolve_locale(locale)
+    return _EMAIL_SUBJECTS.get(category, {}).get(loc, _EMAIL_SUBJECTS[category]['pt'])
+
+
+def _get_email_template(template_name, locale):
+    loc = _resolve_locale(locale)
+    return '/v1/security/email/{}/{}'.format(loc, template_name)
+
+
+def send_email_confirmation(user, subject=None, msg=None, template=None, redirect=None, locale=None):
     #Avoid circular references. TODO: improve main_app reference
     from app.main import app as main_app
 
     token = generate_confirmation_token(user)
 
-    msg_subject = subject if subject else "Registo de Utilizador"
+    msg_subject = subject if subject else _get_email_subject('registration', locale)
 
-    msg_text = msg if msg else render_template(template or '/v1/security/email/confirm_registration.html',
+    msg_text = msg if msg else render_template(template or _get_email_template('confirm_registration.html', locale),
                                                APP_HOST_URL=get_host_url(),
                                                APP_SCRIPT_ROOT=get_script_root(),
                                                APP_BASE_URL=get_base_url(),
@@ -47,14 +83,14 @@ def send_email_confirmation(user, subject=None, msg=None, template=None, redirec
     send_mail(main_app, [user.email], msg_subject, msg_text)
 
 
-def send_email_password_reset(user, subject=None, msg=None, template=None, redirect=None):
+def send_email_password_reset(user, subject=None, msg=None, template=None, redirect=None, locale=None):
     # Avoid circular references. TODO: improve main_app reference
     from app.main import app as main_app
 
     token = generate_confirmation_token(user)
 
-    msg_subject = subject if subject else "Recuperação de Password"
-    msg_text = msg if msg else render_template(template or '/v1/security/email/reset_instructions.html',
+    msg_subject = subject if subject else _get_email_subject('password_reset', locale)
+    msg_text = msg if msg else render_template(template or _get_email_template('reset_instructions.html', locale),
                                             APP_HOST_URL=get_host_url(),
                                             APP_SCRIPT_ROOT=get_script_root(),
                                             APP_BASE_URL=get_base_url(),
@@ -64,14 +100,14 @@ def send_email_password_reset(user, subject=None, msg=None, template=None, redir
     send_mail(main_app, [user.email], msg_subject, msg_text)
 
 
-def send_email_user_registration(user, subject=None, msg=None, template=None, redirect=None):
+def send_email_user_registration(user, subject=None, msg=None, template=None, redirect=None, locale=None):
     # Avoid circular references. TODO: improve main_app reference
     from app.main import app as main_app
 
     token = generate_confirmation_token(user)
 
-    msg_subject = subject if subject else "Registo de utilizador"
-    msg_text = msg if msg else render_template(template or '/v1/security/email/registration_instructions.html',
+    msg_subject = subject if subject else _get_email_subject('registration', locale)
+    msg_text = msg if msg else render_template(template or _get_email_template('registration_instructions.html', locale),
                                     APP_HOST_URL=get_host_url(),
                                     APP_SCRIPT_ROOT=get_script_root(),
                                     APP_BASE_URL=get_base_url(),
@@ -88,6 +124,7 @@ def register_user(request):
         username = request.json.get('username')
         password = request.json.get('password')
         redirect = request.json.get('redirect')
+        locale = request.json.get('locale')
     else:
         cred = json.loads(request.data.decode('utf-8'))
         name = cred.get('name')
@@ -95,13 +132,14 @@ def register_user(request):
         username = cred.get('username')
         password = cred.get('password')
         redirect = cred.get('redirect')
+        locale = cred.get('locale')
 
     user = User.query.filter(or_(func.lower(User.username) == func.lower(username),
                                  func.lower(User.email) == func.lower(email))).first()
 
     if not user is None:
         return {'status': 409, 'error': True,
-                'message': 'Já existe um utilizador com o username ou email indicado.'}, 409
+                'message': 'registration_user_exists'}, 409
 
     user = User()
 
@@ -116,9 +154,9 @@ def register_user(request):
     db.session.commit()
     db.session.refresh(user)
 
-    send_email_user_registration(user, subject='Registo de utilizador', redirect=redirect)
+    send_email_user_registration(user, redirect=redirect, locale=locale)
 
-    return {'success': True, 'message': 'Foi enviado um email para ' + email + ' com as instruções para confirmação e conclusão do registo.'}, 200
+    return {'success': True, 'message': 'registration_email_sent', 'email': email}, 200
 
 
 
@@ -127,18 +165,20 @@ def send_confirmation(request):
     if request.is_json:
         email = request.json.get('email')
         redirect = request.json.get('redirect') or ''
+        locale = request.json.get('locale')
     else:
         data = json.loads(request.data.decode('utf-8'))
         email = data.get('email')
         redirect = data.get('redirect') or ''
+        locale = data.get('locale')
 
     user = User.query.filter(func.lower(User.email) == func.lower(email)).first() if email else None
 
     if user is not None:
         redirect = redirect if redirect else user.default_viewer or ''
-        send_email_user_registration(user, subject="Registo de utilizador", redirect=redirect)
+        send_email_user_registration(user, redirect=redirect, locale=locale)
 
-    return {'message': 'Caso o email indicado esteja associado a uma conta, será enviada uma confirmação de registo.', 'email': email}, 200
+    return {'message': 'registration_confirmation_sent_if_exists', 'email': email}, 200
 
 
 def confirm_email(request):
@@ -162,14 +202,14 @@ def confirm_email(request):
     if token:
         expired, invalid, user = confirm_email_token_status(token)
     else:
-        return { 'status': 401, 'error': True, 'message': 'Confirmação de registo inválida.'}, 401
+        return { 'status': 401, 'error': True, 'message': 'registration_confirmation_invalid'}, 401
 
     already_confirmed = user is not None and user.confirmed_at is not None
 
     if expired and not already_confirmed:
-        return { 'status': 401, 'error': True, 'message': 'Confirmação de registo expirada.'}, 401
+        return { 'status': 401, 'error': True, 'message': 'registration_confirmation_expired'}, 401
     if invalid or (expired and not already_confirmed):
-        return { 'status': 401, 'error': True, 'message': 'Confirmação de registo inválida.'}, 401
+        return { 'status': 401, 'error': True, 'message': 'registration_confirmation_invalid'}, 401
 
     if user:
         user_token = user.get_auth_token()
@@ -199,7 +239,7 @@ def confirm_email(request):
                                              not user.auth_token_expire or user.auth_token_expire >= datetime.now()) else ''
         }
     else:
-        return {'status': 401, 'error': True, 'message': 'Confirmação de registo inválida.'}, 401
+        return {'status': 401, 'error': True, 'message': 'registration_confirmation_invalid'}, 401
 
     return data, 200
 
@@ -209,10 +249,12 @@ def send_password_reset(request):
     if request.is_json:
         username = request.json.get('username')
         redirect = request.json.get('redirect')
+        locale = request.json.get('locale')
     else:
         data = json.loads(request.data.decode('utf-8'))
         username = data.get('username')
         redirect = data.get('redirect') if 'redirect' in data else None
+        locale = data.get('locale')
 
     user = User.query.filter(func.lower(User.email) == func.lower(username)).first() if username else None
 
@@ -221,9 +263,9 @@ def send_password_reset(request):
 
     if user is not None:
         redirect = redirect if redirect else user.default_viewer or ''
-        send_email_password_reset(user, subject="Recuperação de Password", redirect=redirect)
+        send_email_password_reset(user, redirect=redirect, locale=locale)
 
-    return { 'message': 'Caso exista uma conta associada, será enviado um email com as instruções para recuperação da palavra-passe.'}, 200
+    return { 'message': 'password_reset_email_sent_if_exists'}, 200
 
 
 def password_reset_validation(request):
@@ -239,24 +281,24 @@ def password_reset_validation(request):
     if token:
         expired, invalid, user = confirm_email_token_status(token)
     else:
-        return {'status': 401, 'error': True, 'message': 'Confirmação de alteração de palavra-passe inválida.'}, 401
+        return {'status': 401, 'error': True, 'message': 'password_reset_validation_invalid'}, 401
 
     if expired:
-        return {'status': 401, 'error': True, 'message': 'Confirmação de alteração de password expirada.'}, 401
+        return {'status': 401, 'error': True, 'message': 'password_reset_validation_expired'}, 401
 
     if invalid:
-        return {'status': 401, 'error': True, 'message': 'Confirmação de alteração de password inválida.'}, 401
+        return {'status': 401, 'error': True, 'message': 'password_reset_validation_invalid'}, 401
 
     if user:
         if not user.is_active:
-            return {'status': 401, 'error': True, 'message': 'Confirmação de alteração de palavra-passe inválida.'}, 401
+            return {'status': 401, 'error': True, 'message': 'password_reset_validation_invalid'}, 401
 
         data = {
             'username': user.username,
             'name': user.name,
         }
     else:
-        return {'status': 401, 'error': True, 'message': 'Confirmação de alteração de password inválida.'}, 401
+        return {'status': 401, 'error': True, 'message': 'password_reset_validation_invalid'}, 401
 
     return data, 200
 
@@ -281,10 +323,10 @@ def set_password(request):
     if token:
         expired, invalid, user = confirm_email_token_status(token)
     else:
-        return { 'status': 401, 'error': True, 'message': 'Confirmação de alteração de password inválida.'}, 401
+        return { 'status': 401, 'error': True, 'message': 'password_set_invalid'}, 401
 
     if expired or invalid:
-        return { 'status': 401, 'error': True, 'message': 'Confirmação de alteração de password expirada.'}, 401
+        return { 'status': 401, 'error': True, 'message': 'password_set_expired'}, 401
 
     if user:
         enforce_password_policy(password)
@@ -311,7 +353,7 @@ def set_password(request):
                                              not user.auth_token_expire or user.auth_token_expire >= datetime.now()) else ''
         }
     else:
-        return {'status': 401, 'error': True, 'message': 'Confirmação de alteração de password inválida.'}, 401
+        return {'status': 401, 'error': True, 'message': 'password_set_invalid'}, 401
 
     return data, 200
 
@@ -335,7 +377,7 @@ def update_password(request):
 
     token = get_user_token(user.username, password)
 
-    data = {'data': {'token': token}, 'status': 200, 'success': True, 'message': 'Password alterada com sucesso.'}
+    data = {'data': {'token': token}, 'status': 200, 'success': True, 'message': 'password_update_success'}
 
     return data, 200
 
@@ -391,10 +433,10 @@ def update_account(request):
         return item, 200
     except IntegrityError as e:
         return {'status': 409, 'error': True,
-                'message': 'Já existe um utilizador com o username ou email indicado.'}, 409
+                'message': 'registration_user_exists'}, 409
     except Exception as e:
         return {'status': 422, 'error': True,
-                'message': 'Ocorreu um erro ao alterar o registo.'}, 422
+                'message': 'account_update_error'}, 422
 
 
 def get_roles_by_filter(request):

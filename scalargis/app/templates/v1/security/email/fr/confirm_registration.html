@@ -1,0 +1,6 @@
+<p>Bienvenue {{ user.email }} !</p>
+
+{% if security.confirmable %}
+    <p>Veuillez confirmer votre adresse email en cliquant sur le lien suivant :</p>
+    <p><a href="{{APP_HOST_URL}}{{APP_SCRIPT_ROOT}}{{APP_BASE_URL}}/registration?token={{token}}&redirect={{redirect}}">Confirmer votre inscription</a></p>
+{% endif %}

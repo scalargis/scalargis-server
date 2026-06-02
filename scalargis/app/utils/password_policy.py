@@ -37,39 +37,38 @@ def _get(suffix):
 def validate_password(password):
     """Check ``password`` against the configured policy.
 
-    Returns ``(True, None)`` when it complies, otherwise ``(False, message)``
-    where ``message`` is a single Portuguese sentence listing every unmet rule.
-    Each rule is gated on its own config flag, so deployments can disable any of
-    them. ``None``/empty fails (length check).
+    Returns ``(True, None, None)`` when it complies, otherwise
+    ``(False, 'password_policy_violation', failed_rules)`` where
+    ``failed_rules`` is a list of rule identifiers.
     """
     pw = password or ''
-    needs = []
+    failed_rules = []
 
     min_length = _get('MIN_LENGTH')
     if len(pw) < min_length:
-        needs.append('pelo menos {} caracteres'.format(min_length))
+        failed_rules.append('min_length')
     if _get('REQUIRE_UPPERCASE') and not re.search(r'[A-Z]', pw):
-        needs.append('uma letra maiúscula')
+        failed_rules.append('uppercase')
     if _get('REQUIRE_LOWERCASE') and not re.search(r'[a-z]', pw):
-        needs.append('uma letra minúscula')
+        failed_rules.append('lowercase')
     if _get('REQUIRE_DIGIT') and not re.search(r'[0-9]', pw):
-        needs.append('um algarismo')
+        failed_rules.append('digit')
     if _get('REQUIRE_SPECIAL') and not re.search(r'[^A-Za-z0-9]', pw):
-        needs.append('um caractere especial')
+        failed_rules.append('special')
 
-    if needs:
-        return False, 'A password deve conter ' + ', '.join(needs) + '.'
-    return True, None
+    if failed_rules:
+        return False, 'password_policy_violation', failed_rules
+    return True, None, None
 
 
 def enforce_password_policy(password):
-    """Validate ``password``; on failure ``abort(400)`` with the policy message.
+    """Validate ``password``; on failure ``abort(400)`` with an i18n key.
 
     The error body matches the rest of these endpoints
     (``{status, error, message}``). Because ``abort`` raises an
     ``HTTPException``, it short-circuits before any ``marshal_with`` serialiser
     runs, so this is safe to call from both self-service and admin DAO paths.
     """
-    valid, msg = validate_password(password)
+    valid, msg, failed_rules = validate_password(password)
     if not valid:
-        abort(400, msg, status=400, error=True)
+        abort(400, msg, status=400, error=True, failed_rules=failed_rules)
