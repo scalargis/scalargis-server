@@ -15,7 +15,7 @@
 """
 
 import logging
-from flask import current_app, _request_ctx_stack, request
+from flask import current_app, g, request
 from werkzeug.local import LocalProxy
 from flask_principal import Identity, identity_changed
 from flask_security.core import verify_hash
@@ -547,10 +547,10 @@ def check_token(token):
         token, max_age=_security.token_max_age)
     user = _security.datastore.find_user(id=data[0])
     if not (user and verify_hash(data[1], user.password)):
-        return user
+        return False
     if user and user.is_active and user.is_authenticated:
         app = current_app._get_current_object()
-        _request_ctx_stack.top.user = user
+        g.user = user
         identity_changed.send(app, identity=Identity(user.id))
         return True
     return False

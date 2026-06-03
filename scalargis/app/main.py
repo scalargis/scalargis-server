@@ -6,6 +6,8 @@ from flask import Blueprint, redirect, url_for
 
 from app import app, base_path, configure_app, setup_logging, setup_security, setup_mail
 from app.database import db
+from app.utils.rate_limit import init_rate_limiter
+from app.utils.security_headers import init_security_headers
 
 from app import filters
 from app.api.v1.endpoints import register_namespaces as api_register_namespaces
@@ -25,6 +27,9 @@ def initialize_app(flask_app):
 
     setup_security(flask_app)
     setup_mail(flask_app)
+
+    init_rate_limiter(flask_app)
+    init_security_headers(flask_app)
 
     flask_app.register_blueprint(filters.mod)
 

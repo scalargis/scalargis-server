@@ -35,7 +35,7 @@ def check_user(request, check_roles = None):
     if (api_module_config['APIisOpenForEditing']):
         return True
 
-    if (request.method == 'GET' and api_module_config['APIisOpen']):
+    if (request.method == 'GET' and api_module_config['APIisOpen'] and not check_roles):
         return True
 
     if 'X-API-KEY' in request.headers:
@@ -50,7 +50,7 @@ def check_user(request, check_roles = None):
             user_roles.append(ru.name)
         user_roles.append(constants.ROLE_AUTHENTICATED)
 
-        if (request.method == 'GET' and api_module_config['viewRole'] in user_roles):
+        if (request.method == 'GET' and api_module_config['viewRole'] in user_roles and not check_roles):
             return True
 
         if check_roles:

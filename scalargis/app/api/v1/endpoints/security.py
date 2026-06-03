@@ -7,6 +7,7 @@ from app.utils.security import get_user_from_token, get_user_from_auth_token
 from app.utils.login_blocking import check_ip_blocked, record_failure, record_success
 from app.utils.login_audit import log_login_attempt
 from app.utils import constants
+from app.utils.rate_limit import limit_login, limit_email
 from ..portal.parsers import *
 from ..portal.serializers import *
 from ..portal.dao import security as dao_security
@@ -31,6 +32,8 @@ authentication_model = ns_authentication.model('Authentication Model', {
 @ns_authentication.route('/authenticate')
 class SecurityToken(Resource):
     """Get User Token"""
+    decorators = [limit_login()]
+
     def options(self):
         return {'Allow': 'GET, POST'}, 200, \
                {'Access-Control-Allow-Origin': '*',
@@ -152,6 +155,8 @@ class Account(Resource):
 @ns_security.route('/reset_password')
 class ResetPassword(Resource):
     """Password Reset"""
+    decorators = [limit_email()]
+
     def options(self):
         return {'Allow': 'POST'}, 200, \
                {'Access-Control-Allow-Origin': '*',
@@ -173,6 +178,8 @@ class ResetPassword(Resource):
 @ns_security.route('/reset_password_validation')
 class PageValidationPassword(Resource):
     """Password Reset"""
+    decorators = [limit_email()]
+
     def options(self):
         return {'Allow': 'POST'}, 200, \
                {'Access-Control-Allow-Origin': '*',
@@ -194,6 +201,8 @@ class PageValidationPassword(Resource):
 @ns_security.route('/set_password')
 class SetPassword(Resource):
     """Reset password"""
+    decorators = [limit_email()]
+
     def options(self):
         return {'Allow': 'POST'}, 200, \
                {'Access-Control-Allow-Origin': '*',
@@ -236,6 +245,8 @@ class UpdatePassword(Resource):
 @ns_security.route('/register_user')
 class RegistrationUser(Resource):
     """User Registration"""
+    decorators = [limit_email()]
+
     def options(self):
         return {'Allow': 'POST'}, 200, \
                {'Access-Control-Allow-Origin': '*',
@@ -255,6 +266,8 @@ class RegistrationUser(Resource):
 @ns_security.route('/registration/send_confirmation')
 class RegistrationSendEmail(Resource):
     """Send register confirmation"""
+    decorators = [limit_email()]
+
     def options(self):
         return {'Allow': 'POST'}, 200, \
                {'Access-Control-Allow-Origin': '*',
@@ -273,36 +286,36 @@ class RegistrationSendEmail(Resource):
                   }
 
 
-    @ns_security.route('/registration/confirmation')
-    class RegistrationConfirmation(Resource):
-        """Register confirmation"""
+@ns_security.route('/registration/confirmation')
+class RegistrationConfirmation(Resource):
+    """Register confirmation"""
 
-        def options(self):
-            return {'Allow': 'GET, POST'}, 200, \
-                   {'Access-Control-Allow-Origin': '*',
-                    'Access-Control-Allow-Methods': 'POST, GET',
-                    'Access-Control-Allow-Headers': 'Origin, X-Requested-With, Content-Type, Accept'
-                    }
+    def options(self):
+        return {'Allow': 'GET, POST'}, 200, \
+               {'Access-Control-Allow-Origin': '*',
+                'Access-Control-Allow-Methods': 'POST, GET',
+                'Access-Control-Allow-Headers': 'Origin, X-Requested-With, Content-Type, Accept'
+                }
 
-        def get(self):
-            """Confirm user registration with given token"""
+    def get(self):
+        """Confirm user registration with given token"""
 
-            data, status = dao_security.confirm_email(request)
+        data, status = dao_security.confirm_email(request)
 
-            return data, status, {'Access-Control-Allow-Origin': '*',
-                                  'Access-Control-Allow-Methods': 'POST, GET',
-                                  'Access-Control-Allow-Headers': 'Origin, X-Requested-With, Content-Type, Accept'
-                                  }
+        return data, status, {'Access-Control-Allow-Origin': '*',
+                              'Access-Control-Allow-Methods': 'POST, GET',
+                              'Access-Control-Allow-Headers': 'Origin, X-Requested-With, Content-Type, Accept'
+                              }
 
-        def post(self):
-            """Confirm user registration with given token and returns authentication token"""
+    def post(self):
+        """Confirm user registration with given token and returns authentication token"""
 
-            data, status = dao_security.confirm_email(request)
+        data, status = dao_security.confirm_email(request)
 
-            return data, status, {'Access-Control-Allow-Origin': '*',
-                                  'Access-Control-Allow-Methods': 'POST, GET',
-                                  'Access-Control-Allow-Headers': 'Origin, X-Requested-With, Content-Type, Accept'
-                                  }
+        return data, status, {'Access-Control-Allow-Origin': '*',
+                              'Access-Control-Allow-Methods': 'POST, GET',
+                              'Access-Control-Allow-Headers': 'Origin, X-Requested-With, Content-Type, Accept'
+                              }
 
 #---------------------------------------------------------------------
 
@@ -319,7 +332,7 @@ class RolesList(Resource):
     @ns_security.marshal_with(page_roles)
     def get(self):
         """Returns Roles"""
-        if (check_user(request)):
+        if (check_user(request, [constants.ROLE_ADMIN, constants.ROLE_MANAGER])):
             return dao_security.get_role(request), 200, {'Access-Control-Allow-Origin': '*'}
         else:
             return None, 401, {'Access-Control-Allow-Origin': '*'}
@@ -329,34 +342,34 @@ class RolesList(Resource):
     @ns_security.marshal_with(role_api_model, code=201)
     def post(self):
         '''Create a new table record'''
-        # if (check_user(request)):
-        item = dao_security.create_role(request.json)
-        return item, 201, {'Access-Control-Allow-Origin': '*',
-                           'Access-Control-Allow-Methods': 'POST',
-                           'Access-Control-Allow-Headers': 'Origin, X-Requested-With, Content-Type, Accept'
-                           }
-        # else:
-        #    return None, 401, {'Access-Control-Allow-Origin': '*',
-        #                       'Access-Control-Allow-Methods': 'POST',
-        #                       'Access-Control-Allow-Headers': 'Origin, X-Requested-With, Content-Type, Accept'
-        #                       }
+        if (check_user(request, [constants.ROLE_ADMIN, constants.ROLE_MANAGER])):
+            item = dao_security.create_role(request.json)
+            return item, 201, {'Access-Control-Allow-Origin': '*',
+                               'Access-Control-Allow-Methods': 'POST',
+                               'Access-Control-Allow-Headers': 'Origin, X-Requested-With, Content-Type, Accept'
+                               }
+        else:
+            return None, 401, {'Access-Control-Allow-Origin': '*',
+                               'Access-Control-Allow-Methods': 'POST',
+                               'Access-Control-Allow-Headers': 'Origin, X-Requested-With, Content-Type, Accept'
+                               }
 
     @ns_security.doc('delete_role values')
     @ns_security.response(204, 'Generic values deleted')
     def delete(self):
         '''Delete a record given its identifier'''
-        # if (check_user(request)):
-        data = request.args.get('filter')
-        status = dao_security.delete_role_list(data)
-        return None, status, {'Access-Control-Allow-Origin': '*',
-                              'Access-Control-Allow-Methods': 'GET, POST PUT, DELETE',
-                              'Access-Control-Allow-Headers': 'Origin, X-Requested-With, Content-Type, Accept'
-                              }
-        # else:
-        #    return None, 401, {'Access-Control-Allow-Origin': '*',
-        #                       'Access-Control-Allow-Methods': 'GET, POST PUT, DELETE',
-        #                       'Access-Control-Allow-Headers': 'Origin, X-Requested-With, Content-Type, Accept'
-        #                       }
+        if (check_user(request, [constants.ROLE_ADMIN, constants.ROLE_MANAGER])):
+            data = request.args.get('filter')
+            status = dao_security.delete_role_list(data)
+            return None, status, {'Access-Control-Allow-Origin': '*',
+                                  'Access-Control-Allow-Methods': 'GET, POST PUT, DELETE',
+                                  'Access-Control-Allow-Headers': 'Origin, X-Requested-With, Content-Type, Accept'
+                                  }
+        else:
+            return None, 401, {'Access-Control-Allow-Origin': '*',
+                               'Access-Control-Allow-Methods': 'GET, POST PUT, DELETE',
+                               'Access-Control-Allow-Headers': 'Origin, X-Requested-With, Content-Type, Accept'
+                               }
 
 @ns_security.route('/roles/<int:id>')
 @ns_security.response(404, 'Todo not found')
@@ -375,7 +388,7 @@ class Roles(Resource):
     @ns_security.marshal_with(role_api_model)
     def get(self, id):
         '''Fetch a given resource'''
-        if (check_user(request)):
+        if (check_user(request, [constants.ROLE_ADMIN, constants.ROLE_MANAGER])):
             item = dao_security.get_role_by_id(id)
             return item, 201, {'Access-Control-Allow-Origin': '*',
                                'Access-Control-Allow-Methods': 'GET, POST PUT, DELETE',
@@ -391,27 +404,33 @@ class Roles(Resource):
     @ns_security.response(204, 'Record deleted')
     def delete(self, id):
         '''Delete a record given its identifier'''
-        # if (check_user(request)):
-        status = dao_security.delete_role(id)
-        return None, status, {'Access-Control-Allow-Origin': '*',
-                              'Access-Control-Allow-Methods': 'GET, POST PUT, DELETE',
-                              'Access-Control-Allow-Headers': 'Origin, X-Requested-With, Content-Type, Accept'
-                              }
-        # else:
-        #    return None, 401, {'Access-Control-Allow-Origin': '*',
-        #                       'Access-Control-Allow-Methods': 'GET, POST PUT, DELETE',
-        #                       'Access-Control-Allow-Headers': 'Origin, X-Requested-With, Content-Type, Accept'
-        #                       }
+        if (check_user(request, [constants.ROLE_ADMIN, constants.ROLE_MANAGER])):
+            status = dao_security.delete_role(id)
+            return None, status, {'Access-Control-Allow-Origin': '*',
+                                  'Access-Control-Allow-Methods': 'GET, POST PUT, DELETE',
+                                  'Access-Control-Allow-Headers': 'Origin, X-Requested-With, Content-Type, Accept'
+                                  }
+        else:
+            return None, 401, {'Access-Control-Allow-Origin': '*',
+                               'Access-Control-Allow-Methods': 'GET, POST PUT, DELETE',
+                               'Access-Control-Allow-Headers': 'Origin, X-Requested-With, Content-Type, Accept'
+                               }
 
     @ns_security.expect(role_api_model)
     @ns_security.marshal_with(role_api_model)
     def put(self, id):
         '''Update a record given its identifier'''
-        item = dao_security.update_role(id, request.json)
-        return item, 200, {'Access-Control-Allow-Origin': '*',
-                           'Access-Control-Allow-Methods': 'PUT',
-                           'Access-Control-Allow-Headers': 'Origin, X-Requested-With, Content-Type, Accept'
-                           }
+        if (check_user(request, [constants.ROLE_ADMIN, constants.ROLE_MANAGER])):
+            item = dao_security.update_role(id, request.json)
+            return item, 200, {'Access-Control-Allow-Origin': '*',
+                               'Access-Control-Allow-Methods': 'PUT',
+                               'Access-Control-Allow-Headers': 'Origin, X-Requested-With, Content-Type, Accept'
+                               }
+        else:
+            return None, 401, {'Access-Control-Allow-Origin': '*',
+                               'Access-Control-Allow-Methods': 'PUT',
+                               'Access-Control-Allow-Headers': 'Origin, X-Requested-With, Content-Type, Accept'
+                               }
 
 #--------------------------------------------------------------------
 
@@ -428,7 +447,7 @@ class GroupsList(Resource):
     @ns_security.marshal_with(page_groups)
     def get(self):
         """Returns Groups"""
-        if (check_user(request)):
+        if (check_user(request, [constants.ROLE_ADMIN, constants.ROLE_MANAGER])):
             return dao_security.get_group(request), 200, {'Access-Control-Allow-Origin': '*'}
         else:
             return None, 401, {'Access-Control-Allow-Origin': '*'}
@@ -438,34 +457,34 @@ class GroupsList(Resource):
     @ns_security.marshal_with(group_api_model, code=201)
     def post(self):
         '''Create a new table record'''
-        # if (check_user(request)):
-        item = dao_security.create_group(request.json)
-        return item, 201, {'Access-Control-Allow-Origin': '*',
-                           'Access-Control-Allow-Methods': 'POST',
-                           'Access-Control-Allow-Headers': 'Origin, X-Requested-With, Content-Type, Accept'
-                           }
-        # else:
-        #    return None, 401, {'Access-Control-Allow-Origin': '*',
-        #                       'Access-Control-Allow-Methods': 'POST',
-        #                       'Access-Control-Allow-Headers': 'Origin, X-Requested-With, Content-Type, Accept'
-        #                       }
+        if (check_user(request, [constants.ROLE_ADMIN, constants.ROLE_MANAGER])):
+            item = dao_security.create_group(request.json)
+            return item, 201, {'Access-Control-Allow-Origin': '*',
+                               'Access-Control-Allow-Methods': 'POST',
+                               'Access-Control-Allow-Headers': 'Origin, X-Requested-With, Content-Type, Accept'
+                               }
+        else:
+            return None, 401, {'Access-Control-Allow-Origin': '*',
+                               'Access-Control-Allow-Methods': 'POST',
+                               'Access-Control-Allow-Headers': 'Origin, X-Requested-With, Content-Type, Accept'
+                               }
 
     @ns_security.doc('delete_group values')
     @ns_security.response(204, 'Generic values deleted')
     def delete(self):
         '''Delete a record given its identifier'''
-        # if (check_user(request)):
-        data = request.args.get('filter')
-        status = dao_security.delete_group_list(data)
-        return None, status, {'Access-Control-Allow-Origin': '*',
-                              'Access-Control-Allow-Methods': 'GET, POST PUT, DELETE',
-                              'Access-Control-Allow-Headers': 'Origin, X-Requested-With, Content-Type, Accept'
-                              }
-        # else:
-        #    return None, 401, {'Access-Control-Allow-Origin': '*',
-        #                       'Access-Control-Allow-Methods': 'GET, POST PUT, DELETE',
-        #                       'Access-Control-Allow-Headers': 'Origin, X-Requested-With, Content-Type, Accept'
-        #                       }
+        if (check_user(request, [constants.ROLE_ADMIN, constants.ROLE_MANAGER])):
+            data = request.args.get('filter')
+            status = dao_security.delete_group_list(data)
+            return None, status, {'Access-Control-Allow-Origin': '*',
+                                  'Access-Control-Allow-Methods': 'GET, POST PUT, DELETE',
+                                  'Access-Control-Allow-Headers': 'Origin, X-Requested-With, Content-Type, Accept'
+                                  }
+        else:
+            return None, 401, {'Access-Control-Allow-Origin': '*',
+                               'Access-Control-Allow-Methods': 'GET, POST PUT, DELETE',
+                               'Access-Control-Allow-Headers': 'Origin, X-Requested-With, Content-Type, Accept'
+                               }
 
 @ns_security.route('/groups/<int:id>')
 @ns_security.response(404, 'Todo not found')
@@ -484,7 +503,7 @@ class Groups(Resource):
     @ns_security.marshal_with(group_api_model)
     def get(self, id):
         '''Fetch a given resource'''
-        if (check_user(request)):
+        if (check_user(request, [constants.ROLE_ADMIN, constants.ROLE_MANAGER])):
             item = dao_security.get_group_by_id(id)
             return item, 201, {'Access-Control-Allow-Origin': '*',
                                'Access-Control-Allow-Methods': 'GET, POST PUT, DELETE',
@@ -500,27 +519,33 @@ class Groups(Resource):
     @ns_security.response(204, 'Record deleted')
     def delete(self, id):
         '''Delete a record given its identifier'''
-        # if (check_user(request)):
-        status = dao_security.delete_group(id)
-        return None, status, {'Access-Control-Allow-Origin': '*',
-                              'Access-Control-Allow-Methods': 'GET, POST PUT, DELETE',
-                              'Access-Control-Allow-Headers': 'Origin, X-Requested-With, Content-Type, Accept'
-                              }
-        # else:
-        #    return None, 401, {'Access-Control-Allow-Origin': '*',
-        #                       'Access-Control-Allow-Methods': 'GET, POST PUT, DELETE',
-        #                       'Access-Control-Allow-Headers': 'Origin, X-Requested-With, Content-Type, Accept'
-        #                       }
+        if (check_user(request, [constants.ROLE_ADMIN, constants.ROLE_MANAGER])):
+            status = dao_security.delete_group(id)
+            return None, status, {'Access-Control-Allow-Origin': '*',
+                                  'Access-Control-Allow-Methods': 'GET, POST PUT, DELETE',
+                                  'Access-Control-Allow-Headers': 'Origin, X-Requested-With, Content-Type, Accept'
+                                  }
+        else:
+            return None, 401, {'Access-Control-Allow-Origin': '*',
+                               'Access-Control-Allow-Methods': 'GET, POST PUT, DELETE',
+                               'Access-Control-Allow-Headers': 'Origin, X-Requested-With, Content-Type, Accept'
+                               }
 
     @ns_security.expect(group_api_model)
     @ns_security.marshal_with(group_api_model)
     def put(self, id):
         '''Update a record given its identifier'''
-        item = dao_security.update_group(id, request.json)
-        return item, 200, {'Access-Control-Allow-Origin': '*',
-                           'Access-Control-Allow-Methods': 'PUT',
-                           'Access-Control-Allow-Headers': 'Origin, X-Requested-With, Content-Type, Accept'
-                           }
+        if (check_user(request, [constants.ROLE_ADMIN, constants.ROLE_MANAGER])):
+            item = dao_security.update_group(id, request.json)
+            return item, 200, {'Access-Control-Allow-Origin': '*',
+                               'Access-Control-Allow-Methods': 'PUT',
+                               'Access-Control-Allow-Headers': 'Origin, X-Requested-With, Content-Type, Accept'
+                               }
+        else:
+            return None, 401, {'Access-Control-Allow-Origin': '*',
+                               'Access-Control-Allow-Methods': 'PUT',
+                               'Access-Control-Allow-Headers': 'Origin, X-Requested-With, Content-Type, Accept'
+                               }
 
 #--------------------------------------------------------------------
 
@@ -537,7 +562,7 @@ class UsersList(Resource):
     @ns_security.marshal_with(page_users)
     def get(self):
         """Returns Users"""
-        if (check_user(request)):
+        if (check_user(request, [constants.ROLE_ADMIN, constants.ROLE_MANAGER])):
             return dao_security.get_users(request), 200, {'Access-Control-Allow-Origin': '*'}
         else:
             return None, 401, {'Access-Control-Allow-Origin': '*'}
@@ -547,34 +572,34 @@ class UsersList(Resource):
     @ns_security.marshal_with(user_api_model, code=201)
     def post(self):
         '''Create a new table record'''
-        #if (check_user(request)):
-        item = dao_security.create_user(request.json)
-        return item, 201, {'Access-Control-Allow-Origin': '*',
-                           'Access-Control-Allow-Methods': 'POST',
-                           'Access-Control-Allow-Headers': 'Origin, X-Requested-With, Content-Type, Accept'
-                           }
-        #else:
-        #    return None, 401, {'Access-Control-Allow-Origin': '*',
-        #                       'Access-Control-Allow-Methods': 'POST',
-        #                       'Access-Control-Allow-Headers': 'Origin, X-Requested-With, Content-Type, Accept'
-        #                       }
+        if (check_user(request, [constants.ROLE_ADMIN, constants.ROLE_MANAGER])):
+            item = dao_security.create_user(request.json)
+            return item, 201, {'Access-Control-Allow-Origin': '*',
+                               'Access-Control-Allow-Methods': 'POST',
+                               'Access-Control-Allow-Headers': 'Origin, X-Requested-With, Content-Type, Accept'
+                               }
+        else:
+            return None, 401, {'Access-Control-Allow-Origin': '*',
+                               'Access-Control-Allow-Methods': 'POST',
+                               'Access-Control-Allow-Headers': 'Origin, X-Requested-With, Content-Type, Accept'
+                               }
 
     @ns_security.doc('delete_user values')
     @ns_security.response(204, 'Generic values deleted')
     def delete(self):
         '''Delete a record given its identifier'''
-        #if (check_user(request)):
-        data = request.args.get('filter')
-        status = dao_security.delete_user_list(data)
-        return None, status, {'Access-Control-Allow-Origin': '*',
-                              'Access-Control-Allow-Methods': 'GET, POST PUT, DELETE',
-                              'Access-Control-Allow-Headers': 'Origin, X-Requested-With, Content-Type, Accept'
-                              }
-        #else:
-        #    return None, 401, {'Access-Control-Allow-Origin': '*',
-        #                       'Access-Control-Allow-Methods': 'GET, POST PUT, DELETE',
-        #                       'Access-Control-Allow-Headers': 'Origin, X-Requested-With, Content-Type, Accept'
-        #                       }
+        if (check_user(request, [constants.ROLE_ADMIN, constants.ROLE_MANAGER])):
+            data = request.args.get('filter')
+            status = dao_security.delete_user_list(data)
+            return None, status, {'Access-Control-Allow-Origin': '*',
+                                  'Access-Control-Allow-Methods': 'GET, POST PUT, DELETE',
+                                  'Access-Control-Allow-Headers': 'Origin, X-Requested-With, Content-Type, Accept'
+                                  }
+        else:
+            return None, 401, {'Access-Control-Allow-Origin': '*',
+                               'Access-Control-Allow-Methods': 'GET, POST PUT, DELETE',
+                               'Access-Control-Allow-Headers': 'Origin, X-Requested-With, Content-Type, Accept'
+                               }
 
 
 @ns_security.route('/users/<int:id>')
@@ -594,7 +619,7 @@ class Users(Resource):
     @ns_security.marshal_with(user_api_model)
     def get(self, id):
         '''Fetch a given resource'''
-        if (check_user(request)):
+        if (check_user(request, [constants.ROLE_ADMIN, constants.ROLE_MANAGER])):
             item = dao_security.get_user_by_id(id)
             return item, 201, {'Access-Control-Allow-Origin': '*',
                                'Access-Control-Allow-Methods': 'GET, POST PUT, DELETE',
@@ -610,24 +635,30 @@ class Users(Resource):
     @ns_security.response(204, 'Record deleted')
     def delete(self, id):
         '''Delete a record given its identifier'''
-        #if (check_user(request)):
-        status = dao_security.delete_user(id)
-        return None, status, {'Access-Control-Allow-Origin': '*',
-                              'Access-Control-Allow-Methods': 'GET, POST PUT, DELETE',
-                              'Access-Control-Allow-Headers': 'Origin, X-Requested-With, Content-Type, Accept'
-                              }
-        #else:
-        #    return None, 401, {'Access-Control-Allow-Origin': '*',
-        #                       'Access-Control-Allow-Methods': 'GET, POST PUT, DELETE',
-        #                       'Access-Control-Allow-Headers': 'Origin, X-Requested-With, Content-Type, Accept'
-        #                       }
+        if (check_user(request, [constants.ROLE_ADMIN, constants.ROLE_MANAGER])):
+            status = dao_security.delete_user(id)
+            return None, status, {'Access-Control-Allow-Origin': '*',
+                                  'Access-Control-Allow-Methods': 'GET, POST PUT, DELETE',
+                                  'Access-Control-Allow-Headers': 'Origin, X-Requested-With, Content-Type, Accept'
+                                  }
+        else:
+            return None, 401, {'Access-Control-Allow-Origin': '*',
+                               'Access-Control-Allow-Methods': 'GET, POST PUT, DELETE',
+                               'Access-Control-Allow-Headers': 'Origin, X-Requested-With, Content-Type, Accept'
+                               }
 
     @ns_security.expect(user_api_model)
     @ns_security.marshal_with(user_api_model)
     def put(self, id):
         '''Update a record given its identifier'''
-        item = dao_security.update_user(id, request.json)
-        return item, 200, {'Access-Control-Allow-Origin': '*',
-                           'Access-Control-Allow-Methods': 'PUT',
-                           'Access-Control-Allow-Headers': 'Origin, X-Requested-With, Content-Type, Accept'
-                           }
+        if (check_user(request, [constants.ROLE_ADMIN, constants.ROLE_MANAGER])):
+            item = dao_security.update_user(id, request.json)
+            return item, 200, {'Access-Control-Allow-Origin': '*',
+                               'Access-Control-Allow-Methods': 'PUT',
+                               'Access-Control-Allow-Headers': 'Origin, X-Requested-With, Content-Type, Accept'
+                               }
+        else:
+            return None, 401, {'Access-Control-Allow-Origin': '*',
+                               'Access-Control-Allow-Methods': 'PUT',
+                               'Access-Control-Allow-Headers': 'Origin, X-Requested-With, Content-Type, Accept'
+                               }

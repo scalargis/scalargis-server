@@ -1,10 +1,9 @@
-name: Build and push to WKT registry ScalarGIS Server core image (latest)
+name: Build and push to WKT registry ScalarGIS Server core image (security)
 
 on:
   push:
-    branches: 
-      - main
-      - new-actions
+    branches:
+      - security
 
 jobs:
 
@@ -17,7 +16,7 @@ jobs:
 
     - name: Build the Docker image
       id: build_image
-      run: docker build . --tag registry.wkt.pt/wkt/scalargis-server:latest
+      run: docker build . --tag registry.wkt.pt/wkt/scalargis-server:security
 
     - name: Login to WKT registry
       id: login_registry
@@ -25,4 +24,4 @@ jobs:
 
     - name: Push to WKT registry
       id: push_image
-      run: docker push registry.wkt.pt/wkt/scalargis-server:latest
+      run: docker push registry.wkt.pt/wkt/scalargis-server:security

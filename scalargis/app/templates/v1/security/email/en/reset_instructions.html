@@ -1,0 +1,5 @@
+<p>Dear {{ user.name or user.email }},</p>
+
+<p><a href="{{APP_HOST_URL}}{{APP_SCRIPT_ROOT}}{{APP_BASE_URL}}/password?token={{token}}&redirect={{redirect}}">Click here to set your new password</a>.</p>
+
+<p>If you did not request a password change, please ignore this email.</p>
