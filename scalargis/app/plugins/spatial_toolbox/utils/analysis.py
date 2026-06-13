@@ -52,10 +52,25 @@ def get_intersect_results(config_code, geom_wkt, geom_srid, buffer, buffer_srid,
     # parse confrontation config to json object
     json_cfg = json.loads(layers)
 
-    sql = "select * from {0}.intersects_layers(:layers, :ewkt, :outsrid, :buffer, :buffer_srid)".format(db_schema)
-    params = {"layers": layers, "ewkt": iewkt, "outsrid": outsrid, "buffer": ibuffer, "buffer_srid": ibuffer_srid}
-    result = db.session.execute(text(sql), params).fetchall()
     record = None
+
+    _function = json_cfg.get('function','intersects_layers')
+
+    if json_cfg.get('bind_key', None):
+        _bind_key = json_cfg.get('bind_key')
+        _bind_schema = json_cfg.get('bind_schema', db_schema)
+
+        sql = "select * from {0}.{1}(:layers, :ewkt, :outsrid, :buffer, :buffer_srid)".format(_bind_schema, _function)
+        params = {"layers": layers, "ewkt": iewkt, "outsrid": outsrid, "buffer": ibuffer, "buffer_srid": ibuffer_srid}
+
+        engine = db.get_engine(_bind_key)
+        with engine.begin() as conn:  # faz commit automático
+            result = conn.execute(text(sql), params).fetchall()
+    else:
+        sql = "select * from {0}.{1}(:layers, :ewkt, :outsrid, :buffer, :buffer_srid)".format(db_schema, _function)
+        params = {"layers": layers, "ewkt": iewkt, "outsrid": outsrid, "buffer": ibuffer, "buffer_srid": ibuffer_srid}
+        result = db.session.execute(text(sql), params).fetchall()
+
     if len(result) > 0:
         record = result[0].intersects_layers
 
