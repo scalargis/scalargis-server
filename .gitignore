@@ -21,3 +21,4 @@ scalargis/app/plugins/*
 # Instance-specific config
 scalargis/instance/development_local*.py
 scalargis/instance/config_backoffice_*.py
+scalargis/instance/production*.py
