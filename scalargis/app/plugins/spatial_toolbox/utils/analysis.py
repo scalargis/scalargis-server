@@ -72,7 +72,7 @@ def get_intersect_results(config_code, geom_wkt, geom_srid, buffer, buffer_srid,
         result = db.session.execute(text(sql), params).fetchall()
 
     if len(result) > 0:
-        record = result[0].intersects_layers
+        record = getattr(result[0], _function)
 
     # Filter empty layers
     record_filtered = OrderedDict()
