@@ -69,7 +69,7 @@ def send_async_message(app, mail_settings, receiver_email, message):
                 if mail_settings.get('smtp_username'):
                     server.login(mail_settings.get('smtp_username'), mail_settings.get('smtp_password'))
 
-                sender = mail_settings.get('sender_username') or mail_settings.get('sender_email')
+                sender = mail_settings.get('sender_email') or mail_settings.get('sender_username')
 
                 for to_email in receiver_email:
                     server.sendmail(sender, to_email, message.as_string())
