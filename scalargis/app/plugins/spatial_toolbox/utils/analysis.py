@@ -1,6 +1,7 @@
 import logging
 import os
 import json
+from pathlib import Path
 from collections import OrderedDict
 import uuid
 import base64
@@ -18,6 +19,9 @@ from PIL import Image as PILImage
 import fitz
 from shapely import wkt, geometry
 
+import geopandas as gpd
+import pandas as pd
+
 from app.database import db
 from app.database.schema import db_schema
 from app.utils.pdf_layout import get_image
@@ -33,6 +37,118 @@ from app.utils.constants import ROLE_ADMIN
 
 
 logger = logging.getLogger(__name__)
+
+
+def parse_ewkt(ewkt):
+    """
+    Converte EWKT em:
+      - geometria Shapely
+      - SRID
+    """
+    if ewkt is None:
+        return None, None
+
+    srid = None
+    wkt_text = ewkt
+
+    if ewkt.startswith("SRID="):
+        srid_part, wkt_text = ewkt.split(";", 1)
+        srid = int(srid_part.replace("SRID=", ""))
+
+    return wkt.loads(wkt_text), srid
+
+
+def table_to_gdf(table):
+    geom_field = table.get("geom_field", "geom")
+
+    rows = []
+    geoms = []
+    srids = []
+
+    for r in table["results"]:
+        r = r.copy()
+
+        geom, srid = parse_ewkt(r.pop(geom_field, None))
+
+        rows.append(r)
+        geoms.append(geom)
+        srids.append(srid)
+
+    df = pd.DataFrame(rows)
+
+    # CRS de origem: usa o primeiro SRID válido encontrado
+    source_srid = next((s for s in srids if s is not None), 4326)
+
+    gdf = gpd.GeoDataFrame(
+        df,
+        geometry=geoms,
+        crs=f"EPSG:{source_srid}"
+    )
+
+    return gdf
+
+
+def reproject_gdf(gdf, target_crs):
+    """
+    Reprojeta apenas se necessário
+    """
+    if gdf.crs is None:
+        gdf.set_crs(target_crs, inplace=True)
+        return gdf
+
+    if str(gdf.crs).lower() != str(target_crs).lower():
+        return gdf.to_crs(target_crs)
+
+    return gdf
+
+
+def build_geopackage(json_payload, filename, target_crs="EPSG:4326"):
+    """
+    Cria GeoPackage com reprojeção automática
+    """
+    for table in json_payload:
+
+        if not table.get("results"):
+            continue
+
+        layer_name = table["table"]
+
+        gdf = table_to_gdf(table)
+
+        # 🔁 conversão CRS
+        gdf = reproject_gdf(gdf, target_crs)
+
+        gdf.to_file(
+            filename,
+            layer=layer_name,
+            driver="GPKG"
+            )
+
+
+def get_title_as_text(title):
+    if not title:
+        return ''
+    if isinstance(title, str):
+        return title
+    if isinstance(title, dict):
+        if title.get('pt'):
+            return title['pt']
+        elif title.get('default'):
+            return title['default']
+
+    return ''
+
+
+def converter_title(obj):
+    if isinstance(obj, dict):
+        return {
+            k: get_title_as_text(v) if k == "title" else converter_title(v)
+            for k, v in obj.items()
+        }
+    elif isinstance(obj, list):
+        return [converter_title(item) for item in obj]
+    else:
+        return obj
 
 
 def get_intersect_results(config_code, geom_wkt, geom_srid, buffer, buffer_srid, out_srid):
@@ -105,7 +221,9 @@ def get_intersect_results(config_code, geom_wkt, geom_srid, buffer, buffer_srid,
     return record_filtered
 
 
-def export_intersect_results(record, out_format):
+def export_intersect_results(record, out_format, geom_wkt=None, geom_srid=4326, out_srid=4326):
+
+    normalized_record = converter_title(record)
 
     # Build tabular data
     data = OrderedDict()
@@ -116,9 +234,9 @@ def export_intersect_results(record, out_format):
 
     data['Resultados'] = []
     data['Resultados'].append(['Grupo', 'Título', 'Área', 'Comprimento', '%', 'Campos'])
-    for row in record['layers']:
+    for row in normalized_record['layers']:
         records = []
-        group = row['title_alias'].replace(" ", "") if row.get('title_alias') else row['title'].replace(" ", "")
+        group = row.get("title_alias", "").replace(" ", "") if row.get('title_alias') else row.get("title", "").replace(" ", "")
         column_names = ['Grupo', 'Título']
         column_names.append('Área')
         column_names.append('Comprimento')
@@ -166,6 +284,15 @@ def export_intersect_results(record, out_format):
     # Default filename
     file_name = "intersect_layers"
 
+    # Send XLS file
+    if out_format == 'xls':
+        outfile = file_name + ".xls"
+        file_name = "{0}-{1}.{2}".format(file_name, uuid.uuid4(), out_format)
+        filename = os.path.join(settings.APP_TMP_DIR, file_name)
+        if os.path.exists(filename):
+            os.remove(filename)
+        save_xls(filename, data)
+        return send_file(filename, download_name=outfile)
     # Send PDF file
     if out_format == 'pdf':
         outfile = file_name + ".pdf"
@@ -183,15 +310,31 @@ def export_intersect_results(record, out_format):
 
         else:
             abort(500, custom='value')
-
-    # Send XLS file
-    elif out_format == 'xls':
-        outfile = file_name + ".xls"
+    # Send GeoPackage file
+    elif out_format == 'gpkg':
+        outfile = file_name + ".gpkg"
         file_name = "{0}-{1}.{2}".format(file_name, uuid.uuid4(), out_format)
         filename = os.path.join(settings.APP_TMP_DIR, file_name)
+        _layers = record.get("layers", [])
+        if record.get("output_geom", None):
+            _layers.append({
+                "geom_field": "geom",
+                "group": "GEOMETRIA",
+                "group_title": "Geometria de análise",
+                "title": "Geometria de análise",
+                "table": "_geometria_analise",
+                "fields": [],
+                "results": [
+                    { "geom": record.get("output_geom")}
+                ]
+            })
         if os.path.exists(filename):
             os.remove(filename)
-        save_xls(filename, data)
+        build_geopackage(
+            json_payload=_layers,
+            filename=filename,
+            target_crs="EPSG:{0}".format(out_srid)
+        )
         return send_file(filename, download_name=outfile)
     # Send CSV file
     else:

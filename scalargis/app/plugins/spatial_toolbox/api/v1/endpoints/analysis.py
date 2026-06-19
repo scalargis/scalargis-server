@@ -50,6 +50,7 @@ class Intersect(Resource):
             buffer = request.args.get("buffer", 0)
             buffer_srid = request.args.get("buffer_srid", 3857)
             out_srid = request.args.get("out_srid", 4326)
+            export_srid = request.args.get("export_srid", 4326)
 
             data = get_intersect_results(config_code=code, geom_wkt=geom_wkt, geom_srid=geom_srid, buffer=buffer,
                                          buffer_srid=buffer_srid, out_srid=out_srid)
@@ -60,7 +61,7 @@ class Intersect(Resource):
                 return {"Success": False, "Message": "Parameter 'geom_wkt' is required", "Data": None}, 400
 
             if format != 'json':
-                return export_intersect_results(data, format)
+                return export_intersect_results(data, format, geom_wkt, geom_srid, out_srid=export_srid)
 
             return data, 200, {'Access-Control-Allow-Origin': '*',
                                'Access-Control-Allow-Methods': 'GET',
@@ -89,6 +90,7 @@ class Intersect(Resource):
             buffer = data.get("buffer", 0)
             buffer_srid = data.get("buffer_srid", 3857)
             out_srid = data.get("out_srid", 4326)
+            export_srid = data.get("export_srid", 4326)
 
             if not code:
                 return {"Success": False, "Message": "Parameter 'code' is required", "Data": None}, 400
@@ -99,12 +101,50 @@ class Intersect(Resource):
                                          buffer_srid=buffer_srid, out_srid=out_srid)
 
             if format != 'json':
-                return export_intersect_results(data, format)
+                return export_intersect_results(data, format, geom_wkt, geom_srid, out_srid=export_srid)
 
             return data, 200, {'Access-Control-Allow-Origin': '*',
                                'Access-Control-Allow-Methods': 'POST',
                                'Access-Control-Allow-Headers': 'Origin, X-Requested-With, Content-Type, Accept, X-API-KEY'
                                }
+        except Exception as e:
+            logger.error(e)
+            return {"Success": False, "Message": 'An error occurred while processing.', "Data": None}, 500
+
+
+@ns.route('/intersect/export')
+class IntersectExport(Resource):
+    def options(self):
+        return {'Allow': 'OPTIONS, POST'}, 200, \
+               {'Access-Control-Allow-Origin': '*',
+                'Access-Control-Allow-Methods': 'OPTIONS, POST',
+                'Access-Control-Allow-Headers': 'Origin, X-Requested-With, Content-Type, Accept, X-API-KEY'
+                }
+
+    @ns.expect(intersect_params, validate=False)
+    def post(self):
+        logger = logging.getLogger(__name__)
+
+        try:
+            # If JSON
+            if request.is_json:
+                data = request.get_json()
+            else:
+                # If form-data or x-www-form-urlencoded
+                data = request.form.to_dict()
+
+            format = data.get("format", "gpkg").lower()
+            code = data.get("code", None)
+            geom_wkt = data.get("geom_wkt", [])
+            geom_srid = data.get("geom_srid", 4326)
+            out_srid = data.get("out_srid", 4326)
+            data = data.get("data", None)
+
+            if format not in ['xls', 'csv', 'gpkg']:
+                return {"Success": False, "Message": "Format not supported: {0})".format(format), "Data": None}, 400
+
+            return export_intersect_results(data, format, geom_wkt, geom_srid, out_srid)
+
         except Exception as e:
             logger.error(e)
             return {"Success": False, "Message": 'An error occurred while processing.', "Data": None}, 500
