@@ -9,6 +9,7 @@ Flask-WTF
 Werkzeug==2.3.8
 requests
 bcrypt~=4.0.1
+cryptography>=42
 email_validator
 psycopg2-binary
 GeoAlchemy2
