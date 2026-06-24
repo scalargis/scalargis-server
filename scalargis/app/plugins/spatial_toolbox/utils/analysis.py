@@ -597,10 +597,16 @@ def draw_geometry(canvas, scale, mapcenter_x, mapcenter_y, width, height, ll_x, 
 
 def create_intersect_attachments(record, filename):
 
-    viewer_id = int(request.args.get('viewerId', None))
+    viewer_id = None
+    if request.args.get('viewerId', None):
+        viewer_id = request.args.get('viewerId', None)
+    else:
+        viewer_id = request.json.get('viewerId', None) if request.json else None
 
     if viewer_id is None:
         return None
+
+    viewer_id =int(viewer_id)
 
     geom_ewkt = record.get('output_geom', None)
     if geom_ewkt is None:
