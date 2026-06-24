@@ -22,6 +22,7 @@ from flask_security.core import verify_hash
 from flask_security.utils import verify_and_update_password
 from flask_ldap3_login import LDAP3LoginManager, AuthenticationResponseStatus
 from ldap3 import Server, Connection, ALL, SUBTREE, SIMPLE
+from itsdangerous import BadSignature, BadData, SignatureExpired
 from . import constants
 
 logger = logging.getLogger(__name__)
@@ -543,8 +544,11 @@ def get_user_token(username, password):
 
 
 def check_token(token):
-    data = _security.remember_token_serializer.loads(
-        token, max_age=_security.token_max_age)
+    try:
+        data = _security.remember_token_serializer.loads(
+            token, max_age=_security.token_max_age)
+    except (BadSignature, BadData, SignatureExpired, Exception):
+        return False
     user = _security.datastore.find_user(id=data[0])
     if not (user and verify_hash(data[1], user.password)):
         return False
@@ -558,8 +562,11 @@ def check_token(token):
 
 def get_user_from_token(token):
     user = None
-    data = _security.remember_token_serializer.loads(
-        token, max_age=_security.token_max_age)
+    try:
+        data = _security.remember_token_serializer.loads(
+            token, max_age=_security.token_max_age)
+    except (BadSignature, BadData, SignatureExpired, Exception):
+        return None
     user = _security.datastore.find_user(id=data[0])
     if not (user and verify_hash(data[1], user.password)):
         user = None
