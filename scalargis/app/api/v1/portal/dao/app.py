@@ -1007,5 +1007,5 @@ def send_email_notification(viewer_id, notification_id, notification_uuid, autho
                                        message_text=message_text, message_date=message_date,
                                        notification_url=notification_url)
         send_mail(main_app, email_notifications_admin,
-                  '{} - {}'.format('Notificação de Receção de Pedido/Participação', viewer.title),
+                  '{} - {}'.format('Notificação de mensagem do formulário de contacto', viewer.title),
                   message_html=message_html, message_text=None, attachments=attachments)
