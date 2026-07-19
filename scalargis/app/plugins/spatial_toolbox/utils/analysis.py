@@ -111,7 +111,7 @@ def build_geopackage(json_payload, filename, target_crs="EPSG:4326"):
         if not table.get("results"):
             continue
 
-        layer_name = table["table"]
+        layer_name = table.get("table_output", None) or table["table"]
 
         gdf = table_to_gdf(table)
 
@@ -125,28 +125,28 @@ def build_geopackage(json_payload, filename, target_crs="EPSG:4326"):
             )
 
 
-def get_title_as_text(title):
-    if not title:
+def get_localized_value_as_text(value, lang="default"):
+    if not value:
         return ''
-    if isinstance(title, str):
-        return title
-    if isinstance(title, dict):
-        if title.get('pt'):
-            return title['pt']
-        elif title.get('default'):
-            return title['default']
+    if isinstance(value, str):
+        return value
+    if isinstance(value, dict):
+        if value.get(lang):
+            return value[lang]
+        elif value.get('default'):
+            return value['default']
 
     return ''
 
 
-def converter_title(obj):
+def converter_field(obj, field, lang=None):
     if isinstance(obj, dict):
         return {
-            k: get_title_as_text(v) if k == "title" else converter_title(v)
+            k: get_localized_value_as_text(v, lang) if k == field else converter_field(v, field)
             for k, v in obj.items()
         }
     elif isinstance(obj, list):
-        return [converter_title(item) for item in obj]
+        return [converter_field(item, field) for item in obj]
     else:
         return obj
 
@@ -223,7 +223,7 @@ def get_intersect_results(config_code, geom_wkt, geom_srid, buffer, buffer_srid,
 
 def export_intersect_results(record, out_format, geom_wkt=None, geom_srid=4326, out_srid=4326):
 
-    normalized_record = converter_title(record)
+    normalized_record = converter_field(record, "title")
 
     # Build tabular data
     data = OrderedDict()
@@ -247,9 +247,14 @@ def export_intersect_results(record, out_format, geom_wkt=None, geom_srid=4326, 
 
         records.append(column_names)
 
+        group_name = row['group']
+        group_item = next((g for g in normalized_record.get('groups', []) if g['name'] == group_name), None)
+        group_title = group_item.get('title', '')
+
         for item in row['results']:
             l = []
-            l.append(row['group'])
+            #l.append(row['group'])
+            l.append(group_title or row['group'])
             l.append(row['title'])
             l.append(round(item['area'], 3))
             l.append(round(item['length'], 3))
@@ -260,7 +265,8 @@ def export_intersect_results(record, out_format, geom_wkt=None, geom_srid=4326, 
 
             # Build main result
             rl = []
-            rl.append(row['group'])
+            #rl.append(row['group'])
+            l.append(group_title or row['group'])
             rl.append(row['title'])
             rl.append(round(item['area'], 3))
             rl.append(round(item['length'], 3))
