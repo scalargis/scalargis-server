@@ -21,9 +21,11 @@ _DEFAULTS = {
     'CSP': (
         "default-src 'self'; "
         "script-src 'self' 'unsafe-inline' 'unsafe-eval' https: http:; "
+        "worker-src 'self' blob:; "
         "style-src 'self' 'unsafe-inline' https: http:; "
         "img-src 'self' data: blob: https: http:; "
         "font-src 'self' data:; "
+        "manifest-src 'self' data:; "
         "connect-src 'self' blob: https: http:; "
         "frame-src 'self' https: http:; "
         "frame-ancestors 'self'; "
