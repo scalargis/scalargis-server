@@ -8,6 +8,7 @@ from app.utils.login_blocking import check_ip_blocked, record_failure, record_su
 from app.utils.login_audit import log_login_attempt
 from app.utils import constants
 from app.utils.rate_limit import limit_login, limit_email
+from app.utils.password_policy import describe_policy
 from ..portal.parsers import *
 from ..portal.serializers import *
 from ..portal.dao import security as dao_security
@@ -151,6 +152,33 @@ class Account(Resource):
                            }
 
 #---------------------------------------------------------------------
+
+@ns_security.route('/password_policy')
+class PasswordPolicy(Resource):
+    """Password policy"""
+
+    def options(self):
+        return {'Allow': 'GET'}, 200, \
+               {'Access-Control-Allow-Origin': '*',
+                'Access-Control-Allow-Methods': 'GET',
+                'Access-Control-Allow-Headers': 'Origin, X-Requested-With, Content-Type, Accept'
+                }
+
+    @ns_security.doc('get_password_policy')
+    def get(self):
+        """Returns the configured password complexity rules
+
+        Deliberately unauthenticated: the register and reset-password forms need
+        the rules before there is a session. Exposes rule metadata only.
+        The single source is app.utils.password_policy -- the very same table
+        set_password enforces, so the client cannot drift from the server.
+        """
+        return describe_policy(), 200, \
+               {'Access-Control-Allow-Origin': '*',
+                'Access-Control-Allow-Methods': 'GET',
+                'Access-Control-Allow-Headers': 'Origin, X-Requested-With, Content-Type, Accept'
+                }
+
 
 @ns_security.route('/reset_password')
 class ResetPassword(Resource):

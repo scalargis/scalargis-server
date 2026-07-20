@@ -13,6 +13,13 @@ wraps it with ``flask_restx.abort(400, ...)`` -- the raised ``HTTPException``
 bypasses ``marshal_with`` and is rendered as JSON by Flask-RESTX, so the same
 call works whether the surrounding endpoint marshals its response (admin
 user CRUD) or not (self-service flows).
+
+``describe_policy`` publishes the *same* configured rules as data, so the client
+can advertise and pre-check them without restating them. It is served
+unauthenticated at ``GET /api/security/password_policy`` (the register and reset
+flows need it before there is a session). Both it and ``validate_password``
+iterate ``_CHARACTER_RULES`` and read through ``_get``, so a rule can never be
+enforced-but-not-published, or published-but-not-enforced: there is one table.
 """
 import re
 
@@ -28,10 +35,36 @@ _DEFAULTS = {
     'REQUIRE_SPECIAL': True,
 }
 
+# The character-class rules, as ``(rule_id, config_suffix, pattern)``. The single
+# table that both ``validate_password`` and ``describe_policy`` walk -- adding a
+# rule here enforces it *and* publishes it, in one edit. ``min_length`` is not in
+# the table because it is a length check, not a pattern, and it is published as a
+# number rather than as a flag.
+_CHARACTER_RULES = (
+    ('uppercase', 'REQUIRE_UPPERCASE', r'[A-Z]'),
+    ('lowercase', 'REQUIRE_LOWERCASE', r'[a-z]'),
+    ('digit', 'REQUIRE_DIGIT', r'[0-9]'),
+    ('special', 'REQUIRE_SPECIAL', r'[^A-Za-z0-9]'),
+)
+
 
 def _get(suffix):
     val = current_app.config.get('SCALARGIS_PASSWORD_{}'.format(suffix))
     return val if val is not None else _DEFAULTS.get(suffix)
+
+
+def describe_policy():
+    """Return the currently configured policy as a plain, JSON-safe dict.
+
+    Rule metadata only -- never a secret, never a password. Derived from the
+    live config through ``_get``, so re-tuning ``SCALARGIS_PASSWORD_*`` on a
+    deployment changes what is published with no code edit, and the published
+    rules are by construction the rules ``validate_password`` enforces.
+    """
+    policy = {'min_length': _get('MIN_LENGTH')}
+    for rule_id, suffix, _pattern in _CHARACTER_RULES:
+        policy['require_{}'.format(rule_id)] = bool(_get(suffix))
+    return policy
 
 
 def validate_password(password):
@@ -47,14 +80,9 @@ def validate_password(password):
     min_length = _get('MIN_LENGTH')
     if len(pw) < min_length:
         failed_rules.append('min_length')
-    if _get('REQUIRE_UPPERCASE') and not re.search(r'[A-Z]', pw):
-        failed_rules.append('uppercase')
-    if _get('REQUIRE_LOWERCASE') and not re.search(r'[a-z]', pw):
-        failed_rules.append('lowercase')
-    if _get('REQUIRE_DIGIT') and not re.search(r'[0-9]', pw):
-        failed_rules.append('digit')
-    if _get('REQUIRE_SPECIAL') and not re.search(r'[^A-Za-z0-9]', pw):
-        failed_rules.append('special')
+    for rule_id, suffix, pattern in _CHARACTER_RULES:
+        if _get(suffix) and not re.search(pattern, pw):
+            failed_rules.append(rule_id)
 
     if failed_rules:
         return False, 'password_policy_violation', failed_rules
