@@ -355,7 +355,133 @@ def export_intersect_results(record, out_format, geom_wkt=None, geom_srid=4326, 
         return send_file(filename, download_name=outfile)
 
 
+def _format_number(value):
+    """Format a numeric result value with 2 decimals, tolerating None/non-numeric."""
+    try:
+        return '{0:.2f}'.format(float(value))
+    except (TypeError, ValueError):
+        return '' if value is None else str(value)
+
+
+def build_simple_intersect_pdf(record, filename):
+    """Fallback PDF for the intersect export.
+
+    Used when the config has no print map/template configured (no `maps`,
+    `pdf_template` or `pdf_template_code`), so the templated/map-image path in
+    `create_pdf_intersect_results` cannot run. Builds a plain, self-contained
+    tabular PDF straight from the result groups/layers/fields, reusing exactly
+    the same fields the csv/xls exports emit: each field's alias as the column
+    header, plus Area / Comprimento / Percentagem per intersection row.
+    Rendered with ReportLab Platypus (already a project dependency).
+    """
+    from reportlab.lib.pagesizes import A4, landscape
+    from reportlab.lib.units import mm
+    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+    from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
+
+    styles = getSampleStyleSheet()
+    title_style = ParagraphStyle('IntersectTitle', parent=styles['Title'], fontSize=16, alignment=1)
+    group_style = ParagraphStyle('IntersectGroup', parent=styles['Heading1'], fontSize=13)
+    layer_style = ParagraphStyle('IntersectLayer', parent=styles['Heading2'], fontSize=11)
+    cell_style = ParagraphStyle('IntersectCell', parent=styles['Normal'], fontSize=8, leading=10)
+    header_style = ParagraphStyle('IntersectHeaderCell', parent=styles['Normal'], fontSize=8,
+                                  leading=10, textColor=colors.white)
+
+    doc = SimpleDocTemplate(filename, pagesize=landscape(A4),
+                            leftMargin=15 * mm, rightMargin=15 * mm,
+                            topMargin=15 * mm, bottomMargin=15 * mm)
+    avail_width = doc.width
+
+    elements = []
+
+    report_title = get_localized_value_as_text(record.get('title')) or "Relatório de Interseção de Temas"
+    elements.append(Paragraph(report_title, title_style))
+    elements.append(Spacer(1, 6 * mm))
+
+    description = get_localized_value_as_text(record.get('description'))
+    if description:
+        elements.append(Paragraph(description, styles['Normal']))
+        elements.append(Spacer(1, 4 * mm))
+
+    layers = record.get('layers', []) or []
+    groups = record.get('groups', []) or []
+
+    def render_layer(layer):
+        fields = layer.get('fields', []) or []
+        results = layer.get('results', []) or []
+        if not results:
+            return
+
+        layer_title = get_localized_value_as_text(layer.get('title_alias') or layer.get('title'))
+        if layer_title:
+            elements.append(Paragraph(layer_title, layer_style))
+
+        header = [Paragraph(str(f.get('alias') or f.get('title') or f.get('field') or ''), header_style)
+                  for f in fields]
+        header.append(Paragraph('Área (m2)', header_style))
+        header.append(Paragraph('Comprimento (m)', header_style))
+        header.append(Paragraph('Percentagem (%)', header_style))
+
+        table_data = [header]
+        for item in results:
+            row = []
+            for f in fields:
+                val = item.get(f.get('field'))
+                row.append(Paragraph('' if val is None else str(val), cell_style))
+            row.append(Paragraph(_format_number(item.get('area')), cell_style))
+            row.append(Paragraph(_format_number(item.get('length')), cell_style))
+            row.append(Paragraph(_format_number(item.get('percent')), cell_style))
+            table_data.append(row)
+
+        ncols = len(fields) + 3
+        col_widths = [avail_width / ncols] * ncols
+        table = Table(table_data, colWidths=col_widths, repeatRows=1)
+        table.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
+            ('GRID', (0, 0), (-1, -1), 0.5, colors.black),
+            ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+            ('LEFTPADDING', (0, 0), (-1, -1), 3),
+            ('RIGHTPADDING', (0, 0), (-1, -1), 3),
+            ('TOPPADDING', (0, 0), (-1, -1), 2),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 2),
+        ]))
+        elements.append(table)
+        elements.append(Spacer(1, 6 * mm))
+
+    header_count = len(elements)
+
+    if groups:
+        for group in groups:
+            group_name = group.get('name') if isinstance(group, dict) else group
+            group_title = get_localized_value_as_text(group.get('title') if isinstance(group, dict) else None) \
+                or (group_name or '')
+            group_layers = [l for l in layers if l.get('group') == group_name and l.get('results')]
+            if not group_layers:
+                continue
+            elements.append(Paragraph(group_title, group_style))
+            elements.append(Spacer(1, 2 * mm))
+            for layer in group_layers:
+                render_layer(layer)
+    else:
+        for layer in layers:
+            render_layer(layer)
+
+    if len(elements) == header_count:
+        elements.append(Paragraph("Sem resultados de interseção.", styles['Normal']))
+
+    doc.build(elements)
+
+    return True
+
+
 def create_pdf_intersect_results(record, filename):
+    # No print map/template configured (e.g. the base IntersectLayers deploys): the
+    # templated + map-image path below cannot run, so fall back to a plain tabular PDF
+    # built straight from the results. When a print map/template IS configured (e.g.
+    # MapasPT) the existing templated path stays intact.
+    if not (record.get('maps') or record.get('pdf_template') or record.get('pdf_template_code')):
+        return build_simple_intersect_pdf(record, filename)
+
     # enable logging
     pisa.showLogging()
 
