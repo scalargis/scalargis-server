@@ -134,7 +134,12 @@ def convert_to_geojson_create_layer(file, persist=True):
     metadata = {"filename": None, "size": None, "driver": None, "crs": None, "schema": None,
                 'filename': file.filename}
 
-    filename = str(uuid.uuid4()) + os.path.splitext(file.filename)[1]
+    in_ext = os.path.splitext(file.filename)[1]
+    # Fiona's GeoJSON/OGR driver is selected by file extension; a .json upload
+    # is not recognized as a supported format, so normalize it to .geojson.
+    if in_ext.lower() == '.json':
+        in_ext = '.geojson'
+    filename = str(uuid.uuid4()) + in_ext
     filepath = os.path.join(settings.APP_TMP_DIR, filename)
 
     file.save(filepath)
