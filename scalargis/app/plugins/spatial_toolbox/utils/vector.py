@@ -3,11 +3,125 @@ import os
 import os.path
 import json
 import uuid
+import zipfile
 
 import fiona
 from fiona import crs as fiona_crs
 
 from instance import settings
+
+
+def _enable_kml_drivers():
+    fiona.drvsupport.supported_drivers['LIBKML'] = 'rw'
+    fiona.drvsupport.supported_drivers['kml'] = 'rw'
+    fiona.drvsupport.supported_drivers['KML'] = 'rw'
+
+
+# GeoJSON attribute values are arbitrary JSON; vector formats (GML/KML/SHP) only
+# hold scalar fields, so everything is written as text — a nested object (e.g.
+# the drawings' `state`) would otherwise break the writer.
+def _to_text(value):
+    if value is None:
+        return ''
+    if isinstance(value, (str, int, float, bool)):
+        return str(value)
+    return json.dumps(value, ensure_ascii=False)
+
+
+def export_geojson_to_format(geojson_data, out_format, epsg=4326):
+    """Convert an in-memory GeoJSON FeatureCollection to GML, KML or a zipped
+    ESRI Shapefile via fiona. Returns (filepath, download_name, mimetype).
+
+    Shapefiles cannot hold mixed geometry types in one file, so features are
+    grouped by geometry type into one .shp each and zipped together.
+    """
+    logger = logging.getLogger(__name__)
+    _enable_kml_drivers()
+
+    out_format = (out_format or '').lower()
+    features = (geojson_data or {}).get('features', []) or []
+
+    try:
+        crs = fiona_crs.from_epsg(int(epsg))
+    except Exception:
+        crs = fiona_crs.from_epsg(4326)
+
+    # Union of property keys, in first-seen order; all fields typed as str.
+    prop_keys = []
+    for feat in features:
+        for k in (feat.get('properties') or {}).keys():
+            if k not in prop_keys:
+                prop_keys.append(k)
+    schema_props = {k: 'str' for k in prop_keys}
+
+    def record(feat):
+        props = feat.get('properties') or {}
+        return {
+            'geometry': feat.get('geometry'),
+            'properties': {k: _to_text(props.get(k)) for k in prop_keys},
+        }
+
+    file_uuid = uuid.uuid4().hex
+
+    if out_format == 'gml':
+        driver, ext, mimetype = 'GML', '.gml', 'application/gml+xml'
+    elif out_format == 'kml':
+        driver, ext, mimetype = 'KML', '.kml', 'application/vnd.google-earth.kml+xml'
+    elif out_format in ('shape', 'shp', 'shapefile'):
+        return _export_shapefile_zip(features, record, schema_props, crs, file_uuid)
+    else:
+        raise ValueError('Unsupported export format: {0}'.format(out_format))
+
+    out_filepath = os.path.join(settings.APP_TMP_DIR, file_uuid + ext)
+    schema = {'geometry': 'Unknown', 'properties': schema_props}
+    with fiona.open(out_filepath, 'w', driver=driver, crs=crs, schema=schema, encoding='utf-8') as sink:
+        for feat in features:
+            if feat.get('geometry'):
+                sink.write(record(feat))
+
+    return out_filepath, 'export' + ext, mimetype
+
+
+def _export_shapefile_zip(features, record, schema_props, crs, file_uuid):
+    logger = logging.getLogger(__name__)
+
+    # One shapefile per geometry type (SHP is single-geometry-type).
+    groups = {}
+    for feat in features:
+        geom = feat.get('geometry') or {}
+        gtype = geom.get('type')
+        if not gtype:
+            continue
+        groups.setdefault(gtype, []).append(feat)
+
+    work_dir = os.path.join(settings.APP_TMP_DIR, file_uuid)
+    os.makedirs(work_dir, exist_ok=True)
+
+    for gtype, feats in groups.items():
+        shp_path = os.path.join(work_dir, '{0}.shp'.format(gtype.lower()))
+        schema = {'geometry': gtype, 'properties': schema_props}
+        with fiona.open(shp_path, 'w', driver='ESRI Shapefile', crs=crs, schema=schema,
+                        encoding='utf-8') as sink:
+            for feat in feats:
+                sink.write(record(feat))
+
+    zip_path = os.path.join(settings.APP_TMP_DIR, file_uuid + '.zip')
+    with zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_DEFLATED) as zf:
+        for name in os.listdir(work_dir):
+            zf.write(os.path.join(work_dir, name), name)
+
+    # The .shp/.shx/.dbf/.prj set is now inside the zip.
+    for name in os.listdir(work_dir):
+        try:
+            os.remove(os.path.join(work_dir, name))
+        except Exception as e:
+            logger.debug(e)
+    try:
+        os.rmdir(work_dir)
+    except Exception as e:
+        logger.debug(e)
+
+    return zip_path, 'export.zip', 'application/zip'
 
 
 def convert_to_geojson_create_layer(file, persist=True):
