@@ -21,5 +21,6 @@ def index(path):
     in_html = f.read()
     out_html = in_html.replace("__SCALARGIS_ROOT_PATH__", root_path)
     out_html = out_html.replace("__SCALARGIS_ROOT_PATH_BASE_URL__", base_url)
+    out_html = out_html.replace('="/static/backoffice/', '="' + root_path + '/static/backoffice/')
 
     return Response(out_html, mimetype='text/html')

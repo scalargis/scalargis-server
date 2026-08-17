@@ -100,4 +100,4 @@ def get_script_root():
 
 
 def get_base_url():
-    return (current_app.config.get('SCALARGIS_BASE_URL') or '').rstrip('\/')
+    return (current_app.config.get('SCALARGIS_BASE_URL') or request.script_root or '').rstrip('\/')

@@ -28,5 +28,6 @@ def index(path):
     out_html = in_html.replace("__SCALARGIS_ROOT_PATH__", root_path)
     out_html = out_html.replace("__SCALARGIS_ROOT_PATH_BASE_URL__", base_url)
     out_html = out_html.replace("__SCALARGIS_DEFAULT_LOCALE__", default_locale)
+    out_html = out_html.replace('="/static/viewer/', '="' + root_path + '/static/viewer/')
 
     return Response(out_html, mimetype='text/html')
