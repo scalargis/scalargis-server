@@ -249,7 +249,7 @@ def export_intersect_results(record, out_format, geom_wkt=None, geom_srid=4326, 
 
         group_name = row['group']
         group_item = next((g for g in normalized_record.get('groups', []) if g['name'] == group_name), None)
-        group_title = group_item.get('title', '')
+        group_title = group_item.get('title', '') if group_item else ''
 
         for item in row['results']:
             l = []
@@ -266,7 +266,7 @@ def export_intersect_results(record, out_format, geom_wkt=None, geom_srid=4326, 
             # Build main result
             rl = []
             #rl.append(row['group'])
-            l.append(group_title or row['group'])
+            rl.append(group_title or row['group'])
             rl.append(row['title'])
             rl.append(round(item['area'], 3))
             rl.append(round(item['length'], 3))
