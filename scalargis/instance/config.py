@@ -50,6 +50,9 @@
 # SCALARGIS_SMTP_PASSWORD = 'password'
 # SCALARGIS_SENDER_USERNAME = 'noreply@wkt.pt'
 # SCALARGIS_SENDER_EMAIL = 'no-reply <noreply@wkt.pt>'
+# SCALARGIS_SMTP_STARTTLS = 'never'  # never | auto | required
+# SCALARGIS_SMTP_TLS_VERIFY = True
+# SCALARGIS_SMTP_TIMEOUT = 15
 
 # Notifications Settings
 # SCALARGIS_SEND_EMAIL_NOTIFICATIONS_USER = True
