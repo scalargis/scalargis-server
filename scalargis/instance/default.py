@@ -26,10 +26,6 @@ SCALARGIS_LDAP_AUTHENTICATION = False
 SCALARGIS_LOGIN_BLOCK_THRESHOLD = 20
 SCALARGIS_LOGIN_BLOCK_DURATION_MINUTES = 30
 
-# -- Rate limiting (Flask-Limiter) for auth endpoints --
-SCALARGIS_RATELIMIT_LOGIN = "30/minute"
-SCALARGIS_RATELIMIT_EMAIL = "5/minute;20/hour"
-
 # -- Password complexity policy --
 # Enforced whenever a password is set (register, reset, admin user create/update).
 # Set any rule to False to disable it; existing passwords/logins are unaffected.

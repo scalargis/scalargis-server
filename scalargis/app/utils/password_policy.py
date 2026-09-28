@@ -3,8 +3,8 @@ Password complexity policy for ScalarGIS.
 
 A single place that defines what a valid password is, and one helper to enforce
 it at every password-setting choke point (self-service register/reset and admin
-user create/update). Follows the same house style as ``rate_limit.py`` and
-``security_headers.py``: a ``_DEFAULTS`` table, lazy reads from
+user create/update). Follows the same house style as ``security_headers.py``:
+a ``_DEFAULTS`` table, lazy reads from
 ``current_app.config`` so a deployment can re-tune any rule without code changes,
 and no external dependencies.
 

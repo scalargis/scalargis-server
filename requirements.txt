@@ -4,7 +4,6 @@ flask_security
 flask_ldap3_login~=0.9.18
 flask_sqlalchemy
 flask-restx
-Flask-Limiter>=3.0,<4.0
 Flask-WTF
 Werkzeug==2.3.8
 requests
