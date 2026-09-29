@@ -11,6 +11,7 @@ from app.utils.security_headers import init_security_headers
 from app import filters
 from app.api.v1.endpoints import register_namespaces as api_register_namespaces
 from app.api.restx import api
+from app import runner
 
 
 def initialize_api(flask_app):
@@ -43,7 +44,7 @@ def initialize_app(flask_app):
     flask_app.register_blueprint(map_bp)
     flask_app.register_blueprint(file_bp)
 
-    from app.database.schema import create_schema
+    from app.database.schema import create_schema, create_runner_tables
 
     # -- Create database schema
     with app.app_context():
@@ -52,6 +53,7 @@ def initialize_app(flask_app):
             created = create_schema()
             if created:
                 log.info('Database schema created!')
+            create_runner_tables()
         except Exception as e:
             log.error('Database Initialization error: {}'.format(str(e)))
             raise
@@ -141,6 +143,8 @@ def run(argv):
         reloader = '--reloader' in argv
         threaded = '--threaded' in argv
 
+        runner.init_app(app, start_runner=not reloader or os.environ.get('WERKZEUG_RUN_MAIN') == 'true')
+
         port = int(os.environ.get('PORT')) if os.environ.get('PORT') else 5000
 
         app.run(host="0.0.0.0", port=port, use_reloader=reloader, threaded=threaded)
@@ -149,10 +153,11 @@ def run(argv):
         raise
 
 
-def init_wsgi():
+def init_wsgi(start_runner=True):
     initialize_app(app)
     load_plugins()
     load_extensions()
+    runner.init_app(app, start_runner=start_runner)
 
 @app.route("/")
 def home():

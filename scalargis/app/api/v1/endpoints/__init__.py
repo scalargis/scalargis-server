@@ -13,6 +13,7 @@ ns_authentication = api.namespace('authentication', description='Operations rela
 ns_security = api.namespace('security', description='Operations related with security')
 ns_stats = api.namespace('stats', description='Operations related with statistics')
 ns_notifications = api.namespace('notification', description='Operations related with notifications')
+ns_jobs = api.namespace('jobs', description='Status and result of background jobs')
 
 api_module_config = {}
 api_module_config['APIisOpen'] = True  # for all GET requests
@@ -28,6 +29,7 @@ def register_namespaces():
     api.add_namespace(ns_security)
     api.add_namespace(ns_stats)
     api.add_namespace(ns_notifications)
+    api.add_namespace(ns_jobs)
 
 
 def check_user(request, check_roles = None):
@@ -84,3 +86,4 @@ from .settings import *
 from .generic import *
 from .stats import *
 from .notifications import *
+from .jobs import *

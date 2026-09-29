@@ -10,6 +10,7 @@ from app.models.login_attempt import *
 from app.models.logging import *
 from app.models.files import *
 from app.models.portal import *
+from app.models.runner import *
 
 
 db_schema = get_db_schema()
@@ -40,6 +41,13 @@ def create_schema():
         created = True
 
     return created
+
+
+def create_runner_tables():
+    """Create the runner tables on a database made before the runner."""
+    bind = db.session.get_bind()
+    for table in (Job.__table__, RunnerHeartbeat.__table__):
+        table.create(bind=bind, checkfirst=True)
 
 
 def load_data():
