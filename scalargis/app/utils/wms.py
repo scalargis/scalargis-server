@@ -1,5 +1,5 @@
 import logging
-import requests
+from app.utils.http import http_session
 import math
 import urllib.parse
 from flask import current_app
@@ -125,7 +125,7 @@ def getmap_image(server_url, layers, bbox, width, height, geom_wkt=None, geom_sr
     try:
         #For performance reasons, only change alpha pixel value if opacity is lower than one (changed by user)
         if opacity == 1:
-            response = requests.get(url)
+            response = http_session().get(url)
             img = response.content
         else:
             img = get_image_with_opacity(url, opacity)
@@ -138,7 +138,7 @@ def getmap_image(server_url, layers, bbox, width, height, geom_wkt=None, geom_sr
 def get_image_with_opacity(url, opacity):
     output_img = None
 
-    response = requests.get(url)
+    response = http_session().get(url)
     imgb = Image.open(BytesIO(response.content))
 
     if imgb is not None:

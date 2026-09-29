@@ -20,7 +20,6 @@ import pyproj
 from sqlalchemy import text
 from PIL import Image
 from io import BytesIO
-import requests
 import time
 import os
 import re
@@ -36,7 +35,7 @@ from app.database import db
 from app import get_db_schema
 from app.models.portal import PrintElement
 from app.utils import geo
-from app.utils.http import replace_geoserver_url
+from app.utils.http import replace_geoserver_url, http_session
 
 from instance.settings import APP_STATIC, APP_RESOURCES
 
@@ -69,7 +68,7 @@ def merge_pdf_files(filename, files):
     return True
 
 def get_image(url):
-    response = requests.get(url)
+    response = http_session().get(url)
     response.raise_for_status()
 
     image_bytes = BytesIO(response.content)
@@ -81,7 +80,7 @@ def get_image(url):
 def get_image_with_opacity(url, opacity):
     output_img = None
 
-    response = requests.get(url, verify=False)
+    response = http_session().get(url, verify=False)
     imgb = Image.open(BytesIO(response.content))
 
     if imgb is not None:

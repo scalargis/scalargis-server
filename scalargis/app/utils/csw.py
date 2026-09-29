@@ -1,4 +1,4 @@
-import requests
+from app.utils.http import http_session
 from enum import Enum
 import lxml.etree as ET
 
@@ -256,7 +256,7 @@ class Service:
         response = None
 
         headers = {'Content-Type': 'application/xml'}  # set what your server accepts
-        response = requests.post(url, data=xml, headers=headers).text
+        response = http_session().post(url, data=xml, headers=headers).text
 
         return response
 

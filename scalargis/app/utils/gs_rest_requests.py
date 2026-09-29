@@ -5,7 +5,7 @@
         copyright            : (C)  WKT - SI
  ***************************************************************************/
 """
-import requests
+from app.utils.http import http_session
 
 class GeoserverRestRequests():
 
@@ -20,7 +20,7 @@ class GeoserverRestRequests():
         headers = {'Content-Type': 'text/xml'}
         auth = (self.username, self.password)
         data = "<workspace><name>%s</name></workspace>" % ws_name
-        r = requests.post(url, headers=headers, auth=auth, data=data)
+        r = http_session().post(url, headers=headers, auth=auth, data=data)
         print(r)
         return r.text
 
@@ -30,7 +30,7 @@ class GeoserverRestRequests():
         headers = {'Content-Type': 'text/xml'}
         auth = (self.username, self.password)
         data = "<coverageStore><name>%s</name><enabled>true</enabled><type>GeoTIFF</type><url>%s</url><workspace>%s</workspace></coverageStore>" % (store_name,file_name,ws_name)
-        r = requests.post(url, headers=headers, auth=auth, data=data)
+        r = http_session().post(url, headers=headers, auth=auth, data=data)
         return r.text
 
 
@@ -39,7 +39,7 @@ class GeoserverRestRequests():
         headers = {'Content-Type': 'text/xml'}
         auth = (self.username, self.password)
         data = "<coverage><name>%s</name><srs>EPSG:%s</srs><projectionPolicy>FORCE_DECLARED</projectionPolicy><title>%s</title></coverage>" % (service_name,srs,service_name)
-        r = requests.post(url, headers=headers, auth=auth, data=data)
+        r = http_session().post(url, headers=headers, auth=auth, data=data)
         return r.text
 
     def publish_postgis(self,ws_name,store_name,service_name,srs):
@@ -47,7 +47,7 @@ class GeoserverRestRequests():
         headers = {'Content-Type': 'text/xml'}
         auth = (self.username, self.password)
         data = """<featureType><name>%s</name><nativeCRS>EPSG:%s</nativeCRS><srs>EPSG:%s</srs></featureType>""" % (service_name,srs,srs)
-        r = requests.post(url, headers=headers, auth=auth, data=data)
+        r = http_session().post(url, headers=headers, auth=auth, data=data)
         return r.text
 
     def setDefaultStyle(self,ws_name,service_name,style_name):
@@ -55,7 +55,7 @@ class GeoserverRestRequests():
         headers = {'Content-Type': 'text/xml'}
         auth = (self.username, self.password)
         data="""<layer><defaultStyle><name>%s</name></defaultStyle><enabled>true</enabled></layer>"""  % (style_name)
-        r = requests.put(url, headers=headers, auth=auth, data=data)
+        r = http_session().put(url, headers=headers, auth=auth, data=data)
         return r.text
      
     # other styles (not default)
@@ -70,19 +70,19 @@ class GeoserverRestRequests():
                  </style>
             </styles>
         </layer>"""  % (style_name)
-        r = requests.put(url, headers=headers, auth=auth, data=data)
+        r = http_session().put(url, headers=headers, auth=auth, data=data)
         return r.text
         
     def removeLayer(self,ws_name, store_name, service_name):
         url = '%s/rest/layers/%s:%s' % (self.url, ws_name, service_name)
         headers = {'Content-Type': 'text/xml'}
         auth = (self.username, self.password)
-        r = requests.delete(url, headers=headers, auth=auth)
+        r = http_session().delete(url, headers=headers, auth=auth)
         
         url = '%s/rest/workspaces/%s/datastores/%s/featuretypes/%s.xml' % (self.url, ws_name, store_name, service_name)
         headers = {'Content-Type': 'text/xml'}
         auth = (self.username, self.password)
-        r = requests.delete(url, headers=headers, auth=auth)
+        r = http_session().delete(url, headers=headers, auth=auth)
 
         return r.text
 
@@ -102,7 +102,7 @@ class GeoserverRestRequests():
         'type':'truncate','threadCount':1}}} 
         """ % ( ws_name, service_name, format, srs)
 
-        r = requests.post(url, headers=headers, auth=auth, data=data)
+        r = http_session().post(url, headers=headers, auth=auth, data=data)
         return {"status": r.status_code, "reason": r.reason}
 
     def seedLayerTileCache(self, ws_name, service_name, srs, format,zoomStart, zoomStop, threadCount):
@@ -120,5 +120,5 @@ class GeoserverRestRequests():
         'type':'seed','threadCount':%s}}} 
         """ % ( ws_name, service_name, format, srs, zoomStart, zoomStop, threadCount)
 
-        r = requests.post(url, headers=headers, auth=auth, data=data)
+        r = http_session().post(url, headers=headers, auth=auth, data=data)
         return {"status": r.status_code, "reason": r.reason}

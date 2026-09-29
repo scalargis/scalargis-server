@@ -4,7 +4,6 @@ import json
 import re
 import base64
 import uuid
-import requests
 from datetime import datetime
 
 from flask import request, current_app, url_for, render_template, render_template_string
@@ -19,7 +18,7 @@ from app.utils.constants import ROLE_ANONYMOUS
 from app.utils.settings import get_site_settings, get_config_value
 from app.utils.security import get_roles_names, get_user_roles, is_admin_or_manager
 from app.utils.mailing import send_mail
-from app.utils.http import get_host_url, get_script_root, get_base_url
+from app.utils.http import get_host_url, get_script_root, get_base_url, http_session
 from app.utils import auditoria
 from instance import settings
 from ..serializers import generic_api_model, viewer_api_model
@@ -224,7 +223,7 @@ def send_viewer_contact_message(viewer_id, data):
             "success": False,
             "message": 'Envio da mensagem não autorizado'
         }
-        presp = requests.post(captcha_url, data=pdata)
+        presp = http_session().post(captcha_url, data=pdata)
         if presp.status_code == 200:
             if presp.json()['success'] is not True:
                 return captcha_error_response, 403

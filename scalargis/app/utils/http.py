@@ -1,7 +1,20 @@
 from datetime import timedelta
+from http.cookiejar import DefaultCookiePolicy
 from flask import make_response, request, current_app
 from functools import update_wrapper
 import logging
+import os
+import threading
+
+import requests
+from requests.adapters import HTTPAdapter
+
+
+HTTP_POOL_SIZE = 32
+
+_session = None
+_session_pid = None
+_session_lock = threading.Lock()
 
 
 def crossdomain(origin=None, methods=None, headers=None,
@@ -101,3 +114,53 @@ def get_script_root():
 
 def get_base_url():
     return (current_app.config.get('SCALARGIS_BASE_URL') or request.script_root or '').rstrip('\/')
+
+
+def _env_seconds(name):
+    value = os.environ.get(name)
+    if not value:
+        return None
+    try:
+        seconds = float(value)
+    except ValueError:
+        logging.warning('%s is not a number: %s', name, value)
+        return None
+    return seconds if seconds > 0 else None
+
+
+def http_timeout():
+    """Returns the (connect, read) timeout from HTTP_CONNECT_TIMEOUT and HTTP_READ_TIMEOUT, or None."""
+    connect = _env_seconds('HTTP_CONNECT_TIMEOUT')
+    read = _env_seconds('HTTP_READ_TIMEOUT')
+    if connect is None and read is None:
+        return None
+    return connect, read
+
+
+class TimeoutSession(requests.Session):
+    """Session that applies a default timeout and keeps no cookies between requests."""
+
+    def __init__(self, timeout=None):
+        super().__init__()
+        self.default_timeout = timeout
+        self.cookies.set_policy(DefaultCookiePolicy(allowed_domains=[]))
+        adapter = HTTPAdapter(pool_connections=HTTP_POOL_SIZE, pool_maxsize=HTTP_POOL_SIZE)
+        self.mount('http://', adapter)
+        self.mount('https://', adapter)
+
+    def request(self, method, url, **kwargs):
+        if kwargs.get('timeout') is None:
+            kwargs['timeout'] = self.default_timeout
+        return super().request(method, url, **kwargs)
+
+
+def http_session():
+    """Returns the shared outbound HTTP session of this process."""
+    global _session, _session_pid
+    pid = os.getpid()
+    if _session is None or _session_pid != pid:
+        with _session_lock:
+            if _session is None or _session_pid != pid:
+                _session = TimeoutSession(http_timeout())
+                _session_pid = pid
+    return _session
