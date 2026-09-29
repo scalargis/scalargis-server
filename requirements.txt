@@ -17,7 +17,7 @@ pyshp
 GDAL
 fiona
 Shapely
-geopandas
+geopandas<1.2
 Pillow
 lxml
 reportlab==4.4.1
