@@ -1,3 +1,5 @@
+import os
+
 # -- Turns on debugging features in Flask --
 DEBUG = False
 
@@ -13,6 +15,10 @@ SECURITY_URL_PREFIX = "/server"
 
 # -- DATATABSE connection --
 SQLALCHEMY_DATABASE_URI = "postgresql+psycopg2://postgres:postgres@localhost:5432/scalargis"
+SQLALCHEMY_ENGINE_OPTIONS = {
+    key: int(os.environ[env]) for key, env in (('pool_size', 'DB_POOL_SIZE'), ('max_overflow', 'DB_MAX_OVERFLOW'))
+    if os.environ.get(env)
+}
 
 # -- SCALARGIS settings --
 SCALARGIS_DB_SCHEMA = "scalargis"

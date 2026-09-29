@@ -32,3 +32,4 @@ pymupdf
 waitress
 pytz
 itsdangerous
+gunicorn; sys_platform != "win32"
