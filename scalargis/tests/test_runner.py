@@ -86,7 +86,7 @@ def test_queue_keeps_the_jobs_of_one_line_apart(app, monkeypatch):
     dev_job = core.enqueue('t')
     assert db.session.get(Job, dev_job).type == 'dev/t'
 
-    monkeypatch.delenv('RUNNER_QUEUE')
+    monkeypatch.setenv('RUNNER_QUEUE', '')
     prod_job = core.enqueue('t')
     assert db.session.get(Job, prod_job).type == 't'
     assert core.claim_job('prod/pid1') == prod_job
@@ -571,3 +571,43 @@ def test_pg_runner_reconnects_after_a_db_restart(monkeypatch):
         listener.join(5)
         with app.app_context():
             db.engine.dispose()
+
+
+@pg
+def test_pg_local_runner_leaves_the_box_jobs_and_the_leader_lock(pg_app, monkeypatch):
+    monkeypatch.setattr(core, '_periodics', {})
+    monkeypatch.setattr(core, '_wakes', {})
+    monkeypatch.setenv('RUNNER_POLL_SECONDS', '1')
+    ticks = []
+    core.register_job_type('t', lambda ctx: {'n': ctx.payload['n']})
+    core.register_periodic('t.tick', ticks.append, 1)
+    with pg_app.app_context():
+        box_job = core.enqueue('t', {'n': 1})
+
+    monkeypatch.delenv('RUNNER_QUEUE')
+    runner = core.Runner(pg_app).start()
+    try:
+        with pg_app.app_context():
+            local_job = core.enqueue('t', {'n': 2})
+            core.wake('t.tick', 'x')
+        deadline = time.monotonic() + 10
+        status = None
+        while time.monotonic() < deadline and status != core.STATUS_DONE:
+            time.sleep(0.1)
+            with pg_app.app_context():
+                status = db.session.get(Job, local_job).status
+        time.sleep(2)
+        with pg_app.app_context():
+            local = db.session.get(Job, local_job)
+            assert (local.status, local.type, local.result) == (core.STATUS_DONE, core.runner_queue() + '/t', {'n': 2})
+            assert db.session.get(Job, box_job).status == core.STATUS_QUEUED
+            with db.engine.connect() as conn:
+                assert conn.execute(db.text('SELECT pg_try_advisory_lock(:k)'), {'k': core.LEADER_LOCK_KEY}).scalar()
+                conn.execute(db.text('SELECT pg_advisory_unlock(:k)'), {'k': core.LEADER_LOCK_KEY})
+        assert ticks == []
+    finally:
+        runner.stop(wait=True)
+
+    monkeypatch.setenv('RUNNER_QUEUE', '')
+    with pg_app.app_context():
+        assert core.claim_job('box/pid1') == box_job

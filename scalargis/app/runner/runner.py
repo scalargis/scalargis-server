@@ -28,6 +28,8 @@ LISTEN_POLL_SECONDS = 60
 LISTEN_RETRY_MAX_SECONDS = 30
 RUNNER_KEY_PREFIX = 'runner:'
 PERIODIC_KEY_PREFIX = 'periodic:'
+LOCAL_QUEUE_PREFIX = 'local-'
+TRUE_VALUES = ('1', 'true', 'yes', 'on')
 
 _job_types = {}
 _periodics = {}
@@ -37,6 +39,7 @@ _wakes = {}
 _wake_events = {}
 _runner = None
 _runner_lock = threading.Lock()
+_config = {}
 
 
 def _env_int(name, default):
@@ -50,9 +53,43 @@ def runner_mode():
     return (os.environ.get('RUNNER_MODE') or '').strip().lower()
 
 
+def configure(app):
+    """Read RUNNER_QUEUE and RUNNER_PERIODIC from the Flask config. The env var wins over the config key."""
+    _config.clear()
+    for name in ('RUNNER_QUEUE', 'RUNNER_PERIODIC'):
+        if name in app.config:
+            _config[name] = app.config[name]
+
+
+def _setting(name):
+    """(declared, value) of a runner setting, from the env var or else the Flask config."""
+    if name in os.environ:
+        return True, os.environ[name]
+    if name in _config:
+        return True, _config[name]
+    return False, None
+
+
+def local_mode():
+    """True when no RUNNER_QUEUE is declared: the runner of a developer machine."""
+    return not _setting('RUNNER_QUEUE')[0]
+
+
 def runner_queue():
-    """RUNNER_QUEUE: a name that keeps the jobs of one app line apart from the other lines on the same database."""
-    return (os.environ.get('RUNNER_QUEUE') or '').strip()
+    """RUNNER_QUEUE: the queue of this app line. With no RUNNER_QUEUE declared it is local-<hostname>."""
+    declared, value = _setting('RUNNER_QUEUE')
+    if not declared:
+        return LOCAL_QUEUE_PREFIX + socket.gethostname()
+    return str(value if value is not None else '').strip()
+
+
+def periodic_enabled():
+    """RUNNER_PERIODIC: run the periodic tasks and take the leader lock. When it is empty, on unless in local mode."""
+    declared, value = _setting('RUNNER_PERIODIC')
+    text_value = str(value if value is not None else '').strip().lower()
+    if not declared or not text_value:
+        return not local_mode()
+    return text_value in TRUE_VALUES
 
 
 def stored_type(name):
@@ -215,7 +252,7 @@ def handle_message(payload):
         return
     if 'job' in message:
         _job_event.set()
-    elif 'wake' in message:
+    elif 'wake' in message and periodic_enabled():
         queue_local_wake(message['wake'], message.get('p'))
 
 
@@ -443,6 +480,7 @@ class Runner(object):
 
     def __init__(self, app):
         self.app = app
+        configure(app)
         self.host = host_id()
         self.threads = max(_env_int('RUNNER_THREADS', 2), 1)
         self.poll = max(_env_int('RUNNER_POLL_SECONDS', 10), 1)
@@ -460,10 +498,15 @@ class Runner(object):
                 touch_beat_file()
         self._thread('runner-listen', self._listen_loop)
         self._thread('runner-dispatch', self._dispatch_loop)
-        for periodic in list(_periodics.values()):
-            self._thread('runner-' + periodic.name, self._periodic_loop, periodic)
+        periodics = sorted(_periodics) if periodic_enabled() else []
+        for name in periodics:
+            self._thread('runner-' + name, self._periodic_loop, _periodics[name])
         logger.info('runner: started on %s, %s job threads, job types %s, queue %s, periodic tasks %s',
-                    self.host, self.threads, job_types(), runner_queue() or '-', sorted(_periodics))
+                    self.host, self.threads, job_types(), runner_queue() or '-', periodics or '-')
+        if local_mode():
+            logger.warning('runner: local mode. No RUNNER_QUEUE is declared, so this runner takes only the jobs of '
+                           'queue %s%s. See references/architecture/jobs/README.md, section Local runs',
+                           runner_queue(), '' if periodics else ' and runs no periodic tasks')
         return self
 
     def stop(self, wait=False):
