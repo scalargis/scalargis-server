@@ -50,6 +50,24 @@ def runner_mode():
     return (os.environ.get('RUNNER_MODE') or '').strip().lower()
 
 
+def runner_queue():
+    """RUNNER_QUEUE: a name that keeps the jobs of one app line apart from the other lines on the same database."""
+    return (os.environ.get('RUNNER_QUEUE') or '').strip()
+
+
+def stored_type(name):
+    """The job type as the job table stores it: queue/name when RUNNER_QUEUE is set."""
+    queue = runner_queue()
+    return '{0}/{1}'.format(queue, name) if queue else name
+
+
+def plain_type(stored):
+    """The registered name of a stored job type of this queue."""
+    queue = runner_queue()
+    prefix = queue + '/' if queue else ''
+    return stored[len(prefix):] if prefix and stored.startswith(prefix) else stored
+
+
 _process_ids = {}
 
 
@@ -80,7 +98,7 @@ class JobContext(object):
 
     def __init__(self, job):
         self.id = job.id
-        self.type = job.type
+        self.type = plain_type(job.type)
         self.payload = job.payload or {}
         self.created_by = job.created_by
         self.result_path = None
@@ -170,7 +188,7 @@ def enqueue(name, payload=None, created_by=None):
     """Queue a job of the type name, commit the session and wake the runners. Returns the job id."""
     if name not in _job_types:
         raise ValueError('unknown job type: {0}'.format(name))
-    job = Job(id=uuid.uuid4(), type=name, payload=payload or {}, status=STATUS_QUEUED, attempts=0,
+    job = Job(id=uuid.uuid4(), type=stored_type(name), payload=payload or {}, status=STATUS_QUEUED, attempts=0,
               created_by=created_by, created_at=utc_now())
     db.session.add(job)
     db.session.commit()
@@ -260,7 +278,7 @@ def run_periodic(name, wakes=(), beat=True, host=None):
 
 def claim_job(host):
     """Mark the oldest queued job of a known type as running for host. Returns its id or None."""
-    types = list(_job_types)
+    types = [stored_type(name) for name in _job_types]
     if not types:
         return None
     try:
@@ -292,9 +310,9 @@ def run_job(job_id):
     job = db.session.get(Job, job_id)
     if job is None:
         return None
-    fn = _job_types.get(job.type)
     ctx = JobContext(job)
-    job_type = job.type
+    job_type = ctx.type
+    fn = _job_types.get(job_type)
     result, status, error = None, STATUS_DONE, None
     try:
         if fn is None:
@@ -444,8 +462,8 @@ class Runner(object):
         self._thread('runner-dispatch', self._dispatch_loop)
         for periodic in list(_periodics.values()):
             self._thread('runner-' + periodic.name, self._periodic_loop, periodic)
-        logger.info('runner: started on %s, %s job threads, job types %s, periodic tasks %s',
-                    self.host, self.threads, job_types(), sorted(_periodics))
+        logger.info('runner: started on %s, %s job threads, job types %s, queue %s, periodic tasks %s',
+                    self.host, self.threads, job_types(), runner_queue() or '-', sorted(_periodics))
         return self
 
     def stop(self, wait=False):

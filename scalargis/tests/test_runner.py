@@ -80,6 +80,24 @@ def test_claim_skips_types_this_runner_does_not_know(app):
     assert core.claim_job('box/pid1') is None
 
 
+def test_queue_keeps_the_jobs_of_one_line_apart(app, monkeypatch):
+    core.register_job_type('t', lambda ctx: {'type': ctx.type})
+    monkeypatch.setenv('RUNNER_QUEUE', 'dev')
+    dev_job = core.enqueue('t')
+    assert db.session.get(Job, dev_job).type == 'dev/t'
+
+    monkeypatch.delenv('RUNNER_QUEUE')
+    prod_job = core.enqueue('t')
+    assert db.session.get(Job, prod_job).type == 't'
+    assert core.claim_job('prod/pid1') == prod_job
+    assert core.claim_job('prod/pid1') is None
+
+    monkeypatch.setenv('RUNNER_QUEUE', 'dev')
+    assert core.claim_job('dev/pid1') == dev_job
+    assert core.run_job(dev_job) == core.STATUS_DONE
+    assert db.session.get(Job, dev_job).result == {'type': 't'}
+
+
 def test_failed_handler_marks_the_job_failed(app):
     def boom(ctx):
         raise RuntimeError('no map')
