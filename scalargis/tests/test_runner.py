@@ -469,3 +469,30 @@ def test_pg_notify_wakes_the_listener(pg_app, monkeypatch):
     finally:
         runner.stop_event.set()
         runner.leader.release()
+
+
+@pg
+def test_pg_parallel_starts_create_the_tables_once(pg_app):
+    with pg_app.app_context():
+        db.session.execute(db.text('DROP TABLE IF EXISTS scalargis.job, scalargis.runner_heartbeat'))
+        db.session.commit()
+    errors = []
+    barrier = threading.Barrier(8)
+
+    def start():
+        try:
+            with pg_app.app_context():
+                barrier.wait()
+                create_runner_tables()
+                db.session.remove()
+        except Exception as err:
+            errors.append(err)
+
+    threads = [threading.Thread(target=start) for _ in range(8)]
+    for t in threads:
+        t.start()
+    for t in threads:
+        t.join()
+    assert errors == []
+    with pg_app.app_context():
+        assert db.session.execute(db.text('SELECT count(*) FROM scalargis.job')).scalar() == 0

@@ -43,11 +43,18 @@ def create_schema():
     return created
 
 
+RUNNER_TABLES_LOCK_KEY = 7286337501
+
+
 def create_runner_tables():
-    """Create the runner tables on a database made before the runner."""
+    """Create the runner tables on a database made before the runner. On PostgreSQL one process at a time does it."""
     bind = db.session.get_bind()
-    for table in (Job.__table__, RunnerHeartbeat.__table__):
-        table.create(bind=bind, checkfirst=True)
+    engine = getattr(bind, 'engine', bind)
+    with engine.begin() as conn:
+        if conn.dialect.name == 'postgresql':
+            conn.execute(text('SELECT pg_advisory_xact_lock(:k)'), {'k': RUNNER_TABLES_LOCK_KEY})
+        for table in (Job.__table__, RunnerHeartbeat.__table__):
+            table.create(bind=conn, checkfirst=True)
 
 
 def load_data():
