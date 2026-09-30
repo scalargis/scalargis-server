@@ -86,10 +86,15 @@ def test_gunicorn_conf_reads_the_stack_env(monkeypatch):
     ({}, {}),
     ({'DB_POOL_SIZE': '6'}, {'pool_size': 6}),
     ({'DB_POOL_SIZE': '6', 'DB_MAX_OVERFLOW': '2'}, {'pool_size': 6, 'max_overflow': 2}),
+    ({'DB_POOL_PRE_PING': '1'}, {'pool_pre_ping': True}),
+    ({'DB_POOL_PRE_PING': 'true', 'DB_POOL_SIZE': '4'}, {'pool_size': 4, 'pool_pre_ping': True}),
+    ({'DB_POOL_PRE_PING': '0'}, {}),
+    ({'DB_POOL_PRE_PING': ''}, {}),
 ])
 def test_pool_options_come_from_env(monkeypatch, env, expected):
     monkeypatch.delenv('DB_POOL_SIZE', raising=False)
     monkeypatch.delenv('DB_MAX_OVERFLOW', raising=False)
+    monkeypatch.delenv('DB_POOL_PRE_PING', raising=False)
     for key, value in env.items():
         monkeypatch.setenv(key, value)
     import instance.default as default

@@ -496,3 +496,78 @@ def test_pg_parallel_starts_create_the_tables_once(pg_app):
     assert errors == []
     with pg_app.app_context():
         assert db.session.execute(db.text('SELECT count(*) FROM scalargis.job')).scalar() == 0
+
+
+def _kill_backends():
+    """Terminate every other backend of the test database, as a Postgres restart does."""
+    from sqlalchemy import create_engine
+    from sqlalchemy.pool import NullPool
+    engine = create_engine(PG_URL, poolclass=NullPool)
+    with engine.begin() as conn:
+        killed = conn.execute(db.text(
+            'SELECT count(pg_terminate_backend(pid)) FROM pg_stat_activity '
+            'WHERE datname = current_database() AND pid <> pg_backend_pid()')).scalar()
+    engine.dispose()
+    return killed
+
+
+def _pooled_app(pre_ping):
+    app = Flask('runner-pool-test')
+    app.config.update(SQLALCHEMY_DATABASE_URI=PG_URL, SQLALCHEMY_TRACK_MODIFICATIONS=False,
+                      SQLALCHEMY_ENGINE_OPTIONS={'pool_pre_ping': True} if pre_ping else {})
+    db.init_app(app)
+    return app
+
+
+@pg
+@pytest.mark.parametrize('pre_ping', [False, True])
+def test_pg_pool_after_a_db_restart(pre_ping):
+    from sqlalchemy.exc import OperationalError
+    app = _pooled_app(pre_ping)
+    with app.app_context():
+        assert db.session.execute(db.text('SELECT 1')).scalar() == 1
+        db.session.remove()
+        assert _kill_backends() >= 1
+        if pre_ping:
+            assert db.session.execute(db.text('SELECT 1')).scalar() == 1
+        else:
+            with pytest.raises(OperationalError):
+                db.session.execute(db.text('SELECT 1'))
+        db.session.remove()
+        db.engine.dispose()
+
+
+@pg
+def test_pg_runner_reconnects_after_a_db_restart(monkeypatch):
+    monkeypatch.setattr(core, '_wakes', {})
+    monkeypatch.setattr(core, 'LISTEN_RETRY_MAX_SECONDS', 1)
+    app = _pooled_app(True)
+    runner = core.Runner(app)
+    listener = threading.Thread(target=runner._listen_loop, daemon=True)
+    try:
+        assert runner.leader.hold() is True
+        listener.start()
+        time.sleep(1)
+        assert _kill_backends() >= 2
+
+        deadline = time.monotonic() + 10
+        while not runner.leader.hold() and time.monotonic() < deadline:
+            time.sleep(0.2)
+        assert runner.leader.hold() is True
+
+        event = core._wake_event('t.restart')
+        woke = False
+        while not woke and time.monotonic() < deadline + 10:
+            core.pop_wakes('t.restart')
+            event.clear()
+            with app.app_context():
+                sent = core.wake('t.restart', 'back')
+            woke = sent and event.wait(0.5)
+        assert woke
+        assert 'back' in core.pop_wakes('t.restart')
+    finally:
+        runner.stop_event.set()
+        runner.leader.release()
+        listener.join(5)
+        with app.app_context():
+            db.engine.dispose()

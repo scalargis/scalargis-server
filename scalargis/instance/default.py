@@ -19,6 +19,8 @@ SQLALCHEMY_ENGINE_OPTIONS = {
     key: int(os.environ[env]) for key, env in (('pool_size', 'DB_POOL_SIZE'), ('max_overflow', 'DB_MAX_OVERFLOW'))
     if os.environ.get(env)
 }
+if (os.environ.get('DB_POOL_PRE_PING') or '').strip().lower() in ('1', 'true', 'yes', 'on'):
+    SQLALCHEMY_ENGINE_OPTIONS['pool_pre_ping'] = True
 
 # -- SCALARGIS settings --
 SCALARGIS_DB_SCHEMA = "scalargis"
