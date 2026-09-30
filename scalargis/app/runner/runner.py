@@ -505,7 +505,7 @@ class Runner(object):
                     self.host, self.threads, job_types(), runner_queue() or '-', periodics or '-')
         if local_mode():
             logger.warning('runner: local mode. No RUNNER_QUEUE is declared, so this runner takes only the jobs of '
-                           'queue %s%s. See references/architecture/jobs/README.md, section Local runs',
+                           'queue %s%s.',
                            runner_queue(), '' if periodics else ' and runs no periodic tasks')
         return self
 
