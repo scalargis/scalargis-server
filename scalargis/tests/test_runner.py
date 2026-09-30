@@ -265,6 +265,30 @@ def test_in_process_runner_runs_a_job_and_a_periodic(tmp_path, monkeypatch):
     assert [] in ticks and ['9'] in ticks
 
 
+def test_runner_beat_touches_the_beat_file_only_after_a_row_write(app, tmp_path, monkeypatch):
+    beat_file = tmp_path / 'beat'
+    monkeypatch.setenv('RUNNER_BEAT_FILE', str(beat_file))
+    runner = core.Runner(app)
+    monkeypatch.setattr(core, '_write_beat', lambda *a, **k: False)
+    runner._beat_runner()
+    assert not beat_file.exists()
+    monkeypatch.setattr(core, '_write_beat', lambda *a, **k: True)
+    runner.last_runner_beat = 0.0
+    runner._beat_runner()
+    assert beat_file.exists()
+    os.utime(str(beat_file), (0, 0))
+    runner.last_runner_beat = 0.0
+    runner._beat_runner()
+    assert os.path.getmtime(str(beat_file)) > time.time() - 60
+
+
+def test_beat_file_is_off_without_the_env_var(tmp_path, monkeypatch):
+    monkeypatch.delenv('RUNNER_BEAT_FILE', raising=False)
+    monkeypatch.chdir(tmp_path)
+    core.touch_beat_file()
+    assert os.listdir(str(tmp_path)) == []
+
+
 class _User(SimpleNamespace):
     pass
 

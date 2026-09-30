@@ -202,7 +202,7 @@ def handle_message(payload):
 
 
 def _write_beat(key, host, error=None, start=False):
-    """Write a heartbeat row in its own transaction. Never raises."""
+    """Write a heartbeat row in its own transaction. Never raises. True on success."""
     try:
         now = utc_now()
         row = db.session.get(RunnerHeartbeat, key)
@@ -222,9 +222,24 @@ def _write_beat(key, host, error=None, start=False):
             row.beat_count = (row.beat_count or 0) + 1
             row.last_error = None
         db.session.commit()
+        return True
     except Exception as beat_err:
         db.session.rollback()
         logger.warning('runner: heartbeat %s failed: %s', key, beat_err)
+        return False
+
+
+def touch_beat_file():
+    """Touch the file named by RUNNER_BEAT_FILE, for a container health check. Never raises."""
+    path = os.environ.get('RUNNER_BEAT_FILE')
+    if not path:
+        return
+    try:
+        with open(path, 'a'):
+            pass
+        os.utime(path, None)
+    except OSError as touch_err:
+        logger.warning('runner: beat file %s failed: %s', path, touch_err)
 
 
 def run_periodic(name, wakes=(), beat=True, host=None):
@@ -423,7 +438,8 @@ class Runner(object):
     def start(self):
         """Write the start heartbeat and start the threads."""
         with self.app.app_context():
-            _write_beat(RUNNER_KEY_PREFIX + self.host, self.host, start=True)
+            if _write_beat(RUNNER_KEY_PREFIX + self.host, self.host, start=True):
+                touch_beat_file()
         self._thread('runner-listen', self._listen_loop)
         self._thread('runner-dispatch', self._dispatch_loop)
         for periodic in list(_periodics.values()):
@@ -508,7 +524,8 @@ class Runner(object):
             return
         self.last_runner_beat = now
         with self.app.app_context():
-            _write_beat(RUNNER_KEY_PREFIX + self.host, self.host)
+            if _write_beat(RUNNER_KEY_PREFIX + self.host, self.host):
+                touch_beat_file()
 
     def _run_job(self, job_id):
         try:
