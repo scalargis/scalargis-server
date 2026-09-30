@@ -184,6 +184,28 @@ class AppPrintGenerate(Resource):
                               }
 
 
+@ns.route('/viewer/<int:viewer_id>/print/<string:print_code>/generate/job')
+@ns.response(404, 'Print not found')
+@ns.param('viewer_id', 'The viewer identifier')
+@ns.param('print_code', 'The print identifier')
+class AppPrintGenerateJob(Resource):
+    def options(self, viewer_id, print_code):
+        return {'Allow': 'POST'}, 200,                {'Access-Control-Allow-Origin': '*',
+                'Access-Control-Allow-Methods': 'POST',
+                'Access-Control-Allow-Headers': 'Origin, X-Requested-With, Content-Type, Accept, X-API-KEY'
+                }
+
+    @ns.doc('do_print_generate_job')
+    @ns.response(202, 'Job queued')
+    def post(self, viewer_id, print_code):
+        '''Queue the print as a job. GET /api/jobs/<job_id> gives its status'''
+        item, status = dao_app.start_app_viewer_print_job(viewer_id, print_code)
+        return item, status, {'Access-Control-Allow-Origin': '*',
+                              'Access-Control-Allow-Methods': 'POST',
+                              'Access-Control-Allow-Headers': 'Origin, X-Requested-With, Content-Type, Accept'
+                              }
+
+
 @ns.route('/viewer/<int:viewer_id>/print/merge')
 @ns.response(404, 'Todo not found')
 @ns.param('viewer_id', 'The viewer identifier')

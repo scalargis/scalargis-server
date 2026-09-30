@@ -44,6 +44,9 @@ def initialize_app(flask_app):
     flask_app.register_blueprint(map_bp)
     flask_app.register_blueprint(file_bp)
 
+    from app.modules.print import jobs as print_jobs
+    print_jobs.register()
+
     from app.database.schema import create_schema, create_runner_tables
 
     # -- Create database schema

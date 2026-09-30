@@ -722,6 +722,21 @@ def get_app_viewer_print_generate(viewer_id, print_code):
     return data, status
 
 
+def start_app_viewer_print_job(viewer_id, print_code):
+    from app.modules.print import jobs as print_jobs
+
+    if db.session.query(Print.id).filter(Print.code == print_code).first() is None:
+        return {"Success": False, "Message": "A planta solicitada não está configurada.", "Data": None}, 404
+
+    user = get_user(request)
+    if user is None and current_user and current_user.is_authenticated:
+        user = current_user
+
+    job_id = print_jobs.start_print_planta(request, print_code, user)
+
+    return {"job_id": str(job_id)}, 202
+
+
 def get_app_viewer_print_merge(viewer_id):
     user = None
     data = None
