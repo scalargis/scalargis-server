@@ -1,1 +1,0 @@
-Geonames WKTApp plugin

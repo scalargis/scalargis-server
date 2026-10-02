@@ -1,1 +1,0 @@
-Spatial Toolbox WKTApp plugin
