@@ -52,7 +52,7 @@ SCALARGIS_EXTENSIONS = []
 ```powershell
 $env:APP_CONFIG_FILE = "development_local.py"
 cd scalargis
-..env\Scripts\python.exe server.py
+..\venv\Scripts\python.exe server.py
 ```
 
 The first start can take one to two minutes and logs `Database schema created!`. A missing `APP_CONFIG_FILE` file is
@@ -71,34 +71,3 @@ docker exec scalargis-local-db psql -U postgres -d scalargis -c "DROP SCHEMA IF 
 
 **Multiple project configs:** create one file per project (e.g. `development_local_projecta.py`) and switch `APP_CONFIG_FILE` between them.
 
----
-
-## Docker Deployment
-
-Copy and edit the local env override file:
-```powershell
-copy .env .env.local
-```
-
-Key variables in `.env` / `.env.local`:
-
-| Variable | Default | Description |
-|---|---|---|
-| `CONTAINER_NAME` | `scalargis-server` | Container name and hostname |
-| `IMAGE_NAME` | `wkt/scalargis-server` | Image name:tag |
-| `PORT` | `5000` | Internal container port |
-| `HOST_PORT` | `5000` | Host-mapped port |
-| `THREADS` | `12` | Waitress worker threads |
-| `CHANNEL_TIMEOUT` | `120` | Waitress channel timeout (seconds) |
-| `CONNECTION_LIMIT` | `200` | Max concurrent connections |
-| `URL_PREFIX` | *(empty)* | URL prefix for reverse proxy deployments |
-| `URL_SCHEME` | `http` | `http` or `https` |
-| `TRUSTED_PROXY` | *(empty)* | Trusted proxy IP (`*` to trust any, e.g. behind Apache) |
-| `HOST_DATA_DIR` | `./data` | Host path for persistent data volume |
-| `APP_CONFIG_FILE` | *(empty)* | Config file in `scalargis/instance/` (defaults to `docker/docker_db.py`) |
-
-```powershell
-docker compose up -d
-```
-
-Starts two services: **scalargis** (server on `HOST_PORT`) and **db** (PostGIS `postgis/postgis:17-3.5-alpine` on port 5001). Server config is loaded from `docker/docker_db.py` by default (mounted as volume).
