@@ -159,8 +159,8 @@ def get_intersect_results(config_code, geom_wkt, geom_srid, buffer, buffer_srid,
     ibuffer_srid = buffer_srid or 3857
 
     # get layers def
-    sql = "select * from {0}.site_settings where code like '{1}'".format(db_schema, config_code or 'config_intersect')
-    result = db.session.execute(text(sql)).fetchall()
+    sql = "select * from {0}.site_settings where code = :code".format(db_schema)
+    result = db.session.execute(text(sql), {"code": config_code or 'config_intersect'}).fetchall()
     layers = []
     if len(result) > 0:
         layers = result[0].setting_value

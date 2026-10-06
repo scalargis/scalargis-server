@@ -357,8 +357,8 @@ class Pdf:
             merger = Merger(layout_schema)
 
             for wid in self.widget_inputs:
-                sqltxt = "Select config from {schema}.widget where code = '%s'".format(schema=db_schema) % wid['codigo']
-                input_conf = db.session.execute(sqltxt).first()
+                sqltxt = "Select config from {schema}.widget where code = :code".format(schema=db_schema)
+                input_conf = db.session.execute(text(sqltxt), {"code": wid['codigo']}).first()
                 subjson = json.loads(input_conf[0])
                 base = None
                 base = merger.merge(base, config)

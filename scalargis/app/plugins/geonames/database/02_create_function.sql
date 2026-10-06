@@ -26,23 +26,22 @@ begin
 			Select * from geonames.geographical_names Where 1=1 ';
 
 	if (_group Is Not Null) Then
-		mysql = mysql || ' and group like ''' || _group::text ||'''';
+		mysql = mysql || ' and "group" like $2';
 	end if;
 	if (_admin_level1 Is Not Null) Then
-		mysql = mysql || ' and admin_level1 ilike ''' || _admin_level1::text ||'''';
+		mysql = mysql || ' and admin_level1 ilike $3';
 	end if;
 	if (_admin_level2 Is Not Null) Then
-		mysql = mysql || ' and admin_level2 ilike ''' || _admin_level2::text ||'''';
+		mysql = mysql || ' and admin_level2 ilike $4';
 	end if;
 	if (_admin_level3 Is Not Null) Then
-		mysql = mysql || ' and admin_level3 ilike ''' || _admin_level3::text ||'''';
+		mysql = mysql || ' and admin_level3 ilike $5';
 	end if;
 	if (_admin_level4 Is Not Null) Then
-		mysql = mysql || ' and admin_level4 ilike ''' || _admin_level4::text ||'''';
+		mysql = mysql || ' and admin_level4 ilike $6';
 	end if;
 	if (_admin_code Is Not Null) Then
-		--mysql = mysql || ' and starts_with(admin_code, ''' || _admin_code ||'''::text)';
-		mysql = mysql || ' and admin_code ilike ''' || _admin_code ||'%''';
+		mysql = mysql || ' and admin_code ilike $7 || ''%''';
 	end if;
 
 
@@ -50,7 +49,7 @@ begin
 		(
 			(
 			SELECT geom, name, source, type, "group", admin_level1, admin_level2, admin_level3, admin_level4, admin_code,
-			similarity(name, '''||f||''') as similarity, ''similarity'' as search_func
+			similarity(name, $1) as similarity, ''similarity'' as search_func
 			FROM t
 			)
 		';
@@ -59,18 +58,18 @@ begin
 			Union All
 				(
 				SELECT geom, name, source, type, "group", admin_level1, admin_level2, admin_level3, admin_level4, admin_code,
-				 (ts_rank(fs_str, to_tsquery(''pt'','''||fts||''')) + 0.8)::real AS similarity, ''full_ts'' as search_func
+				 (ts_rank(fs_str, to_tsquery(''pt'', $8)) + 0.8)::real AS similarity, ''full_ts'' as search_func
 				from t
-				where fs_str @@ to_tsquery(''pt'','''||fts||''')
+				where fs_str @@ to_tsquery(''pt'', $8)
 				)';
 	else
 		mysql = mysql || '
 			Union All
 				(
 				SELECT geom, name, source, type, "group", admin_level1, admin_level2, admin_level3, admin_level4, admin_code,
-				 (ts_rank(fs_str, to_tsquery(''pt'','''||fts||''')) + 0.8)::real AS similarity, ''full_ts'' as search_func
+				 (ts_rank(fs_str, to_tsquery(''pt'', $8)) + 0.8)::real AS similarity, ''full_ts'' as search_func
 				from t
-				where admin_code @@ to_tsquery('''||fts||':*'')
+				where admin_code @@ to_tsquery($8 || '':*'')
 				)
 			';
 	end if;
@@ -80,17 +79,17 @@ begin
 		type, "group", admin_level1, admin_level2, admin_level3, admin_level4, admin_code,
 		sum(similarity),max(search_func) from q
 		group by St_Astext(geom), name, source, type, "group", admin_level1, admin_level2, admin_level3, admin_level4, admin_code
-		having sum(similarity) > ' || _min_similarity::text;
+		having sum(similarity) > $9';
 
 	mysql = mysql || ' order by  sum(similarity) desc, name';
 
 
 
-	if (_maxrows>0) Then mysql = mysql || ' Limit ' || _maxrows::text; end if;
+	if (_maxrows>0) Then mysql = mysql || ' Limit $10'; end if;
 
-	--raise notice 'sql= %',mysql;
-
-	return query execute mysql;
+	return query execute mysql
+		using f, _group, _admin_level1, _admin_level2, _admin_level3, _admin_level4, _admin_code, fts,
+			_min_similarity, _maxrows;
 
 end;
 $function$
