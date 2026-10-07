@@ -51,9 +51,8 @@ def test_always_search_bind_is_accepted():
     ({k: v for k, v in SEARCH_BIND.items() if k not in ('LDAP_USER_RDN_ATTR', 'LDAP_USER_LOGIN_ATTR')}, 'direct_bind'),
     ({**SEARCH_BIND, 'LDAP_BIND_DIRECT_CREDENTIALS': True}, 'direct_credentials'),
 ])
-def test_init_config_refuses_direct_modes(config, mode):
-    with pytest.raises(ValueError, match=mode):
-        manager(config)
+def test_init_config_accepts_direct_modes(config, mode):
+    assert security.ldap_bind_mode(manager(config).config) == mode
 
 
 def test_identity_attributes_converts_the_old_form():

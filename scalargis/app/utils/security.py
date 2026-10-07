@@ -19,8 +19,11 @@ from flask import current_app, g, request
 from werkzeug.local import LocalProxy
 from flask_principal import Identity, identity_changed
 from flask_security.utils import verify_and_update_password
-from flask_ldap3_login import LDAP3LoginManager, AuthenticationResponseStatus
-from ldap3 import Server, Connection, ALL, ALL_ATTRIBUTES, SUBTREE, SIMPLE
+from flask_ldap3_login import LDAP3LoginManager, AuthenticationResponse, AuthenticationResponseStatus
+from ldap3 import (Server, Connection, Tls, ALL, ALL_ATTRIBUTES, SUBTREE, SIMPLE, AUTO_BIND_NO_TLS,
+                   AUTO_BIND_TLS_BEFORE_BIND)
+from ldap3.utils.conv import escape_filter_chars
+from ldap3.utils.dn import escape_rdn
 from sqlalchemy import func
 from . import constants, tokens
 
@@ -78,15 +81,8 @@ class LDAPLoginManager(LDAP3LoginManager):
     """
 
     def init_config(self, config):
-        """Sets self.config from config over LDAP_DEFAULTS and refuses a config that does not select search bind."""
+        """Sets self.config from config over LDAP_DEFAULTS."""
         self.config = {**LDAP_DEFAULTS, **config}
-        mode = ldap_bind_mode(self.config)
-        if mode != 'search_bind':
-            raise ValueError(
-                f"LDAP config for {self.config.get('LDAP_HOST')} selects {mode}. Only search bind is supported: "
-                "set LDAP_BIND_USER_DN and a LDAP_USER_LOGIN_ATTR that differs from LDAP_USER_RDN_ATTR, "
-                "or LDAP_ALWAYS_SEARCH_BIND."
-            )
 
     @property
     def full_user_search_dn(self):
@@ -95,20 +91,32 @@ class LDAPLoginManager(LDAP3LoginManager):
         base = self.config.get('LDAP_BASE_DN')
         return f'{sub},{base}' if sub else base
 
+    def _user_filter(self, username):
+        """The user search filter for username, with the username escaped."""
+        return '(&{0}({1}={2}))'.format(
+            self.config.get('LDAP_USER_OBJECT_FILTER'),
+            self.config.get('LDAP_USER_LOGIN_ATTR'),
+            escape_filter_chars(username),
+        )
+
     def _direct_connection(self, bind_user=None, bind_password=None):
         """
         Build a plain ldap3 Connection — no Flask app context needed.
         Returns a bound Connection or raises with a logged error.
         """
-        host     = self.config.get('LDAP_HOST')
-        port     = int(self.config.get('LDAP_PORT', 389))
-        use_ssl  = self.config.get('LDAP_USE_SSL', False)
-        user     = bind_user     or self.config.get('LDAP_BIND_USER_DN')
-        password = bind_password or self.config.get('LDAP_BIND_USER_PASSWORD')
+        host      = self.config.get('LDAP_HOST')
+        port      = int(self.config.get('LDAP_PORT', 389))
+        use_ssl   = self.config.get('LDAP_USE_SSL', False)
+        start_tls = bool(self.config.get('LDAP_USE_TLS', False))
+        if bind_user:
+            user, password = bind_user, bind_password
+        else:
+            user = self.config.get('LDAP_BIND_USER_DN')
+            password = self.config.get('LDAP_BIND_USER_PASSWORD')
 
         logger.debug(
-            "[_direct_connection] host=%s  port=%d  ssl=%s  user=%s",
-            host, port, use_ssl, user,
+            "[_direct_connection] host=%s  port=%d  ssl=%s  starttls=%s  user=%s",
+            host, port, use_ssl, start_tls, user,
         )
 
         # Guard: ldap3 raises LDAPUserNameIsMandatoryError with a misleading
@@ -129,13 +137,13 @@ class LDAPLoginManager(LDAP3LoginManager):
             )
 
         try:
-            server = Server(host, port=port, use_ssl=use_ssl, get_info=ALL)
+            server = Server(host, port=port, use_ssl=use_ssl, tls=ldap_tls(self.config), get_info=ALL)
             conn = Connection(
                 server,
                 user=user,
                 password=password,
                 authentication=SIMPLE,
-                auto_bind=True,
+                auto_bind=AUTO_BIND_TLS_BEFORE_BIND if start_tls else AUTO_BIND_NO_TLS,
             )
             logger.debug(
                 "[_direct_connection] bound OK — vendor: %s",
@@ -143,7 +151,7 @@ class LDAPLoginManager(LDAP3LoginManager):
             )
             return conn
         except Exception as exc:
-            logger.error(
+            logger.warning(
                 "[_direct_connection] FAILED %s:%d — %s: %s",
                 host, port, type(exc).__name__, exc,
             )
@@ -154,11 +162,7 @@ class LDAPLoginManager(LDAP3LoginManager):
         Search the Users DN for a single user by login attribute.
         Uses _direct_connection() to avoid the app-context dependency.
         """
-        ldap_filter = '(&{0}({1}={2}))'.format(
-            self.config.get('LDAP_USER_OBJECT_FILTER'),
-            self.config.get('LDAP_USER_LOGIN_ATTR'),
-            username,
-        )
+        ldap_filter = self._user_filter(username)
 
         logger.debug(
             "[get_user_info] search_base='%s'  filter='%s'  attrs=%s",
@@ -208,17 +212,11 @@ class LDAPLoginManager(LDAP3LoginManager):
           1. Service-account bind  → search for user's full DN
           2. User bind             → verify the supplied password
         """
-        from flask_ldap3_login import AuthenticationResponse, AuthenticationResponseStatus as ARS
-        from ldap3 import Server as _Server
-
+        ARS = AuthenticationResponseStatus
         response = AuthenticationResponse()
 
         # ── Step 1: service-account search for user DN ────────────────────────
-        ldap_filter = '(&{0}({1}={2}))'.format(
-            self.config.get('LDAP_USER_OBJECT_FILTER'),
-            self.config.get('LDAP_USER_LOGIN_ATTR'),
-            username,
-        )
+        ldap_filter = self._user_filter(username)
         logger.debug(
             "[search_bind] searching for '%s'  base='%s'  filter='%s'",
             username, self.full_user_search_dn, ldap_filter,
@@ -255,69 +253,52 @@ class LDAPLoginManager(LDAP3LoginManager):
             return response
 
         # ── Step 2: bind as the user to verify password ───────────────────────
-        try:
-            user_server = _Server(
-                self.config.get('LDAP_HOST'),
-                port=int(self.config.get('LDAP_PORT', 389)),
-                use_ssl=self.config.get('LDAP_USE_SSL', False),
-                get_info=ALL,
-            )
-            user_conn = Connection(
-                user_server,
-                user=user_dn,
-                password=password,
-                authentication=SIMPLE,
-                auto_bind=True,
-            )
-            user_conn.unbind()
-            response.status = ARS.success
-            response.user_dn = user_dn
-            logger.debug("[search_bind] user bind OK for DN '%s'", user_dn)
+        result = self._user_bind(username, user_dn, password)
+        result.user_info = response.user_info
+        return result
 
+    def authenticate_direct_bind(self, username, password):
+        """Binds as <LDAP_USER_RDN_ATTR>=<username>,<full_user_search_dn> with the typed password."""
+        user_dn = '{0}={1},{2}'.format(
+            self.config.get('LDAP_USER_RDN_ATTR'), escape_rdn(username), self.full_user_search_dn,
+        )
+        return self._user_bind(username, user_dn, password)
+
+    def authenticate_direct_credentials(self, username, password):
+        """Binds as <LDAP_BIND_DIRECT_PREFIX><username><LDAP_BIND_DIRECT_SUFFIX> with the typed password."""
+        bind_user = '{0}{1}{2}'.format(
+            self.config.get('LDAP_BIND_DIRECT_PREFIX') or '',
+            username,
+            self.config.get('LDAP_BIND_DIRECT_SUFFIX') or '',
+        )
+        return self._user_bind(username, bind_user, password)
+
+    def _user_bind(self, username, bind_user, password):
+        """Binds as bind_user with password and gives the AuthenticationResponse."""
+        response = AuthenticationResponse(user_id=username)
+        try:
+            self._direct_connection(bind_user, password).unbind()
+            response.status = AuthenticationResponseStatus.success
+            response.user_dn = bind_user
+            logger.debug("[user_bind] bind OK for '%s' as '%s'", username, bind_user)
         except Exception as exc:
             logger.warning(
-                "[search_bind] user bind FAILED for '%s' (DN: %s) — %s: %s",
-                username, user_dn, type(exc).__name__, exc,
+                "[user_bind] bind FAILED for '%s' as '%s' — %s: %s",
+                username, bind_user, type(exc).__name__, exc,
             )
-            response.status = ARS.fail
-
+            response.status = AuthenticationResponseStatus.fail
+            response.exception = exc
         return response
 
     def authenticate(self, username, password):
-        """
-        Mirrors scalargis authenticate logic.
-        Uses _direct_connection() for the service-account bind so the
-        Flask app context is never touched.
-        """
-        rdn_attr      = self.config.get('LDAP_USER_RDN_ATTR')
-        login_attr    = self.config.get('LDAP_USER_LOGIN_ATTR')
-        always_search = self.config.get('LDAP_ALWAYS_SEARCH_BIND', False)
-        direct_creds  = self.config.get('LDAP_BIND_DIRECT_CREDENTIALS', False)
+        """Refuses an empty password, then runs the bind mode that ldap_bind_mode() picks for self.config."""
+        mode = ldap_bind_mode(self.config)
+        logger.debug("[authenticate] username='%s'  strategy -> %s", username, mode)
 
-        logger.debug(
-            "[authenticate] username='%s'  RDN_ATTR='%s'  LOGIN_ATTR='%s'  "
-            "ALWAYS_SEARCH_BIND=%s  BIND_DIRECT_CREDENTIALS=%s",
-            username, rdn_attr, login_attr, always_search, direct_creds,
-        )
-
-        if direct_creds:
-            logger.debug("[authenticate] strategy -> direct_credentials")
-            result = self.authenticate_direct_credentials(username, password)
-
-        elif not always_search and rdn_attr == login_attr:
-            logger.debug(
-                "[authenticate] strategy -> direct_bind (RDN_ATTR == LOGIN_ATTR == '%s')",
-                rdn_attr,
-            )
-            result = self.authenticate_direct_bind(username, password)
-
+        if not password:
+            result = AuthenticationResponse(user_id=username)
         else:
-            logger.debug(
-                "[authenticate] strategy -> search_bind "
-                "(always_search=%s or RDN_ATTR '%s' != LOGIN_ATTR '%s')",
-                always_search, rdn_attr, login_attr,
-            )
-            result = self.authenticate_search_bind(username, password)
+            result = getattr(self, f'authenticate_{mode}')(username, password)
 
         if result.status == AuthenticationResponseStatus.success:
             logger.info("[authenticate] SUCCESS for '%s'", username)
@@ -337,6 +318,12 @@ def ldap_bind_mode(config):
     if not config.get('LDAP_ALWAYS_SEARCH_BIND') and config.get('LDAP_USER_RDN_ATTR') == config.get('LDAP_USER_LOGIN_ATTR'):
         return 'direct_bind'
     return 'search_bind'
+
+
+def ldap_tls(config):
+    """The ldap3 Tls of LDAP_TLS in config, which holds a Tls, a dict of Tls arguments, or None."""
+    tls = config.get('LDAP_TLS')
+    return Tls(**tls) if isinstance(tls, dict) else tls
 
 
 # ---------------------------------------------------------------------------
@@ -468,7 +455,7 @@ def init_ldap(app):
 
 
 # ---------------------------------------------------------------------------
-# authenticate_ldap_user — unchanged logic, clearer logging
+# authenticate_ldap_user
 # ---------------------------------------------------------------------------
 
 def authenticate_ldap_user(username, password, domain):
@@ -489,15 +476,6 @@ def authenticate_ldap_user(username, password, domain):
                 "[auth_ldap] Trying host=%s  base_dn=%s  for user='%s'",
                 host, base_dn, username,
             )
-            ldap_user = ldap.get_user_info_for_username(username)
-
-            if not ldap_user:
-                logger.warning(
-                    "[auth_ldap] user '%s' not found on host=%s — skipping",
-                    username, host,
-                )
-                continue
-
             res = ldap.authenticate(username, password)
             if res.status == AuthenticationResponseStatus.success:
                 return True
