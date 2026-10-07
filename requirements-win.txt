@@ -1,13 +1,11 @@
-setuptools;python_version>="3.12"
-
-Flask~=2.2.0
+Flask~=3.1
 Flask-Mail
-flask_security
-flask_ldap3_login~=0.9.18
+Flask-Security~=5.9
+flask-ldap3-login~=1.0.2
 flask_sqlalchemy
 flask-restx
 Flask-WTF
-Werkzeug==2.3.8
+Werkzeug~=3.1
 requests
 bcrypt~=4.0.1
 cryptography>=42

@@ -35,10 +35,7 @@ On the first start, the server adds the `postgis` extension, creates the `scalar
 ```powershell
 py -3.12 -m venv venv
 venv\Scripts\python.exe -m pip install -r requirements-win.txt
-venv\Scripts\python.exe -m pip install "setuptools<81"
 ```
-
-Flask-Security 3 imports `pkg_resources`, and setuptools 81 and later do not have it. Keep setuptools below 81.
 
 **Create `scalargis/instance/development_local.py`** (git ignores `instance/development_local*.py`):
 ```python

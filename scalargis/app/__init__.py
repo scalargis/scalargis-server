@@ -88,6 +88,8 @@ def setup_security(flask_app):
     from app.utils import security as app_security
 
     # Setup Flask-Security
+    flask_app.config['SECURITY_USER_IDENTITY_ATTRIBUTES'] = app_security.identity_attributes(
+        flask_app.config.get('SECURITY_USER_IDENTITY_ATTRIBUTES'))
     user_datastore = SQLAlchemyUserDatastore(db, User, Role)
     security = Security(flask_app, user_datastore)
     database.user_datastore = user_datastore

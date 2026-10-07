@@ -20,7 +20,7 @@ from werkzeug.local import LocalProxy
 from flask_principal import Identity, identity_changed
 from flask_security.utils import verify_and_update_password
 from flask_ldap3_login import LDAP3LoginManager, AuthenticationResponseStatus
-from ldap3 import Server, Connection, ALL, SUBTREE, SIMPLE
+from ldap3 import Server, Connection, ALL, ALL_ATTRIBUTES, SUBTREE, SIMPLE
 from sqlalchemy import func
 from . import constants, tokens
 
@@ -36,6 +36,17 @@ ldap_managers = []
 # Convenient references
 _security = LocalProxy(lambda: current_app.extensions['security'])
 user_datastore = LocalProxy(lambda: current_app.extensions['security'].datastore)
+
+LDAP_DEFAULTS = {
+    'LDAP_PORT': 389, 'LDAP_HOST': None, 'LDAP_USE_SSL': False, 'LDAP_READONLY': True, 'LDAP_CHECK_NAMES': True,
+    'LDAP_BIND_DIRECT_CREDENTIALS': False, 'LDAP_BIND_DIRECT_PREFIX': '', 'LDAP_BIND_DIRECT_SUFFIX': '',
+    'LDAP_BIND_DIRECT_GET_USER_INFO': True, 'LDAP_ALWAYS_SEARCH_BIND': False, 'LDAP_BASE_DN': '',
+    'LDAP_BIND_USER_DN': None, 'LDAP_BIND_USER_PASSWORD': None, 'LDAP_SEARCH_FOR_GROUPS': True,
+    'LDAP_FAIL_AUTH_ON_MULTIPLE_FOUND': False, 'LDAP_USER_DN': '', 'LDAP_GROUP_DN': '',
+    'LDAP_BIND_AUTHENTICATION_TYPE': 'SIMPLE', 'LDAP_USER_SEARCH_SCOPE': 'LEVEL',
+    'LDAP_USER_OBJECT_FILTER': '(objectclass=person)', 'LDAP_USER_LOGIN_ATTR': 'uid', 'LDAP_USER_RDN_ATTR': 'uid',
+    'LDAP_GET_USER_ATTRIBUTES': ALL_ATTRIBUTES,
+}
 
 authorizations = {
     'apikey': {
@@ -65,6 +76,24 @@ class LDAPLoginManager(LDAP3LoginManager):
     directly in _direct_connection(), exactly as ldap_sync_users.py does,
     and pass that connection explicitly to get_object() and the bind methods.
     """
+
+    def init_config(self, config):
+        """Sets self.config from config over LDAP_DEFAULTS and refuses a config that does not select search bind."""
+        self.config = {**LDAP_DEFAULTS, **config}
+        mode = ldap_bind_mode(self.config)
+        if mode != 'search_bind':
+            raise ValueError(
+                f"LDAP config for {self.config.get('LDAP_HOST')} selects {mode}. Only search bind is supported: "
+                "set LDAP_BIND_USER_DN and a LDAP_USER_LOGIN_ATTR that differs from LDAP_USER_RDN_ATTR, "
+                "or LDAP_ALWAYS_SEARCH_BIND."
+            )
+
+    @property
+    def full_user_search_dn(self):
+        """The LDAP_USER_DN of self.config before LDAP_BASE_DN."""
+        sub = (self.config.get('LDAP_USER_DN') or '').strip()
+        base = self.config.get('LDAP_BASE_DN')
+        return f'{sub},{base}' if sub else base
 
     def _direct_connection(self, bind_user=None, bind_password=None):
         """
@@ -301,6 +330,15 @@ class LDAPLoginManager(LDAP3LoginManager):
         return result
 
 
+def ldap_bind_mode(config):
+    """The bind mode that LDAPLoginManager.authenticate picks for config."""
+    if config.get('LDAP_BIND_DIRECT_CREDENTIALS'):
+        return 'direct_credentials'
+    if not config.get('LDAP_ALWAYS_SEARCH_BIND') and config.get('LDAP_USER_RDN_ATTR') == config.get('LDAP_USER_LOGIN_ATTR'):
+        return 'direct_bind'
+    return 'search_bind'
+
+
 # ---------------------------------------------------------------------------
 # Probe — call this on app startup to catch misconfigs early
 # ---------------------------------------------------------------------------
@@ -476,6 +514,18 @@ def authenticate_ldap_user(username, password, domain):
 # ---------------------------------------------------------------------------
 # Everything below is unchanged from original security.py
 # ---------------------------------------------------------------------------
+
+def uia_plain_mapper(identity):
+    """Flask-Security identity mapper that keeps the value as given."""
+    return identity or None
+
+
+def identity_attributes(value):
+    """Converts the ('username', 'email') form of SECURITY_USER_IDENTITY_ATTRIBUTES to the Flask-Security 5 list."""
+    if isinstance(value, (list, tuple)) and value and all(isinstance(v, str) for v in value):
+        return [{v: {'mapper': uia_plain_mapper, 'case_insensitive': True}} for v in value]
+    return value
+
 
 def get_user(identifier):
     """Returns the user whose username, then email, matches identifier with case ignored."""
