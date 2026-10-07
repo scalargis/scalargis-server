@@ -8,7 +8,8 @@ from werkzeug.local import LocalProxy
 from sqlalchemy import cast, or_, Integer, Boolean, func
 from flask_security.utils import hash_password
 from app.utils.password_policy import enforce_password_policy
-from flask_security.confirmable import generate_confirmation_token, confirm_email_token_status
+from app.utils.tokens import (confirmation_token as generate_confirmation_token,
+                              confirmation_token_status as confirm_email_token_status)
 from flask_restx import marshal
 from ..parsers import *
 from app.models.portal import *

@@ -1,3 +1,5 @@
+import uuid
+
 from flask import current_app
 from sqlalchemy.ext.hybrid import hybrid_property
 from werkzeug.local import LocalProxy
@@ -6,6 +8,7 @@ from flask_security import UserMixin, RoleMixin
 from app.database import db
 from app import get_db_schema
 from .common import PortalTable
+from app.utils import tokens
 
 
 db_schema = get_db_schema()
@@ -97,6 +100,8 @@ class User(db.Model, PortalTable, UserMixin):
     auth_token_expire = db.Column(db.DateTime())
     default_map = db.Column(db.String(255))
     default_viewer = db.Column(db.String(255))
+    fs_uniquifier = db.Column(db.String(64), unique=True, nullable=False, default=lambda: uuid.uuid4().hex,
+                              server_default=db.text("replace(gen_random_uuid()::text, '-', '')"))
     roles = db.relationship('Role', secondary=roles_users,
                             backref=db.backref('users', lazy='dynamic'))
     groups = db.relationship('Group', secondary=groups_users,
@@ -130,6 +135,10 @@ class User(db.Model, PortalTable, UserMixin):
 
     def __str__(self):
         return '<User id=%s email=%s>' % (self.id, self.email)
+
+    def get_auth_token(self):
+        """Builds the API token in the own format."""
+        return tokens.auth_token(self)
 
     @hybrid_property
     def all_roles(self):

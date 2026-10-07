@@ -247,7 +247,7 @@ def get_file(id, filename):
 
         if os.path.exists(filepath):
             try:
-                response = make_response(send_file(filepath, attachment_filename=os.path.basename(filepath)))
+                response = make_response(send_file(filepath, download_name=os.path.basename(filepath)))
                 response.headers['Content-Type'] = guess_type(filename)
                 # response.headers['Content-Disposition'] = 'attachment; filename={0}'.format(filename)
                 response.headers['Content-Disposition'] = 'filename={0}'.format(filename)

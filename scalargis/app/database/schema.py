@@ -1,3 +1,4 @@
+import logging
 import os
 
 from sqlalchemy import text
@@ -55,6 +56,37 @@ def create_runner_tables():
             conn.execute(text('SELECT pg_advisory_xact_lock(:k)'), {'k': RUNNER_TABLES_LOCK_KEY})
         for table in (Job.__table__, RunnerHeartbeat.__table__):
             table.create(bind=conn, checkfirst=True)
+
+
+FS_UNIQUIFIER_LOCK_KEY = 7286337502
+
+FS_UNIQUIFIER_SQL = (
+    'ALTER TABLE {schema}."user" ADD COLUMN IF NOT EXISTS fs_uniquifier varchar(64)',
+    'UPDATE {schema}."user" SET fs_uniquifier = replace(gen_random_uuid()::text, \'-\', \'\') '
+    'WHERE fs_uniquifier IS NULL',
+    'ALTER TABLE {schema}."user" ALTER COLUMN fs_uniquifier SET DEFAULT replace(gen_random_uuid()::text, \'-\', \'\')',
+    'ALTER TABLE {schema}."user" ALTER COLUMN fs_uniquifier SET NOT NULL',
+    'CREATE UNIQUE INDEX IF NOT EXISTS user_fs_uniquifier_key ON {schema}."user" (fs_uniquifier)',
+)
+
+
+def ensure_fs_uniquifier():
+    """Add and fill fs_uniquifier on the user table when it is missing. On PostgreSQL one process at a time does it."""
+    bind = db.session.get_bind()
+    engine = getattr(bind, 'engine', bind)
+    with engine.begin() as conn:
+        if conn.dialect.name != 'postgresql':
+            return False
+        conn.execute(text('SELECT pg_advisory_xact_lock(:k)'), {'k': FS_UNIQUIFIER_LOCK_KEY})
+        row = conn.execute(text("SELECT is_nullable FROM information_schema.columns WHERE table_schema = :s "
+                                "AND table_name = 'user' AND column_name = 'fs_uniquifier'"),
+                           {'s': db_schema}).first()
+        if row is not None and row[0] == 'NO':
+            return False
+        for statement in FS_UNIQUIFIER_SQL:
+            conn.execute(text(statement.format(schema=db_schema)))
+    logging.getLogger(__name__).info('fs_uniquifier column added to %s."user"', db_schema)
+    return True
 
 
 def load_data():

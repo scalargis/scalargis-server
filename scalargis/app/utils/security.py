@@ -18,12 +18,11 @@ import logging
 from flask import current_app, g, request
 from werkzeug.local import LocalProxy
 from flask_principal import Identity, identity_changed
-from flask_security.core import verify_hash
 from flask_security.utils import verify_and_update_password
 from flask_ldap3_login import LDAP3LoginManager, AuthenticationResponseStatus
 from ldap3 import Server, Connection, ALL, SUBTREE, SIMPLE
-from itsdangerous import BadSignature, BadData, SignatureExpired
-from . import constants
+from sqlalchemy import func
+from . import constants, tokens
 
 logger = logging.getLogger(__name__)
 
@@ -478,9 +477,21 @@ def authenticate_ldap_user(username, password, domain):
 # Everything below is unchanged from original security.py
 # ---------------------------------------------------------------------------
 
+def get_user(identifier):
+    """Returns the user whose username, then email, matches identifier with case ignored."""
+    from app.models.security import User
+    if identifier is None:
+        return None
+    for attr in ('username', 'email'):
+        user = User.query.filter(func.lower(getattr(User, attr)) == func.lower(identifier)).first()
+        if user is not None:
+            return user
+    return None
+
+
 def get_token(username):
     token = None
-    user = user_datastore.get_user(username)
+    user = get_user(username)
     if user and user.is_active:
         token = user.get_auth_token()
     return token
@@ -500,7 +511,7 @@ def get_user_token(username, password):
     # First try the raw input. get_user() matches both `username` and `email`
     # columns, so local users named "foo@bar" or with email set to the AD UPN
     # resolve here without any normalization.
-    user = user_datastore.get_user(username)
+    user = get_user(username)
 
     if user is None:
         logger.warning("[get_user_token] no local user matches '%s'", username)
@@ -544,15 +555,8 @@ def get_user_token(username, password):
 
 
 def check_token(token):
-    try:
-        data = _security.remember_token_serializer.loads(
-            token, max_age=_security.token_max_age)
-    except (BadSignature, BadData, SignatureExpired, Exception):
-        return False
-    user = _security.datastore.find_user(id=data[0])
-    if not (user and verify_hash(data[1], user.password)):
-        return False
-    if user and user.is_active and user.is_authenticated:
+    user = tokens.user_from_auth_token(token)
+    if user and user.is_authenticated:
         app = current_app._get_current_object()
         g.user = user
         identity_changed.send(app, identity=Identity(user.id))
@@ -561,16 +565,8 @@ def check_token(token):
 
 
 def get_user_from_token(token):
-    user = None
-    try:
-        data = _security.remember_token_serializer.loads(
-            token, max_age=_security.token_max_age)
-    except (BadSignature, BadData, SignatureExpired, Exception):
-        return None
-    user = _security.datastore.find_user(id=data[0])
-    if not (user and verify_hash(data[1], user.password)):
-        user = None
-    if user and user.is_active and user.is_authenticated:
+    user = tokens.user_from_auth_token(token)
+    if user and user.is_authenticated:
         return user
     return None
 

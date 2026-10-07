@@ -443,6 +443,9 @@ def test_pg_one_leader_at_a_time(pg_app):
         assert second.hold() is False
         assert first.hold() is True
         first.release()
+        deadline = time.monotonic() + 2
+        while not second.hold() and time.monotonic() < deadline:
+            time.sleep(0.05)
         assert second.hold() is True
     finally:
         first.release()
