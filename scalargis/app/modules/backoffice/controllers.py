@@ -1,10 +1,9 @@
-import os
 import logging
 
-from flask import current_app, Response
+from flask import Response
 
 from . import mod
-from app.utils.http import get_script_root, get_base_url
+from app.utils.http import get_script_root, get_base_url, read_app_index
 
 
 @mod.route('/backoffice', defaults={'path': ''})
@@ -17,8 +16,7 @@ def index(path):
     root_path = get_script_root()
     base_url = get_base_url()
 
-    f = open(os.path.join(current_app.static_folder, 'backoffice', 'index.html'), "r", encoding='utf-8')
-    in_html = f.read()
+    in_html = read_app_index('backoffice')
     out_html = in_html.replace("__SCALARGIS_ROOT_PATH__", root_path)
     out_html = out_html.replace("__SCALARGIS_ROOT_PATH_BASE_URL__", base_url)
     out_html = out_html.replace('="/static/backoffice/', '="' + root_path + '/static/backoffice/')

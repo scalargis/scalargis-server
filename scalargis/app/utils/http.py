@@ -16,6 +16,9 @@ _session = None
 _session_pid = None
 _session_lock = threading.Lock()
 
+_app_index = {}
+_app_index_lock = threading.Lock()
+
 
 def crossdomain(origin=None, methods=None, headers=None,
                 max_age=21600, attach_to_all=True,
@@ -114,6 +117,23 @@ def get_script_root():
 
 def get_base_url():
     return (current_app.config.get('SCALARGIS_BASE_URL') or request.script_root or '').rstrip('\/')
+
+
+def read_app_index(app_name):
+    """The index.html of static/<app_name>, read again only when its mtime changes."""
+    path = os.path.join(current_app.static_folder, app_name, 'index.html')
+    mtime = os.stat(path).st_mtime_ns
+    cached = _app_index.get(path)
+    if cached and cached[0] == mtime:
+        return cached[1]
+    with _app_index_lock:
+        cached = _app_index.get(path)
+        if cached and cached[0] == mtime:
+            return cached[1]
+        with open(path, 'r', encoding='utf-8') as f:
+            html = f.read()
+        _app_index[path] = (mtime, html)
+        return html
 
 
 def _env_seconds(name):
