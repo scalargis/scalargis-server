@@ -1,4 +1,5 @@
 import logging
+from urllib.parse import urlparse
 import requests
 from flask import Blueprint, Response, request, make_response
 from app.utils.http import replace_geoserver_url, http_session
@@ -30,8 +31,12 @@ def index():
 @module.route('/', methods=['GET', 'POST'])
 def proxy():
     url = request.args.get('url')
+    if not url:
+        return _cors(make_response('Missing url parameter', 400))
     if not ("getcapabilities" in url.lower()):
         url = replace_geoserver_url(url)
+    if urlparse(url).scheme.lower() not in ('http', 'https'):
+        return _cors(make_response('Invalid url parameter', 400))
 
     headers = {}
     for h in request.headers.environ:
@@ -41,21 +46,18 @@ def proxy():
     if request.range:
         headers['range'] = request.range.to_header()
 
-    cookies = {}
-    if 'session' in request.cookies:
-        cookies['session'] = request.cookies.get('session')
-
     data = request.data if request.method == 'POST' else None
 
     try:
-        r = http_session().request(request.method, url, data=data, headers=headers, cookies=cookies,
-                                   verify=False, stream=True)
+        r = http_session().request(request.method, url, data=data, headers=headers, verify=False,
+                                   stream=True)
     except requests.Timeout:
         logging.getLogger(__name__).warning('Proxy timeout: %s', url)
         resp = make_response('Gateway Timeout', 504)
         return _cors(resp)
 
     resp = Response(_stream(r), status=r.status_code, direct_passthrough=True)
+    resp.headers['Content-Security-Policy'] = 'sandbox'
     for h in r.headers:
         if h.lower() in PASSED_HEADERS:
             resp.headers.set(h, r.headers.get(h))

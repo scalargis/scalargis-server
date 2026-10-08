@@ -197,3 +197,29 @@ def test_proxy_posts_body(proxy_client, upstream):
     assert resp.status_code == 200
     assert resp.get_data() == b'<GetFeature/>'
     assert resp.headers['Content-Type'] == 'text/xml'
+
+
+def test_proxy_answers_400_without_url(proxy_client):
+    resp = proxy_client.get('/proxy/')
+    assert resp.status_code == 400
+    assert resp.headers['Access-Control-Allow-Origin'] == '*'
+
+
+@pytest.mark.parametrize('url', ['file:///etc/passwd', 'gopher://127.0.0.1/', 'ftp://host/x', 'no-scheme'])
+def test_proxy_answers_400_on_bad_scheme(proxy_client, url):
+    resp = proxy_client.get('/proxy/', query_string={'url': url})
+    assert resp.status_code == 400
+
+
+def test_proxy_sends_no_cookie_upstream(proxy_client, upstream):
+    server, base = upstream
+    proxy_client.set_cookie('session', 'secret')
+    resp = proxy_client.get('/proxy/', query_string={'url': base + '/ok'})
+    assert resp.status_code == 200
+    assert server.seen[-1].get('Cookie') is None
+
+
+def test_proxy_answer_is_sandboxed(proxy_client, upstream):
+    _, base = upstream
+    resp = proxy_client.get('/proxy/', query_string={'url': base + '/ok'})
+    assert resp.headers['Content-Security-Policy'] == 'sandbox'
