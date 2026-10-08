@@ -17,7 +17,7 @@
         },
 
         "info_file_handler": {
-            "class": "logging.handlers.RotatingFileHandler",
+            "class": "concurrent_log_handler.ConcurrentRotatingFileHandler",
             "level": "INFO",
             "formatter": "simple",
             "filename": "./logs/arade_info.log",
@@ -27,7 +27,7 @@
         },
 
         "debug_file_handler": {
-            "class": "logging.handlers.RotatingFileHandler",
+            "class": "concurrent_log_handler.ConcurrentRotatingFileHandler",
             "level": "DEBUG",
             "formatter": "simple",
             "filename": "./logs/arade_debug.log",
@@ -37,7 +37,7 @@
         },
 
         "error_file_handler": {
-            "class": "logging.handlers.RotatingFileHandler",
+            "class": "concurrent_log_handler.ConcurrentRotatingFileHandler",
             "level": "ERROR",
             "formatter": "simple",
             "filename": "./logs/arade_errors.log",

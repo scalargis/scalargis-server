@@ -36,5 +36,6 @@ pyexcel-xls==0.7.0
 pyexcel-io
 pymupdf
 waitress
+concurrent-log-handler~=0.9.29
 pytz
 itsdangerous
