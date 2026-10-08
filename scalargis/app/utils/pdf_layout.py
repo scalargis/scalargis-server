@@ -35,7 +35,7 @@ from app.database import db
 from app import get_db_schema
 from app.models.portal import PrintElement
 from app.utils import geo
-from app.utils.http import replace_geoserver_url, http_session
+from app.utils.http import replace_geoserver_url, http_session, strict_print_timeout
 
 from instance.settings import APP_STATIC, APP_RESOURCES
 
@@ -67,8 +67,17 @@ def merge_pdf_files(filename, files):
 
     return True
 
-def get_image(url):
-    response = http_session().get(url)
+class PrintServiceError(Exception):
+    """A map or legend fetch of a strict Pdf failed."""
+
+    def __init__(self, url, cause):
+        super().__init__('{0}: {1}'.format(url, cause))
+        self.url = url
+        self.cause = cause
+
+
+def get_image(url, timeout=None):
+    response = http_session().get(url, timeout=timeout)
     response.raise_for_status()
 
     image_bytes = BytesIO(response.content)
@@ -77,10 +86,10 @@ def get_image(url):
 
     return output_img
 
-def get_image_with_opacity(url, opacity):
+def get_image_with_opacity(url, opacity, timeout=None):
     output_img = None
 
-    response = http_session().get(url, verify=False)
+    response = http_session().get(url, verify=False, timeout=timeout)
     imgb = Image.open(BytesIO(response.content))
 
     if imgb is not None:
@@ -100,8 +109,9 @@ def get_image_with_opacity(url, opacity):
 class Pdf:
     """" Map pdf layout """
 
-    def __init__(self, page_size='A4', orientation='portrait'):
+    def __init__(self, page_size='A4', orientation='portrait', strict=False):
         # create dynamic pdf object
+        self.strict = strict
         self.output = BytesIO()
         self.tmp_output = None
         self.maps = []
@@ -1575,15 +1585,20 @@ class Pdf:
                    url_params=[]):
         # insert map to canvas. Need savepdf() if used without generate
         xmin, ymin, xmax, ymax = self.calc_bbox(scale, mapcenter_x, mapcenter_y, width, height)
+        timeout = strict_print_timeout() if self.strict else None
 
         if serv_type == 'wms':
             img = self.wms_getmap(url, layers, [xmin, ymin, xmax, ymax],
                                   quality * width * mm, quality * height * mm, srid, img_format, style,
-                                  cql_filter=cql_filter, opacity=opacity, url_params=url_params)
+                                  cql_filter=cql_filter, opacity=opacity, url_params=url_params,
+                                  timeout=timeout, strict=self.strict)
 
         elif serv_type == 'esri_rest':
             img = self.esri_rest_getmap(url, layers, [xmin, ymin, xmax, ymax], width * mm, height * mm, srid,
-                                        img_format, transparent, quality, opacity=opacity)
+                                        img_format, transparent, quality, opacity=opacity,
+                                        timeout=timeout, strict=self.strict)
+        elif self.strict:
+            raise ValueError('Service type not supported: {0}'.format(serv_type))
         else:
             logger.warning("Service type not supported.")
             return
@@ -1597,7 +1612,11 @@ class Pdf:
     def insert_legend(self, serv_type, url, layer, x, y, width, gs_vendor_options='', img_format="image/png",
                       version='1.3.0', style=''):
         if serv_type == 'wms':
-            img = self.wms_GetLegendGraphic(url, layer, img_format, version,gs_vendor_options, style)
+            timeout = strict_print_timeout() if self.strict else None
+            img = self.wms_GetLegendGraphic(url, layer, img_format, version,gs_vendor_options, style,
+                                            timeout=timeout, strict=self.strict)
+        elif self.strict:
+            raise ValueError('Service type not supported: {0}'.format(serv_type))
         else:
             logger.warning("Service type not supported.")
             return
@@ -1845,7 +1864,7 @@ class Pdf:
 
     @staticmethod
     def wms_getmap(server_url, layers, bbox, width, height, srs, img_format, styles=None, version='1.1.1',
-                   cql_filter=None, opacity=1, url_params=[]):
+                   cql_filter=None, opacity=1, url_params=[], timeout=None, strict=False):
         if styles is None:
             styles = ''
 
@@ -1879,18 +1898,21 @@ class Pdf:
         try:
             #For performance reasons, only change alpha pixel value if opacity is lower than one (changed by user)
             if opacity == 1:
-                img = get_image(url)
+                img = get_image(url, timeout)
             else:
-                img = get_image_with_opacity(url, opacity)
+                img = get_image_with_opacity(url, opacity, timeout)
 
         except Exception as err:
+            if strict:
+                raise PrintServiceError(url.split('?')[0], err) from err
             img = None
             logger.warning(err)
         return img
 
 
     @staticmethod
-    def wms_GetLegendGraphic(server_url, layer, img_format="image/png", version='1.1.1',gs_vendor_options='', style=''):
+    def wms_GetLegendGraphic(server_url, layer, img_format="image/png", version='1.1.1',gs_vendor_options='', style='',
+                             timeout=None, strict=False):
         '''
         if (server_url[:7] == 'http://') or (server_url[:8] == 'https://'):
             url = server_url + "?"
@@ -1922,15 +1944,18 @@ class Pdf:
 
         logger.info("WMS: " + url)
         try:
-            img = get_image(url)
+            img = get_image(url, timeout)
         except Exception as err:
+            if strict:
+                raise PrintServiceError(url.split('?')[0], err) from err
             img = None
             logger.warning(err)
         return img
 
 
     @staticmethod
-    def esri_rest_getmap(server_url, layers, bbox, width, height, srs, imgformat='PNG32', transparent=True, dpi=90, opacity=1):
+    def esri_rest_getmap(server_url, layers, bbox, width, height, srs, imgformat='PNG32', transparent=True, dpi=90, opacity=1,
+                         timeout=None, strict=False):
         if (server_url[:7] == 'http://') or (server_url[:8] == 'https://'):
             url = server_url
         else:
@@ -1957,10 +1982,12 @@ class Pdf:
         try:
             #For performance reasons, only change alpha pixel value if opacity is lower than one (changed by user)
             if opacity == 1:
-                img = get_image(url)
+                img = get_image(url, timeout)
             else:
-                img = get_image_with_opacity(url, opacity)
+                img = get_image_with_opacity(url, opacity, timeout)
         except Exception as err:
+            if strict:
+                raise PrintServiceError(url.split('?')[0], err) from err
             img = None
             logger.warning(err)
         return img

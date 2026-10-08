@@ -11,6 +11,7 @@ from requests.adapters import HTTPAdapter
 
 
 HTTP_POOL_SIZE = 32
+PDF_STRICT_READ_TIMEOUT = 30
 
 _session = None
 _session_pid = None
@@ -155,6 +156,13 @@ def http_timeout():
     if connect is None and read is None:
         return None
     return connect, read
+
+
+def strict_print_timeout():
+    """Returns the (connect, read) timeout of a strict print fetch, with PDF_STRICT_READ_TIMEOUT as the read value."""
+    timeout = http_timeout()
+    connect = timeout[0] if timeout else None
+    return connect, _env_seconds('PDF_STRICT_READ_TIMEOUT') or PDF_STRICT_READ_TIMEOUT
 
 
 class TimeoutSession(requests.Session):
