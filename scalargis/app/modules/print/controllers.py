@@ -95,6 +95,14 @@ def save_print_output(print, group, viewer_id, output_number, output_year, scale
     return log_planta
 
 
+def output_title(title, form_fields):
+    """The title of a print output row: the non-empty titulo_val of the form, else the given title."""
+    user_title = (form_fields or {}).get('titulo_val') if isinstance(form_fields, dict) else None
+    if isinstance(user_title, str) and user_title.strip():
+        return user_title.strip()
+    return title
+
+
 def viewer_generate_pdf(code, user, request=request):
     logger = logging.getLogger(__name__)
 
@@ -204,9 +212,9 @@ def viewer_generate_pdf(code, user, request=request):
         elif print and print.show_author:
                 username = user.username
 
-    print_output = save_print_output(print, group, viewer_id, output_number, output_year, scale, title,
-                                     user_reference_number, user_reference_name, geomWKT, srid,
-                                     datetime.datetime.now(), user_id)
+    print_output = save_print_output(print, group, viewer_id, output_number, output_year, scale,
+                                     output_title(title, form_fields), user_reference_number, user_reference_name,
+                                     geomWKT, srid, datetime.datetime.now(), user_id)
 
     page_size = print.format
     page_orientation = print.orientation.lower() if print.orientation else None
