@@ -236,7 +236,7 @@ def convert_to_geojson_create_layer(file, persist=True):
 
         try:
             if os.path.exists(metadata_out_filepath):
-                os.remove(out_filepath)
+                os.remove(metadata_out_filepath)
         except Exception as e:
             logger.debug(e)
 

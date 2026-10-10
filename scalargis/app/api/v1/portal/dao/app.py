@@ -662,7 +662,7 @@ def get_data_layer(layer_id):
 
         metadata_filepath = os.path.join(settings.APP_TMP_DIR, layer_id + '.metadata')
         if os.path.isfile(metadata_filepath):
-            with open(filepath, encoding="utf8") as m:
+            with open(metadata_filepath, encoding="utf8") as m:
                 metadata = json.load(m)
 
         record = UserDataLayer()

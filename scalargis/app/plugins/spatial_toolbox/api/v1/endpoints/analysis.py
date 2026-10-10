@@ -52,13 +52,13 @@ class Intersect(Resource):
             out_srid = request.args.get("out_srid", 4326)
             export_srid = request.args.get("export_srid", 4326)
 
-            data = get_intersect_results(config_code=code, geom_wkt=geom_wkt, geom_srid=geom_srid, buffer=buffer,
-                                         buffer_srid=buffer_srid, out_srid=out_srid)
-
             if not code:
                 return {"Success": False, "Message": "Parameter 'code' is required", "Data": None}, 400
             if not geom_wkt:
                 return {"Success": False, "Message": "Parameter 'geom_wkt' is required", "Data": None}, 400
+
+            data = get_intersect_results(config_code=code, geom_wkt=geom_wkt, geom_srid=geom_srid, buffer=buffer,
+                                         buffer_srid=buffer_srid, out_srid=out_srid)
 
             if format != 'json':
                 return export_intersect_results(data, format, geom_wkt, geom_srid, out_srid=export_srid)
