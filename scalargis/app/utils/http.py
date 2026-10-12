@@ -65,29 +65,18 @@ def crossdomain(origin=None, methods=None, headers=None,
 
 
 def replace_geoserver_url(url):
+    """Applies the SCALARGIS_ROUTE_GEOSERVER rules in order; a 'start' rule replaces only the prefix."""
     new_url = url
 
     try:
-        if isinstance(current_app.config.get('SCALARGIS_ROUTE_GEOSERVER'), list) \
-                and len(current_app.config.get('SCALARGIS_ROUTE_GEOSERVER')) > 0:
-            if isinstance(current_app.config.get('SCALARGIS_ROUTE_GEOSERVER')[0], list):
-                for s in current_app.config.get('SCALARGIS_ROUTE_GEOSERVER'):
-                    if len(s) > 2:
-                        if s[2] == 'start':
-                            if new_url.startswith(s[0]):
-                                new_url = new_url.replace(s[0], s[1])
-                        else:
-                            new_url = new_url.replace(s[0], s[1])
-                    else:
-                        new_url = new_url.replace(s[0], s[1])
-            else:
-                s = current_app.config.get('SCALARGIS_ROUTE_GEOSERVER')
-                if len(s) > 2:
-                    if s[2] == 'start':
-                        if new_url.startswith(s[0]):
-                            new_url = new_url.replace(s[0], s[1])
-                        else:
-                            new_url = new_url.replace(s[0], s[1])
+        routes = current_app.config.get('SCALARGIS_ROUTE_GEOSERVER')
+        if isinstance(routes, list) and len(routes) > 0:
+            if not isinstance(routes[0], list):
+                routes = [routes]
+            for s in routes:
+                if len(s) > 2 and s[2] == 'start':
+                    if new_url.startswith(s[0]):
+                        new_url = s[1] + new_url[len(s[0]):]
                 else:
                     new_url = new_url.replace(s[0], s[1])
         logging.info('WMS Url replace: ' + new_url)

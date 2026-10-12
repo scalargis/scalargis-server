@@ -1,8 +1,7 @@
 import logging
-from app.utils.http import http_session
+from app.utils.http import http_session, replace_geoserver_url
 import math
 import urllib.parse
-from flask import current_app
 from shapely import wkt
 from PIL import Image
 from io import BytesIO
@@ -317,37 +316,3 @@ def calculate_scale_geom(geom, size_w, size_h, scale_gap=100, min_scale_denom=No
         scale = max_scale_denom
 
     return scale
-
-
-def replace_geoserver_url(url):
-    new_url = url
-
-    try:
-        if isinstance(current_app.config.get('SCALARGIS_ROUTE_GEOSERVER'), list) \
-                and len(current_app.config.get('SCALARGIS_ROUTE_GEOSERVER')) > 0:
-            if isinstance(current_app.config.get('SCALARGIS_ROUTE_GEOSERVER')[0], list):
-                for s in current_app.config.get('SCALARGIS_ROUTE_GEOSERVER'):
-                    if len(s) > 2:
-                        if s[2] == 'start':
-                            if new_url.startswith(s[0]):
-                                new_url = new_url.replace(s[0], s[1])
-                        else:
-                            new_url = new_url.replace(s[0], s[1])
-                    else:
-                        new_url = new_url.replace(s[0], s[1])
-            else:
-                s = current_app.config.get('SCALARGIS_ROUTE_GEOSERVER')
-                if len(s) > 2:
-                    if s[2] == 'start':
-                        if new_url.startswith(s[0]):
-                            new_url = new_url.replace(s[0], s[1])
-                        else:
-                            new_url = new_url.replace(s[0], s[1])
-                else:
-                    new_url = new_url.replace(s[0], s[1])
-        logging.info('WMS Url replace: ' + new_url)
-    except AttributeError:
-        logging.info('WMS Url replace: error')
-        pass
-
-    return new_url
