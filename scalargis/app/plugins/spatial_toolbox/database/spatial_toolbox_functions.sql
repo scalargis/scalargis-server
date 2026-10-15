@@ -220,6 +220,4 @@ $function$;
 
 -- Permissions
 
-ALTER FUNCTION {schema}.intersects_layers(json, text, int4, int4, int4) OWNER TO postgres;
 GRANT ALL ON FUNCTION {schema}.intersects_layers(json, text, int4, int4, int4) TO public;
-GRANT ALL ON FUNCTION {schema}.intersects_layers(json, text, int4, int4, int4) TO postgres;
