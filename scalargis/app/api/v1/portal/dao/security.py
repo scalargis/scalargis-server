@@ -118,6 +118,22 @@ def send_email_user_registration(user, subject=None, msg=None, template=None, re
     send_mail(main_app, [user.email], msg_subject, msg_text)
 
 
+def is_pending(user):
+    """True for an inactive account with no confirmed email."""
+    return user is not None and not user.active and user.confirmed_at is None
+
+
+def _find_user_by_email(email):
+    if not email:
+        return None
+    return User.query.filter(func.lower(User.email) == func.lower(email)).first()
+
+
+def _find_user_by_username_or_email(username, email):
+    return User.query.filter(or_(func.lower(User.username) == func.lower(username),
+                                 func.lower(User.email) == func.lower(email))).first()
+
+
 def register_user(request):
     if request.is_json:
         name = request.json.get('name')
@@ -135,8 +151,12 @@ def register_user(request):
         redirect = cred.get('redirect')
         locale = cred.get('locale')
 
-    user = User.query.filter(or_(func.lower(User.username) == func.lower(username),
-                                 func.lower(User.email) == func.lower(email))).first()
+    pending = _find_user_by_email(email)
+    if is_pending(pending):
+        send_email_user_registration(pending, redirect=redirect, locale=locale)
+        return {'success': True, 'message': 'registration_email_sent', 'email': pending.email}, 200
+
+    user = _find_user_by_username_or_email(username, email)
 
     if not user is None:
         return {'status': 409, 'error': True,
@@ -173,9 +193,9 @@ def send_confirmation(request):
         redirect = data.get('redirect') or ''
         locale = data.get('locale')
 
-    user = User.query.filter(func.lower(User.email) == func.lower(email)).first() if email else None
+    user = _find_user_by_email(email)
 
-    if user is not None:
+    if is_pending(user):
         redirect = redirect if redirect else user.default_viewer or ''
         send_email_user_registration(user, redirect=redirect, locale=locale)
 
@@ -888,6 +908,8 @@ def create_user(data):
     record.username = data['username'] if 'username' in data else None
     record.email = data['email'] if 'email' in data else None
     record.active = data['active'] if 'active' in data else False
+    if record.confirmed_at is None:
+        record.confirmed_at = utc_now()
     if 'password' in data and data['password'] is not None:
         enforce_password_policy(data['password'])
         record.password = hash_password(data['password'])
@@ -939,6 +961,8 @@ def update_user(id, data):
     record.username = data['username'] if 'username' in data else None
     record.email = data['email'] if 'email' in data else None
     record.active = data['active'] if 'active' in data else False
+    if record.confirmed_at is None:
+        record.confirmed_at = utc_now()
     if 'password' in data and data['password'] is not None:
         enforce_password_policy(data['password'])
         record.password = hash_password(data['password'])
