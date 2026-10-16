@@ -1,4 +1,3 @@
-"""The request values that pick a site setting or a print widget reach the SQL as bind parameters."""
 import pytest
 from flask import Flask
 from sqlalchemy import text
