@@ -8,6 +8,7 @@ from flask import current_app, request, jsonify, url_for
 from flask_security import current_user
 from sqlalchemy import text
 from geoalchemy2 import shape
+from shapely import force_2d
 from shapely.wkt import loads
 
 from app.database import db
@@ -70,12 +71,9 @@ def save_print_output(print, group, viewer_id, output_number, output_year, scale
 
         geom = None
         if geom_wkt and len(geom_wkt) > 0:
-            if isinstance(geom_wkt, list):
-                ss = geo.transformGeom(geo.getGeometryFromWKT(geom_wkt), 'epsg:{0}'.format(srid),
-                                       'epsg:{0}'.format(PrintOutput.geometry_srid))
-            else:
-                ss = geo.transformGeom(loads(geom_wkt), 'epsg:{0}'.format(srid),
-                                       'epsg:{0}'.format(PrintOutput.geometry_srid))
+            source = geo.getGeometryFromWKT(geom_wkt) if isinstance(geom_wkt, list) else loads(geom_wkt)
+            ss = geo.transformGeom(force_2d(source), 'epsg:{0}'.format(srid),
+                                   'epsg:{0}'.format(PrintOutput.geometry_srid))
             geom = shape.from_shape(ss, srid=PrintOutput.geometry_srid)
         record.geom = geom
 
