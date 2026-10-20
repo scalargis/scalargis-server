@@ -12,11 +12,11 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v4
 
     - name: Get version
       id: get_version
-      run: echo ::set-output name=VERSION::${GITHUB_REF/refs\/tags\//}
+      run: echo "VERSION=${GITHUB_REF_NAME}" >> "$GITHUB_OUTPUT"
 
     - name: Build the Docker image
       id: build_image
@@ -28,4 +28,4 @@ jobs:
 
     - name: Push to WKT registry
       id: push_image
-      run: docker push registry.wkt.pt/v2/wkt/scalargis-server:${{ steps.get_version.outputs.VERSION }}
+      run: docker push registry.wkt.pt/wkt/scalargis-server:${{ steps.get_version.outputs.VERSION }}
