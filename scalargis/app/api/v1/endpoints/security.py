@@ -637,7 +637,7 @@ class Users(Resource):
     '''Show a single todo item and lets you delete them'''
 
     @ns_security.doc('get_user')
-    @ns_security.marshal_with(user_api_model)
+    @ns_security.marshal_with(user_detail_api_model)
     def get(self, id):
         '''Fetch a given resource'''
         if (check_user(request, [constants.ROLE_ADMIN, constants.ROLE_MANAGER])):

@@ -104,6 +104,11 @@ user_api_model = api.model('User Model', {
 })
 user_api_model['roles'] = fields.List(fields.Nested(user_role_api_model))
 user_api_model['groups'] = fields.List(fields.Nested(user_group_api_model))
+
+user_detail_api_model = api.clone('User Detail Model', user_api_model, {
+    'auth_token': fields.String(required=False, description='Authentication Token'),
+    'auth_token_expire': fields.DateTime(required=False, description='Authentication Token Expiration Date'),
+})
 '''
 user_api_model['roles'] = fields.List(fields.Nested(Model('User Roles', {
     'id': fields.Integer,
