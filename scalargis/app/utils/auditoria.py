@@ -34,7 +34,7 @@ def log_viewer(id_viewer, id_ref, operation, module_id, theme_id, user_id):
         record.id_module = module_id
         record.id_theme = theme_id
         record.id_user = user_id
-        record.data_ref = datetime.datetime.now()
+        record.date_ref = datetime.datetime.now()
 
         se.add(record)
 
@@ -92,7 +92,7 @@ def log_backoffice_async(app, operation, user_id):
             record = AuditLog()
             record.operation_id = op.id if op else None
             record.id_user = user_id
-            record.data_ref = datetime.datetime.now()
+            record.date_ref = datetime.datetime.now()
 
             se.add(record)
 
