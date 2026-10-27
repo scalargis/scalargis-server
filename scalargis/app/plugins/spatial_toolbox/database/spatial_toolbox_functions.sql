@@ -95,8 +95,8 @@ BEGIN
 
         g = ST_Transform(_geom_ewkt::Geometry, _in_layer_srid);
 
-        area_geom = ST_Area(g);
-        length_geom = ST_Length(g);
+        area_geom = COALESCE(ST_Area(g), 0);
+        length_geom = COALESCE(ST_Length(g), 0);
 		--raise notice 'g=%', g::text;
 
         -- BUILD FINAL WHERE CONDITION
