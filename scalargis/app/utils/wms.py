@@ -308,7 +308,7 @@ def calculate_scale_geom(geom, size_w, size_h, scale_gap=100, min_scale_denom=No
     else:
         scale = (dy * 100) / size_h
 
-    scale = math.ceil((scale + (scale_gap - 1)) / scale_gap) * scale_gap
+    scale = math.ceil(scale / scale_gap) * scale_gap
 
     if min_scale_denom and scale < min_scale_denom:
         scale = min_scale_denom
