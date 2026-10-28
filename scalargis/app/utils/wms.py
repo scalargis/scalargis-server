@@ -242,7 +242,7 @@ def calculate_bbox_geom(geom, img_w, img_h, dpi=90, scale_gap=100, min_scale=Non
         res = dy / img_h_cm
         scale = (dy * 100) / img_h_cm
 
-    scale = math.ceil((scale+ (scale_gap -1)) / scale_gap) * scale_gap
+    scale = math.ceil(scale / scale_gap) * scale_gap
 
     if min_scale and scale > min_scale:
         scale = min_scale
