@@ -29,6 +29,15 @@ def local_today():
     return datetime.now(local_time_zone()).date()
 
 
+def to_local(dt):
+    """Naive datetime in SCALARGIS_TIME_ZONE of a naive UTC or an aware datetime."""
+    if dt is None:
+        return None
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+    return dt.astimezone(local_time_zone()).replace(tzinfo=None)
+
+
 def iso_utc(dt):
     """ISO 8601 text with Z of a naive UTC or an aware datetime."""
     if dt is None:
