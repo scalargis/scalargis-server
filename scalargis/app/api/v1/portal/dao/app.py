@@ -4,7 +4,7 @@ import json
 import re
 import base64
 import uuid
-from app.utils import utc_now, iso_utc
+from app.utils import utc_now, iso_utc, local_today
 
 from flask import request, current_app, url_for, render_template, render_template_string
 from flask_security import current_user
@@ -250,7 +250,7 @@ def send_viewer_contact_message(viewer_id, data):
     record.message_json = json.dumps(data, indent = 4)
 
     record.user_id = user_id
-    record.message_date = utc_now()
+    record.message_date = local_today()
     record.message_uuid = message_uuid
 
     #------ Files -------------------------------

@@ -3,7 +3,6 @@ import json
 from flask import url_for
 from flask_restx import fields
 from app.api.restx import api
-from app.utils import UtcDateTime, iso_utc
 
 from ..serializers import pagination
 
@@ -23,9 +22,9 @@ class NotificationStatus(fields.Raw):
         if not obj.checked and not obj.closed:
             return { "value": 0, "label": "Por abrir", "date": None }
         elif obj.checked and not obj.closed:
-            return {"value": 1, "label": "Lida", "date": iso_utc(obj.checked_date)}
+            return {"value": 1, "label": "Lida", "date": obj.checked_date.isoformat() if obj.checked_date else None}
         elif obj.closed:
-            return {"value": 2, "label": "Encerrada", "date": iso_utc(obj.closed_date)}
+            return {"value": 2, "label": "Encerrada", "date": obj.closed_date.isoformat() if obj.closed_date else None}
         else:
             return None
 
@@ -55,15 +54,15 @@ class NotificationFiles(fields.Raw):
 notification_api_model = api.model('Notification Simple Model', {
     'id': fields.Integer(readOnly=True, description='Identifier'),
     'viewer': fields.String(required=False, attribute='viewer.name', description='Viewer name'),
-    'date': UtcDateTime(required=True, attribute='message_date', description='Date'),
+    'date': fields.Date(required=True, attribute='message_date', description='Date'),
     'name': fields.String(required=False, attribute='name', description='Author name'),
     'email': fields.String(required=True, attribute='email', description='Author username'),
     'message': fields.String(required=True, attribute='message', description='Message text'),
     'notes': fields.String(required=False, attribute='notes', description='Message notes'),
     'checked': fields.Boolean(required=False, attribute='checked', description='Message checked'),
-    'checked_date': UtcDateTime(required=False, attribute='checked_date', description='Messaged check date'),
+    'checked_date': fields.Date(required=False, attribute='checked_date', description='Messaged check date'),
     'closed': fields.Boolean(required=False, attribute='closed', description='Message closed'),
-    'closed_date': UtcDateTime(required=False, attribute='closed_date', description='Messaged close date'),
+    'closed_date': fields.Date(required=False, attribute='closed_date', description='Messaged close date'),
     # 'status': Json(attribute=lambda x: get_notification_status(x), description='Message status'),
     'status': NotificationStatus(),
     'files': NotificationFiles()

@@ -1,7 +1,7 @@
 import os
 import json
 import uuid
-from datetime import timedelta
+from datetime import date
 from mimetypes import guess_type
 import re
 import base64
@@ -20,7 +20,7 @@ from sqlalchemy.exc import IntegrityError
 from app.utils.constants import ROLE_ANONYMOUS, ROLE_AUTHENTICATED, ROLE_ADMIN, ROLE_MANAGER
 from app.utils.security import is_admin_or_manager
 from app.utils.settings import get_config_value
-from app.utils import to_utc_naive
+from app.utils import local_today
 from instance import settings
 
 
@@ -88,17 +88,10 @@ def get_by_filter(request):
 
         qy = qy.filter(or_(*conditions))
 
-    if 'start_date' in filter and 'end_date' in filter:
-        start_date = to_utc_naive(filter['start_date'])
-        end_date = to_utc_naive(filter['end_date']) + timedelta(days=1)
-        qy = qy.filter(ContactMessage.message_date >= start_date). \
-            filter(ContactMessage.message_date <= end_date)
-    elif 'start_date' in filter:
-        start_date = to_utc_naive(filter['start_date'])
-        qy = qy.filter(ContactMessage.message_date >= start_date)
-    elif 'end_date' in filter:
-        end_date = to_utc_naive(filter['end_date']) + timedelta(days=1)
-        qy = qy.filter(ContactMessage.message_date <= end_date)
+    if filter.get('start_date'):
+        qy = qy.filter(ContactMessage.message_date >= date.fromisoformat(filter['start_date']))
+    if filter.get('end_date'):
+        qy = qy.filter(ContactMessage.message_date <= date.fromisoformat(filter['end_date']))
 
 
     sort = json.loads(args.get('sort') or '[]')
@@ -182,20 +175,14 @@ def update(id, data):
             if not (set(user_roles or []) & set(record.viewer.notifications_manager_roles or [])):
                 return None
 
-        fields = {
-            "checked": "checked",
-            "checked_date": "checked_date",
-            "closed": "closed",
-            "closed_date": "closed_date",
-            "notes": "notes"
-        }
-
-        for key in data.keys():
-            if hasattr(record, fields.get(key)):
-                if data.get(key) == '':
-                    setattr(record, fields.get(key), None)
-                else:
-                    setattr(record, fields.get(key), data.get(key))
+        for key in ('checked', 'closed'):
+            if key in data and data[key] is not None:
+                value = data[key]
+                if value != getattr(record, key):
+                    setattr(record, key + '_date', local_today() if value else None)
+                setattr(record, key, value)
+        if 'notes' in data:
+            record.notes = data['notes'] or None
 
         db.session.add(record)
         db.session.commit()
