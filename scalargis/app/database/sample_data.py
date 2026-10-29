@@ -1,5 +1,5 @@
 import os
-from datetime import datetime
+from app.utils import utc_now
 
 from shapely.wkt import loads
 from geoalchemy2 import shape
@@ -24,7 +24,7 @@ def load_data():
           }
         }''',
         id_user_create = 1,
-        created_at = datetime.now()
+        created_at = utc_now()
     )
     db.session.add(print_element)
 
@@ -50,7 +50,7 @@ def load_data():
           }
         }''',
         id_user_create = 1,
-        created_at=datetime.now()
+        created_at=utc_now()
     )
     db.session.add(print_element)
 
@@ -77,7 +77,7 @@ def load_data():
         tolerance_filter=None,
         show_all_prints=True,
         id_user_create=1,
-        created_at=datetime.now()
+        created_at=utc_now()
     )
     db.session.add(print_group)
 
@@ -104,7 +104,7 @@ def load_data():
         tolerance_filter=10,
         show_all_prints=True,
         id_user_create=1,
-        created_at=datetime.now()
+        created_at=utc_now()
     )
     db.session.add(print_group_child)
 
@@ -135,7 +135,7 @@ def load_data():
         is_active=True,
         owner_id=1,
         id_user_create=1,
-        created_at=datetime.now()
+        created_at=utc_now()
     )
     db.session.add(print)
 
@@ -168,7 +168,7 @@ def load_data():
         is_active=True,
         owner_id=1,
         id_user_create=1,
-        created_at=datetime.now()
+        created_at=utc_now()
     )
     db.session.add(print)
 
@@ -201,7 +201,7 @@ def load_data():
         is_active=True,
         owner_id=1,
         id_user_create=1,
-        created_at=datetime.now()
+        created_at=utc_now()
     )
     db.session.add(print)
 

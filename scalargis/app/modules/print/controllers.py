@@ -1,7 +1,6 @@
 import json
 import uuid
 import logging
-import datetime
 import os.path
 
 from flask import current_app, request, jsonify, url_for
@@ -15,7 +14,7 @@ from app.database import db
 from app.database.schema import get_db_schema
 from app.utils import pdf_layout, auditoria
 from app.models.portal import Print, PrintLayout, PrintGroup, PrintOutput, CoordinateSystems
-from app.utils import constants, geo
+from app.utils import constants, geo, utc_now, local_now
 from instance import settings
 
 
@@ -78,7 +77,7 @@ def save_print_output(print, group, viewer_id, output_number, output_year, scale
         record.geom = geom
 
         record.idUserIns = user_id
-        record.dataIns = datetime.datetime.now()
+        record.dataIns = utc_now()
 
         se.add(record)
 
@@ -188,7 +187,7 @@ def viewer_generate_pdf(code, user, request=request):
         coordinate_system = coord_sys.description
 
     output_number = generate_print_output_number()
-    output_year = datetime.datetime.now().year
+    output_year = local_now().year
 
     drawing_features = json.loads(request.values['features']) if 'features' in request.values else None
 
@@ -212,7 +211,7 @@ def viewer_generate_pdf(code, user, request=request):
 
     print_output = save_print_output(print, group, viewer_id, output_number, output_year, scale,
                                      output_title(title, form_fields), user_reference_number, user_reference_name,
-                                     geomWKT, srid, datetime.datetime.now(), user_id)
+                                     geomWKT, srid, utc_now(), user_id)
 
     page_size = print.format
     page_orientation = print.orientation.lower() if print.orientation else None

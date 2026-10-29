@@ -1,7 +1,7 @@
 import os
 import json
 import uuid
-from datetime import datetime, timedelta
+from datetime import timedelta
 from mimetypes import guess_type
 import re
 import base64
@@ -20,6 +20,7 @@ from sqlalchemy.exc import IntegrityError
 from app.utils.constants import ROLE_ANONYMOUS, ROLE_AUTHENTICATED, ROLE_ADMIN, ROLE_MANAGER
 from app.utils.security import is_admin_or_manager
 from app.utils.settings import get_config_value
+from app.utils import to_utc_naive
 from instance import settings
 
 
@@ -88,15 +89,15 @@ def get_by_filter(request):
         qy = qy.filter(or_(*conditions))
 
     if 'start_date' in filter and 'end_date' in filter:
-        start_date = datetime.fromisoformat(filter['start_date'].replace('Z',''))
-        end_date = datetime.fromisoformat(filter['end_date'].replace('Z','')) + timedelta(days=1)
+        start_date = to_utc_naive(filter['start_date'])
+        end_date = to_utc_naive(filter['end_date']) + timedelta(days=1)
         qy = qy.filter(ContactMessage.message_date >= start_date). \
             filter(ContactMessage.message_date <= end_date)
     elif 'start_date' in filter:
-        start_date = datetime.fromisoformat(filter['start_date'].replace('Z', ''))
+        start_date = to_utc_naive(filter['start_date'])
         qy = qy.filter(ContactMessage.message_date >= start_date)
     elif 'end_date' in filter:
-        end_date = datetime.fromisoformat(filter['end_date'].replace('Z','')) + timedelta(days=1)
+        end_date = to_utc_naive(filter['end_date']) + timedelta(days=1)
         qy = qy.filter(ContactMessage.message_date <= end_date)
 
 

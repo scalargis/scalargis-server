@@ -1,7 +1,7 @@
-import datetime
 
 from app.database import db
 from app import get_db_schema
+from app.utils import utc_now
 from .common import PortalTable
 
 
@@ -25,4 +25,4 @@ class LoginAuditLog(db.Model, PortalTable):
     attempted_username = db.Column(db.String(255), nullable=False, index=True)
     success = db.Column(db.Boolean(), nullable=False, default=False)
     failure_reason = db.Column(db.String(50), nullable=True)
-    created_at = db.Column(db.DateTime(), nullable=False, default=datetime.datetime.now, index=True)
+    created_at = db.Column(db.DateTime(), nullable=False, default=utc_now, index=True)

@@ -3,6 +3,7 @@ import json
 from flask_restx import fields
 
 from app.api.restx import api as api
+from app.utils import UtcDateTime
 
 
 class ConfigJson(fields.Raw):
@@ -60,7 +61,7 @@ account_api_model = api.model('Account Model', {
     'first_name': fields.String(required=False, description='First Name'),
     'last_name': fields.String(required=False, description='Last Name'),
     'auth_token': fields.String(required=False, description='Authentication Token'),
-    'auth_token_expire': fields.DateTime(required=False, description='Authentication Token Expiration Date'),
+    'auth_token_expire': UtcDateTime(required=False, description='Authentication Token Expiration Date'),
 })
 
 user_simple_api_model = api.model('User Model', {
@@ -107,7 +108,7 @@ user_api_model['groups'] = fields.List(fields.Nested(user_group_api_model))
 
 user_detail_api_model = api.clone('User Detail Model', user_api_model, {
     'auth_token': fields.String(required=False, description='Authentication Token'),
-    'auth_token_expire': fields.DateTime(required=False, description='Authentication Token Expiration Date'),
+    'auth_token_expire': UtcDateTime(required=False, description='Authentication Token Expiration Date'),
 })
 '''
 user_api_model['roles'] = fields.List(fields.Nested(Model('User Roles', {

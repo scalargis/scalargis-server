@@ -1,10 +1,9 @@
 from enum import Enum
-import datetime
 import logging
 
 from app.database import db
 from app.models.portal import AuditLog, AuditOperation
-from app.utils import constants
+from app.utils import constants, utc_now
 from app.utils.decorators import async_task
 
 
@@ -34,7 +33,7 @@ def log_viewer(id_viewer, id_ref, operation, module_id, theme_id, user_id):
         record.id_module = module_id
         record.id_theme = theme_id
         record.id_user = user_id
-        record.date_ref = datetime.datetime.now()
+        record.date_ref = utc_now()
 
         se.add(record)
 
@@ -65,7 +64,7 @@ def log_viewer_async(app, id_viewer, id_ref, operation, module_id, theme_id, use
             record.id_module = module_id
             record.id_theme = theme_id
             record.id_user = user_id
-            record.date_ref = datetime.datetime.now()
+            record.date_ref = utc_now()
 
             se.add(record)
 
@@ -92,7 +91,7 @@ def log_backoffice_async(app, operation, user_id):
             record = AuditLog()
             record.operation_id = op.id if op else None
             record.id_user = user_id
-            record.date_ref = datetime.datetime.now()
+            record.date_ref = utc_now()
 
             se.add(record)
 

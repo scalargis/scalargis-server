@@ -33,5 +33,6 @@ pymupdf
 waitress
 concurrent-log-handler~=0.9.29
 pytz
+tzdata
 itsdangerous
 gunicorn; sys_platform != "win32"

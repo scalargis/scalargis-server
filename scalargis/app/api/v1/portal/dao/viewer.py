@@ -1,7 +1,7 @@
 import json
 import sqlalchemy
 import uuid
-from datetime import datetime
+from app.utils import utc_now
 
 from flask import request
 from sqlalchemy import cast, or_, Integer, Boolean
@@ -194,7 +194,7 @@ def create(data):
         record.owner_id = data.get('owner_id')
 
     record.id_user_create= user.id
-    record.created_at = datetime.now()
+    record.created_at = utc_now()
 
     db.session.add(record)
     db.session.commit()
@@ -264,7 +264,7 @@ def update(id, data):
             record.owner_id = data.get('owner_id')
 
         record.id_user_update = user.id
-        record.updated_at = datetime.now()
+        record.updated_at = utc_now()
 
         db.session.add(record)
         db.session.commit()
@@ -393,7 +393,7 @@ def app_create(data):
             record.id_user_create = user.id
             record.owner_id = user.id
 
-        record.created_at = datetime.now()
+        record.created_at = utc_now()
         record.is_active = True
 
         db.session.add(record)
@@ -501,7 +501,7 @@ def app_update(viewer_id_or_slug, data):
                 record.roles.append(role)
 
     record.id_user_update = user.id
-    record.updated_at = datetime.now()
+    record.updated_at = utc_now()
 
     db.session.add(record)
     db.session.commit()

@@ -1,8 +1,7 @@
 import json
 import sqlalchemy
 import uuid
-from datetime import datetime
-from app.utils import utc_now
+from app.utils import utc_now, to_utc_naive
 from flask import current_app, request, render_template, url_for
 from werkzeug.local import LocalProxy
 from sqlalchemy import cast, or_, Integer, Boolean, func
@@ -257,7 +256,7 @@ def confirm_email(request):
             'userroles': user_roles,
             'auth_token': user.auth_token if user.auth_token and
                                              (
-                                             not user.auth_token_expire or user.auth_token_expire >= datetime.now()) else ''
+                                             not user.auth_token_expire or user.auth_token_expire >= utc_now()) else ''
         }
     else:
         return {'status': 401, 'error': True, 'message': 'registration_confirmation_invalid'}, 401
@@ -371,7 +370,7 @@ def set_password(request):
             'userroles': user_roles,
             'auth_token': user.auth_token if user.auth_token and
                                              (
-                                             not user.auth_token_expire or user.auth_token_expire >= datetime.now()) else ''
+                                             not user.auth_token_expire or user.auth_token_expire >= utc_now()) else ''
         }
     else:
         return {'status': 401, 'error': True, 'message': 'password_set_invalid'}, 401
@@ -437,7 +436,7 @@ def update_account(request):
         user.email = data['email'] if 'email' in data else None
         if 'auth_token' in data and data['auth_token'] is not None:
             user.auth_token = data['auth_token']
-            user.auth_token_expire = data['auth_token_expire'] if 'auth_token_expire' in data else None
+            user.auth_token_expire = to_utc_naive(data.get('auth_token_expire'))
         else:
             user.auth_token = None
             user.auth_token_expire = None
@@ -915,7 +914,7 @@ def create_user(data):
         record.password = hash_password(data['password'])
     if 'auth_token' in data and data['auth_token'] is not None:
         record.auth_token = data['auth_token']
-        record.auth_token_expire = data['auth_token_expire'] if 'auth_token_expire' in data else None
+        record.auth_token_expire = to_utc_naive(data.get('auth_token_expire'))
 
     # Roles
     if 'roles' in data:
@@ -968,7 +967,7 @@ def update_user(id, data):
         record.password = hash_password(data['password'])
     if 'auth_token' in data and data['auth_token'] is not None:
         record.auth_token = data['auth_token']
-        record.auth_token_expire = data['auth_token_expire'] if 'auth_token_expire' in data else None
+        record.auth_token_expire = to_utc_naive(data.get('auth_token_expire'))
     else:
         record.auth_token = None
         record.auth_token_expire = None

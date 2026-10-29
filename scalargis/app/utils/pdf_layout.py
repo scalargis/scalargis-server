@@ -20,7 +20,6 @@ import pyproj
 from sqlalchemy import text
 from PIL import Image
 from io import BytesIO
-import time
 import os
 import re
 from math import pi, cos, sin, floor, ceil
@@ -34,7 +33,7 @@ import urllib.parse
 from app.database import db
 from app import get_db_schema
 from app.models.portal import PrintElement
-from app.utils import geo
+from app.utils import geo, local_now
 from app.utils.http import replace_geoserver_url, http_session, strict_print_timeout
 
 from instance.settings import APP_STATIC, APP_RESOURCES
@@ -850,7 +849,7 @@ class Pdf:
                     fontsize = config["date"]["fontsize"]
                     dformat = config["date"]["format"]
                     prefix = config["date"]["prefix"]
-                    date = prefix + time.strftime(dformat)
+                    date = prefix + local_now().strftime(dformat)
                     self.insert_string(x, y, date, font, fontsize)
 
             # strings

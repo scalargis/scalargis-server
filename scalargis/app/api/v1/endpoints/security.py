@@ -1,12 +1,11 @@
 import logging
-from datetime import datetime
 from flask import request
 from flask_restx import Resource
 from app.utils.security import get_user_token
 from app.utils.security import get_user_from_token, get_user_from_auth_token
 from app.utils.login_blocking import check_ip_blocked, record_failure, record_success
 from app.utils.login_audit import log_login_attempt
-from app.utils import constants
+from app.utils import constants, utc_now
 from app.utils.password_policy import describe_policy
 from ..portal.parsers import *
 from ..portal.serializers import *
@@ -52,7 +51,7 @@ class SecurityToken(Resource):
 
         user = get_user_from_auth_token(authkey)
 
-        if user and user.is_active and (not user.auth_token_expire or user.auth_token_expire >= datetime.now()):
+        if user and user.is_active and (not user.auth_token_expire or user.auth_token_expire >= utc_now()):
             data = {
                 'user': user.username
             }
@@ -111,7 +110,7 @@ class SecurityToken(Resource):
             'name': user.name,
             'userroles': user_roles,
             'auth_token': user.auth_token if user.auth_token and
-                            (not user.auth_token_expire or user.auth_token_expire >= datetime.now()) else ''
+                            (not user.auth_token_expire or user.auth_token_expire >= utc_now()) else ''
         }
 
         return data, {'Access-Control-Allow-Origin': '*',

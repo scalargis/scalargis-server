@@ -1,5 +1,5 @@
 import json
-from datetime import datetime
+from app.utils import utc_now
 import logging
 
 from flask import request
@@ -219,7 +219,7 @@ def create(data):
         record.owner_id = data.get('owner_id')
 
     record.id_user_create= user.id
-    record.created_at = datetime.now()
+    record.created_at = utc_now()
 
     db.session.add(record)
     db.session.commit()
@@ -299,7 +299,7 @@ def update(id, data):
             record.owner_id = data.get('owner_id')
 
         record.id_user_update = user.id
-        record.updated_at = datetime.now()
+        record.updated_at = utc_now()
 
         db.session.add(record)
         db.session.commit()
@@ -583,7 +583,7 @@ def create_print_group(data):
         record.owner_id = data.get('owner_id')
 
     record.id_user_create = user.id
-    record.created_at = datetime.now()
+    record.created_at = utc_now()
 
     db.session.add(record)
     db.session.commit()
@@ -679,7 +679,7 @@ def update_print_group(id, data):
             record.owner_id = data.get('owner_id')
 
         record.id_user_update = user.id
-        record.updated_at = datetime.now()
+        record.updated_at = utc_now()
 
         db.session.add(record)
         db.session.commit()
@@ -882,7 +882,7 @@ def create_print_element(data):
     #    record.owner_id = data.get('owner_id')
 
     record.id_user_create = user.id
-    record.created_at = datetime.now()
+    record.created_at = utc_now()
 
     db.session.add(record)
     db.session.commit()
@@ -910,7 +910,7 @@ def update_print_element(id, data):
         #    record.owner_id = data.get('owner_id')
 
         record.id_user_update = user.id
-        record.updated_at = datetime.now()
+        record.updated_at = utc_now()
 
         db.session.add(record)
         db.session.commit()

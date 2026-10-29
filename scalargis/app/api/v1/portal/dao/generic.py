@@ -1,5 +1,5 @@
 import json
-from datetime import datetime
+from app.utils import utc_now
 
 from flask import request
 import sqlalchemy
@@ -95,7 +95,7 @@ def create_generic(entity_name, data):
             if column.key in data:
                 setattr(record, column.key, data[column.key])
 
-    record.created_at = datetime.now()
+    record.created_at = utc_now()
     if user and user.id:
         record.id_user_create = user.id
 
@@ -124,7 +124,7 @@ def update_generic(entity_name, id, data):
             if column.key in data:
                 setattr(record, column.key, data[column.key])
 
-    record.updated_at = datetime.now()
+    record.updated_at = utc_now()
     if user and user.id:
         record.id_user_update = user.id
     else:

@@ -4,7 +4,7 @@ import json
 import re
 import base64
 import uuid
-from datetime import datetime
+from app.utils import utc_now, iso_utc
 
 from flask import request, current_app, url_for, render_template, render_template_string
 from flask_security import current_user
@@ -160,7 +160,7 @@ def save_viewer_session(viewer_id_or_slug, data):
 
     record, status = get_viewer_session_record(viewer.id, user.id)
 
-    date_session = datetime.now()
+    date_session = utc_now()
     if not record:
         record = UserViewerSession()
         record.user_id = user.id
@@ -188,7 +188,7 @@ def save_viewer_session(viewer_id_or_slug, data):
     response = {
             "id": record.id,
             "viewer_uuid": viewer.uuid,
-            "session": {"id": record.id, "date": date_session.isoformat()},
+            "session": {"id": record.id, "date": iso_utc(date_session)},
             "success": True
         }
 
@@ -250,7 +250,7 @@ def send_viewer_contact_message(viewer_id, data):
     record.message_json = json.dumps(data, indent = 4)
 
     record.user_id = user_id
-    record.message_date = datetime.now()
+    record.message_date = utc_now()
     record.message_uuid = message_uuid
 
     #------ Files -------------------------------
@@ -485,7 +485,7 @@ def build_viewer_config(record, user_roles, user=None, session=False):
             date_session = viewer_session.created_at
             if viewer_session.updated_at:
                 date_session = viewer_session.updated_at
-            viewer_cfg['session'] = { "id": viewer_session.id, "date": date_session.isoformat() }
+            viewer_cfg['session'] = { "id": viewer_session.id, "date": iso_utc(date_session) }
 
             if session:
                 session_cfg = json.loads(viewer_session.config_json)
@@ -673,13 +673,13 @@ def get_data_layer(layer_id):
         record.is_private = False
         record.allow_anonymous = True
         record.is_active = True
-        record.created_at = datetime.now()
+        record.created_at = utc_now()
         if user and current_user.is_authenticated:
             record.id_user_create = user.id
             record.owner_id = user.id
 
     if record:
-        record.last_access = datetime.now()
+        record.last_access = utc_now()
 
         db.session.add(record)
         db.session.commit()

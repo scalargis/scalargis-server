@@ -212,7 +212,7 @@ def convert_to_geojson_create_layer(file, persist=True):
         record.is_private = False
         record.allow_anonymous = True
         record.is_active = True
-        record.created_at = datetime.now()
+        record.created_at = utc_now()
         if (user and current_user.is_authenticated):
             record.id_user_create = user.id
             record.owner_id = user.id
