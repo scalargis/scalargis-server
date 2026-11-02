@@ -1164,9 +1164,21 @@ class Pdf:
         self.canvas.saveState()
         self.canvas.translate(ll_x * mm, ll_y * mm)
 
+        transformers = {}
+
+        def to_layout(elt, coord):
+            crs_name = elt['crs']['properties']['name']
+            transformer = transformers.get(crs_name)
+            if transformer is None:
+                in_crs = pyproj.CRS(crs_name)
+                transformer = pyproj.Transformer.from_crs('epsg:{0}'.format(in_crs.to_epsg()),
+                                                          'epsg:{0}'.format(srid), always_xy=True)
+                transformers[crs_name] = transformer
+            point_x, point_y = transformer.transform(coord[0], coord[1])
+            return [(point_x - xmin) / xfactor, (point_y - ymin) / yfactor]
+
         # polygons
         for elt in drawing_features:
-            in_crs = pyproj.CRS(elt['crs']['properties']['name'])
             geom_type = elt['geometry']['type']
             coords = elt['geometry']['coordinates']
             style = elt['properties']['state']
@@ -1174,20 +1186,13 @@ class Pdf:
             fill_color = self.get_color_from_drawtools_style(style['fill'])
             stroke_color = self.get_color_from_drawtools_style(style['stroke'])
             if geom_type == 'Polygon':
-                coords_paper = []
-                for coord in coords[0]:
-                    point = geometry.Point(coord)
-                    point_layout_srid = geo.transformGeom2(point, 'epsg:{0}'.format(in_crs.to_epsg()),
-                                                          'epsg:{0}'.format(srid))
-                    x = (point_layout_srid[0] - xmin) / xfactor
-                    y = (point_layout_srid[1] - ymin) / yfactor
-                    coords_paper.append([x, y])
-                self.draw_path(coords_paper, size, stroke_color, True, fill_color)
+                coords_paper = [to_layout(elt, coord) for coord in coords[0]]
+                self.draw_path(coords_paper, size, stroke_color, True, fill_color,
+                               dash=style.get('line_style') or 'dashed')
 
 
         # lines
         for elt in drawing_features:
-            in_crs = pyproj.CRS(elt['crs']['properties']['name'])
             geom_type = elt['geometry']['type']
             coords = elt['geometry']['coordinates']
             style = elt['properties']['state']
@@ -1195,19 +1200,12 @@ class Pdf:
             fill_color = self.get_color_from_drawtools_style(style['fill'])
             stroke_color = self.get_color_from_drawtools_style(style['stroke'])
             if geom_type == 'LineString':
-                coords_paper = []
-                for coord in coords:
-                    point = geometry.Point(coord)
-                    point_layout_srid = geo.transformGeom2(point, 'epsg:{0}'.format(in_crs.to_epsg()),
-                                                          'epsg:{0}'.format(srid))
-                    x = (point_layout_srid[0] - xmin) / xfactor
-                    y = (point_layout_srid[1] - ymin) / yfactor
-                    coords_paper.append([x, y])
-                self.draw_path(coords_paper, size, stroke_color)
+                coords_paper = [to_layout(elt, coord) for coord in coords]
+                self.draw_path(coords_paper, size, stroke_color,
+                               dash=style.get('line_style') or 'solid')
 
         # points
         for elt in drawing_features:
-            in_crs = pyproj.CRS(elt['crs']['properties']['name'])
             geom_type = elt['geometry']['type']
             coords = elt['geometry']['coordinates']
             style = elt['properties']['state']
@@ -1215,10 +1213,7 @@ class Pdf:
             fill_color = self.get_color_from_drawtools_style(style['fill'])
             stroke_color = self.get_color_from_drawtools_style(style['stroke'])
             if geom_type == 'Point':
-                point = geometry.Point(coords)
-                point_layout_srid = geo.transformGeom2(point, 'epsg:{0}'.format(in_crs.to_epsg()), 'epsg:{0}'.format(srid))
-                x = (point_layout_srid[0] - xmin) / xfactor
-                y = (point_layout_srid[1] - ymin) / yfactor
+                x, y = to_layout(elt, coords)
 
                 if style['draw_geom']:
                     self.draw_circle(x, y, size / 4, stroke_color, fill=True, fillcolor=fill_color)
@@ -1239,7 +1234,6 @@ class Pdf:
 
         # text
         for elt in drawing_features:
-            in_crs = pyproj.CRS(elt['crs']['properties']['name'])
             geom_type = elt['geometry']['type']
             coords = elt['geometry']['coordinates']
             style = elt['properties']['state']
@@ -1251,10 +1245,7 @@ class Pdf:
             stroke_color[3] = 0.4 # fixed transparency for background color
 
             if style['draw_text']:
-                point = geometry.Point(coords)
-                point_layout_srid = geo.transformGeom2(point, 'epsg:{0}'.format(in_crs.to_epsg()), 'epsg:{0}'.format(srid))
-                x = (point_layout_srid[0] - xmin) / xfactor
-                y = (point_layout_srid[1] - ymin) / yfactor
+                x, y = to_layout(elt, coords)
                 txt_value = style['text_value']
                 txt_size = int(style['text_size'][:-2]) - 1
                 txt_style = style['text_style']
@@ -2079,7 +2070,8 @@ class Pdf:
         p.close()
         self.canvas.drawPath(p, fill=1)
 
-    def draw_path(self, coords, line_width, color, fill=False, fillcolor=None):
+    def draw_path(self, coords, line_width, color, fill=False, fillcolor=None, dash=None):
+        """Draws a path with an optional solid, dashed or dotted stroke."""
         # Draw path
 
         nb_coords = len(coords)
@@ -2095,6 +2087,11 @@ class Pdf:
                                       fillcolor[3])
         self.canvas.setStrokeColor(line_color)
         self.canvas.setLineWidth(line_width)
+        if dash == 'dashed':
+            self.canvas.setDash(4 * line_width, 3 * line_width)
+        elif dash == 'dotted':
+            self.canvas.setLineCap(1)
+            self.canvas.setDash(0, 2.5 * line_width)
 
         p = self.canvas.beginPath()
         p.moveTo(coords[0][0] * mm, coords[0][1] * mm)
