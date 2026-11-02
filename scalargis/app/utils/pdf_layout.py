@@ -1177,7 +1177,6 @@ class Pdf:
             point_x, point_y = transformer.transform(coord[0], coord[1])
             return [(point_x - xmin) / xfactor, (point_y - ymin) / yfactor]
 
-        # polygons
         for elt in drawing_features:
             geom_type = elt['geometry']['type']
             coords = elt['geometry']['coordinates']
@@ -1185,34 +1184,18 @@ class Pdf:
             size = int(style['size'])
             fill_color = self.get_color_from_drawtools_style(style['fill'])
             stroke_color = self.get_color_from_drawtools_style(style['stroke'])
+
             if geom_type == 'Polygon':
                 coords_paper = [to_layout(elt, coord) for coord in coords[0]]
                 self.draw_path(coords_paper, size, stroke_color, True, fill_color,
                                dash=style.get('line_style') or 'dashed')
 
-
-        # lines
-        for elt in drawing_features:
-            geom_type = elt['geometry']['type']
-            coords = elt['geometry']['coordinates']
-            style = elt['properties']['state']
-            size = int(style['size'])
-            fill_color = self.get_color_from_drawtools_style(style['fill'])
-            stroke_color = self.get_color_from_drawtools_style(style['stroke'])
-            if geom_type == 'LineString':
+            elif geom_type == 'LineString':
                 coords_paper = [to_layout(elt, coord) for coord in coords]
                 self.draw_path(coords_paper, size, stroke_color,
                                dash=style.get('line_style') or 'solid')
 
-        # points
-        for elt in drawing_features:
-            geom_type = elt['geometry']['type']
-            coords = elt['geometry']['coordinates']
-            style = elt['properties']['state']
-            size = int(style['size'])
-            fill_color = self.get_color_from_drawtools_style(style['fill'])
-            stroke_color = self.get_color_from_drawtools_style(style['stroke'])
-            if geom_type == 'Point':
+            elif geom_type == 'Point':
                 x, y = to_layout(elt, coords)
 
                 if style['draw_geom']:
@@ -1232,34 +1215,23 @@ class Pdf:
                     if style['symbol_type'] == 'cross':
                         self.draw_cross(x, y, size / 3, stroke_color)
 
-        # text
-        for elt in drawing_features:
-            geom_type = elt['geometry']['type']
-            coords = elt['geometry']['coordinates']
-            style = elt['properties']['state']
-            size = int(style['size'])
-
-            fill_color = self.get_color_from_drawtools_style(style['fill'])
-            del fill_color[-1]  # need remove alfa to work
-            stroke_color = self.get_color_from_drawtools_style(style['stroke'])
-            stroke_color[3] = 0.4 # fixed transparency for background color
-
             if style['draw_text']:
+                text_fill_color = self.get_color_from_drawtools_style(style['fill'])
+                del text_fill_color[-1]
+                text_stroke_color = self.get_color_from_drawtools_style(style['stroke'])
+                text_stroke_color[3] = 0.4
                 x, y = to_layout(elt, coords)
                 txt_value = style['text_value']
                 txt_size = int(style['text_size'][:-2]) - 1
-                txt_style = style['text_style']
-                txt_font = style['text_font']
                 txt_width = (txt_size / 5.5) * len(str(txt_value))
-                txt_options = {"borderColor": stroke_color, "backColor": stroke_color,
+                txt_options = {"borderColor": text_stroke_color, "backColor": text_stroke_color,
                                "borderPadding": (1,2,2+(txt_size - 7),2),
                                "borderRadius": 3, "borderWidth": 1}
 
                 self.insert_paragraph(x, y, txt_width, txt_size * 4, txt_value,
-                                      font="Helvetica", fontsize=txt_size, fontcolor=fill_color,
+                                      font="Helvetica", fontsize=txt_size, fontcolor=text_fill_color,
                                       leading=9, style="default", options=txt_options,
                                       paper_shift_x=0, paper_shift_y=0)
-
 
         # ending:
         self.canvas.restoreState()
