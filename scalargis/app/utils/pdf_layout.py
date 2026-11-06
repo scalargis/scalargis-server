@@ -676,6 +676,8 @@ class Pdf:
                                     except KeyError:
                                         authorized_format = True  # no restriction
 
+                                    break
+
                         except KeyError:
                             logger.debug('["No dinamic_layers_definitions... ')
 
