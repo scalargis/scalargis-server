@@ -29,6 +29,8 @@ import json
 from jsonmerge import Merger
 import logging
 import urllib.parse
+from html.parser import HTMLParser
+from xml.sax.saxutils import escape, quoteattr
 
 from app.database import db
 from app import get_db_schema
@@ -41,6 +43,62 @@ from instance.settings import APP_STATIC, APP_RESOURCES
 logger = logging.getLogger(__name__)  # or logging.getLogger()
 
 db_schema = get_db_schema()
+
+ATTRIBUTION_SLOT = 'atribuicoes_val'
+ATTRIBUTION_LINK_SCHEMES = ('http://', 'https://', 'mailto:')
+
+
+class _AttributionParser(HTMLParser):
+    """Reads one attribution text into ReportLab markup and into plain text."""
+
+    def __init__(self):
+        super().__init__(convert_charrefs=True)
+        self.markup = []
+        self.plain = []
+        self.links = []
+
+    def handle_starttag(self, tag, attrs):
+        if tag in ('b', 'i'):
+            self.markup.append('<{0}>'.format(tag))
+        elif tag == 'br':
+            self.markup.append('<br/>')
+            self.plain.append(' ')
+        elif tag == 'a':
+            href = dict(attrs).get('href') or ''
+            is_link = href.lower().startswith(ATTRIBUTION_LINK_SCHEMES)
+            self.links.append(is_link)
+            if is_link:
+                self.markup.append('<a href={0}>'.format(quoteattr(href)))
+
+    def handle_endtag(self, tag):
+        if tag in ('b', 'i'):
+            self.markup.append('</{0}>'.format(tag))
+        elif tag == 'a' and self.links and self.links.pop():
+            self.markup.append('</a>')
+
+    def handle_data(self, data):
+        self.markup.append(escape(data))
+        self.plain.append(data)
+
+
+def _parse_attribution(attribution):
+    """Gives the ReportLab markup and the plain text of one attribution text."""
+    parser = _AttributionParser()
+    parser.feed(attribution)
+    parser.close()
+    return ''.join(parser.markup).strip(), ' '.join(''.join(parser.plain).split())
+
+
+def attribution_markup(attributions):
+    """Gives the texts as ReportLab markup, one text per line."""
+    parts = [_parse_attribution(item)[0] for item in attributions]
+    return '<br/>'.join(part for part in parts if part)
+
+
+def attribution_plain(attributions):
+    """Gives the texts as plain text, with " | " between the texts."""
+    parts = [_parse_attribution(item)[1] for item in attributions]
+    return ' | '.join(part for part in parts if part)
 
 
 def merge_pdf_files(filename, files):
@@ -133,6 +191,7 @@ class Pdf:
         self.widget_inputs = []
         self.drawing_features = None
         self.drawings = None # Scalargis DrawTools features
+        self.attribution_texts = []
 
         page_size_dict = {"A4": A4, "A3": A3, "A2": A2, "A1": A1, "A0": A0}
         try:
@@ -193,7 +252,7 @@ class Pdf:
 
 
     def add_map(self, serv_type, url, layers, page_id=None, img_format='image/png', quality=2, transparent=True,
-                cql_filter=None, style=None, opacity=1, url_params=[]):
+                cql_filter=None, style=None, opacity=1, url_params=[], attribution=None):
         # add map.
         # serv_type: wms or esri_rest supported
         # layers: listof  geoserver url
@@ -202,7 +261,23 @@ class Pdf:
         # page_id limit to one page. Page_id is an element in json config
         # quality: factor for wms, dpi for esri_rest
         self.maps.append([serv_type, url, layers, page_id, img_format, quality, transparent, cql_filter, style,
-                          opacity, url_params])
+                          opacity, url_params, attribution])
+
+    def keep_attribution(self, dmap):
+        """Keeps the text of a dynamic map that drew an image."""
+        attribution = dmap[11] if len(dmap) > 11 else None
+        if isinstance(attribution, str) and attribution.strip():
+            self.attribution_texts.append(attribution)
+
+    def fill_attribution_slot(self, config, string_filled, paragraph_filled):
+        """Fills the attribution slot of a page with the kept texts, unless the request filled it."""
+        texts = list(dict.fromkeys(self.attribution_texts))
+        has_string = any(item.get('name') == ATTRIBUTION_SLOT for item in config.get('strings') or [])
+        has_paragraph = any(item.get('name') == ATTRIBUTION_SLOT for item in config.get('paragraphs') or [])
+        if has_string and not string_filled:
+            self.populate_string(ATTRIBUTION_SLOT, attribution_plain(texts) or None)
+        if has_paragraph and not paragraph_filled:
+            self.populate_paragraph(ATTRIBUTION_SLOT, attribution_markup(texts) or None)
 
     def add_legend(self, url, layer, x, y, width, gs_vendor_option="", serv_type="wms", style="", page_id=None):
         # add service legend
@@ -298,6 +373,8 @@ class Pdf:
             self.configs = config_file
 
         need_append = False
+        attribution_string_filled = ATTRIBUTION_SLOT in self.config_strings
+        attribution_paragraph_filled = ATTRIBUTION_SLOT in self.config_paragraphs
         nb_confgis = len(self.configs)
         p_scale = scale
         p_mapcenter = mapcenter
@@ -603,10 +680,10 @@ class Pdf:
                             logger.debug('["No dinamic_layers_definitions... ')
 
                         if scale >= mindenomscale and scale <= maxdenomscale and authorized_format:
-                            self.insert_map('wms', scale, srid, mapcenter[0], mapcenter[1], width, height,
-                                            dmap[4], ll_x, ll_y, dmap[1], dmap[2], dmap[5], cql_filter=cql_filter,
-                                            style=style, opacity=opacity, url_params=dmap[10] if len(dmap) > 10 else [])
-
+                            if self.insert_map('wms', scale, srid, mapcenter[0], mapcenter[1], width, height,
+                                               dmap[4], ll_x, ll_y, dmap[1], dmap[2], dmap[5], cql_filter=cql_filter,
+                                               style=style, opacity=opacity, url_params=dmap[10] if len(dmap) > 10 else []):
+                                self.keep_attribution(dmap)
 
                             if have_extra_conf and "strings" in item:
                                 try:
@@ -639,8 +716,9 @@ class Pdf:
 
 
                     elif dmap[0] == 'esri_rest':
-                        self.insert_map('esri_rest', scale, srid, mapcenter[0], mapcenter[1], width, height,
-                                        dmap[4], ll_x, ll_y, dmap[1], dmap[2], dmap[5], dmap[6], None, None, dmap[9])
+                        if self.insert_map('esri_rest', scale, srid, mapcenter[0], mapcenter[1], width, height,
+                                           dmap[4], ll_x, ll_y, dmap[1], dmap[2], dmap[5], dmap[6], None, None, dmap[9]):
+                            self.keep_attribution(dmap)
 
             # top layers
             if 'top_layers' in config:
@@ -852,6 +930,8 @@ class Pdf:
                     date = prefix + local_now().strftime(dformat)
                     self.insert_string(x, y, date, font, fontsize)
 
+            self.fill_attribution_slot(config, attribution_string_filled, attribution_paragraph_filled)
+
             # strings
             for string in self.strings:
                 if (string[6] is None) or (string[6] == config["page_id"]):
@@ -907,7 +987,7 @@ class Pdf:
                         if (page_id is None) or (page_id == config["page_id"]):
                             txt = self.config_strings[str_name][0]
 
-                    if txt is not None and bool(re.search('%\[.*\]%', txt)):  # find a db_var pattern
+                    if txt is not None and str_name != ATTRIBUTION_SLOT and bool(re.search('%\[.*\]%', txt)):  # find a db_var pattern
                         var_idenf = eval(re.search('%.*%', txt).group()[1:-1])
                         if var_idenf[0] in self.db_vars:
                             dbval = self.db_vars[var_idenf[0]][var_idenf[1]]
@@ -1563,12 +1643,14 @@ class Pdf:
             raise ValueError('Service type not supported: {0}'.format(serv_type))
         else:
             logger.warning("Service type not supported.")
-            return
+            return False
 
-        if img is not None:
-            self.canvas.drawImage(img, ll_x * mm, ll_y * mm, width=width * mm, height=height * mm,
-                                  mask='auto')
-            #  mask=[255, 255, 255, 255, 255, 255])
+        if img is None:
+            return False
+
+        self.canvas.drawImage(img, ll_x * mm, ll_y * mm, width=width * mm, height=height * mm,
+                              mask='auto')
+        return True
 
 
     def insert_legend(self, serv_type, url, layer, x, y, width, gs_vendor_options='', img_format="image/png",
@@ -1743,7 +1825,11 @@ class Pdf:
 
         valign = valign or ''
 
-        p = Paragraph(txt, styles[style])
+        try:
+            p = Paragraph(txt, styles[style])
+        except ValueError as err:
+            logger.warning('Paragraph markup cannot be read, the plain text draws: {0}'.format(err))
+            p = Paragraph(escape(attribution_plain([txt])), styles[style])
         p.wrap(width * mm, height * mm)
         if valign.lower() == 'top':
             lines = len(p.blPara.lines)

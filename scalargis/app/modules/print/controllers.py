@@ -100,6 +100,27 @@ def output_title(title, form_fields):
     return title
 
 
+def client_layer_attributions(request, layer_count):
+    """The text of each layers[] entry from layersAttributions, or no text when the param does not pair with them."""
+    logger = logging.getLogger(__name__)
+    no_texts = [None] * layer_count
+
+    if layer_count == 0:
+        return no_texts
+
+    try:
+        attributions = json.loads(request.values['layersAttributions'])
+    except (KeyError, TypeError, ValueError) as err:
+        logger.warning('layersAttributions is missing or not valid, the print has no attribution: {0}'.format(err))
+        return no_texts
+
+    if not isinstance(attributions, list) or len(attributions) != layer_count:
+        logger.warning('layersAttributions does not pair with layers[], the print has no attribution')
+        return no_texts
+
+    return [item if isinstance(item, str) else None for item in attributions]
+
+
 def viewer_generate_pdf(code, user, request=request):
     logger = logging.getLogger(__name__)
 
@@ -249,7 +270,8 @@ def viewer_generate_pdf(code, user, request=request):
                 p.add_widget_input(widget_layout)
 
     if print.free_printing:
-        for l in client_layers:
+        attributions = client_layer_attributions(request, len(client_layers))
+        for l, attribution in zip(client_layers, attributions):
             max_scale = 0
             min_scale = 0
             wms_style = None
@@ -274,7 +296,8 @@ def viewer_generate_pdf(code, user, request=request):
 
             if (min_scale == 0 or scale <= min_scale) and (max_scale == 0 or scale >= max_scale):
                 p.add_map(l.split(';')[0], l.split(';')[1], l.split(';')[2], page_id=100, cql_filter=l.split(';')[6],
-                          style=wms_style, img_format=wms_format, opacity=opacity, url_params=url_params)
+                          style=wms_style, img_format=wms_format, opacity=opacity, url_params=url_params,
+                          attribution=attribution)
 
     p.set_wkt_and_center(geomWKT, extentWKT)
     p.populate_string("planta_id", print_output.print_output_number)
