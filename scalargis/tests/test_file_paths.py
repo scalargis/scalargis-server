@@ -3,6 +3,7 @@ import os
 
 import pytest
 from flask import Blueprint, Flask
+from flask_login import LoginManager
 from flask_restx import Api
 from sqlalchemy import text
 
@@ -19,6 +20,8 @@ ESCAPES = ['..%2foutside.txt', '..%2f..%2foutside.txt', 'sub%2f..%2f..%2foutside
 def tree(tmp_path):
     docs = tmp_path / 'docs'
     (docs / 'sub').mkdir(parents=True)
+    (tmp_path / 'locked').mkdir()
+    (tmp_path / 'locked' / 'keep.txt').write_text('keep')
     (docs / 'inside.txt').write_text('inside')
     (tmp_path / 'outside.txt').write_text('outside')
     return tmp_path
@@ -30,6 +33,8 @@ def client(tree):
     flask_app.config.update(SQLALCHEMY_DATABASE_URI='sqlite:///:memory:', SQLALCHEMY_TRACK_MODIFICATIONS=False,
                             SECRET_KEY='test')
     db.init_app(flask_app)
+    login_manager = LoginManager(flask_app)
+    login_manager.user_loader(lambda user_id: None)
     flask_app.register_blueprint(file_controllers.mod)
     blueprint = Blueprint('api', 'file-paths-api', url_prefix='/api')
     api = Api(blueprint)
@@ -47,6 +52,9 @@ def client(tree):
         db.session.execute(text(
             "insert into {0}.document_directory values (1, 'docs', :path, 't', null, 1, 1, 0, 0, 1, 1)".format(
                 db_schema)), {'path': str(tree / 'docs')})
+        db.session.execute(text(
+            "insert into {0}.document_directory values (2, 'locked', :path, 't', null, 1, 0, 0, 0, 1, 0)".format(
+                db_schema)), {'path': str(tree / 'locked')})
         db.session.execute(text(
             "insert into {0}.document_directory_rules values (1, 1, null, null, '.bak', null, null)".format(db_schema)))
         db.session.commit()
@@ -81,7 +89,6 @@ def test_reads_stay_inside_the_folder(client, escape):
 
 def test_lists_stay_inside_the_folder(client):
     assert client.get('/api/documents/list/docs/..%2f').status_code == 404
-    assert client.get('/dir/docs/..').status_code == 404
     listing = client.get('/api/documents/list/docs')
     assert listing.status_code == 200
     assert 'inside.txt' in listing.get_data(as_text=True)
@@ -115,3 +122,19 @@ def test_upload_paths_stay_inside_the_folder(client, tree):
     client.post('/file/docs/upload', data={'files': (io.BytesIO(b'ok'), 'normal.txt')},
                 content_type='multipart/form-data')
     assert (tree / 'docs' / 'normal.txt').read_bytes() == b'ok'
+
+
+def test_upload_and_delete_need_a_user_when_the_folder_is_not_anonymous(client, tree):
+    for url in ['/file/locked/upload', '/api/documents/locked/sub']:
+        response = client.post(url, data={'files': (io.BytesIO(b'x'), 'new.txt')},
+                               content_type='multipart/form-data')
+        assert response.status_code == 401
+        response = client.post(url, data={'files': (io.BytesIO(b'x'), 'new.txt')},
+                               content_type='multipart/form-data', headers={'X-API-KEY': 'not-a-token'})
+        assert response.status_code == 401
+    assert not (tree / 'locked' / 'new.txt').exists()
+    assert not (tree / 'locked' / 'sub').exists()
+    for url in ['/file/locked/keep.txt', '/api/documents/locked/keep.txt']:
+        assert client.delete(url).status_code == 401
+        assert client.delete(url, headers={'X-API-KEY': 'not-a-token'}).status_code == 401
+    assert (tree / 'locked' / 'keep.txt').read_text() == 'keep'

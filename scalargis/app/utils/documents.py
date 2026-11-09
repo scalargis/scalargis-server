@@ -32,7 +32,7 @@ def path_hierarchy(dir_endpoint, file_endpoint, root, folder, base_path, path, f
         try:
             hierarchy['type'] = 'file'
             hierarchy['resource_url'] = url_for(file_endpoint, folder=folder,
-                                       path=base_path.encode('utf8', 'surrogateescape')).replace(r'//', r'/')
+                                       path=base_path).replace(r'//', r'/')
         except:
             pass
 

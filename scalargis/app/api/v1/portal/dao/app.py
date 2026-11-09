@@ -218,7 +218,7 @@ def send_viewer_contact_message(viewer_id, data):
         captcha_url = get_config_value('CAPTCHA_URL') if get_config_value('CAPTCHA_URL') else captcha_url
         pdata = {
             'secret': get_config_value('CAPTCHA_SECRET_KEY'),
-            'response': data['captcha']
+            'response': data.get('captcha')
             }
         captcha_error_response = {
             "success": False,
@@ -231,13 +231,18 @@ def send_viewer_contact_message(viewer_id, data):
         else:
             return captcha_error_response, 403
 
+    names = set()
     for f in data.get('files') or []:
         name = bare_filename(f.get('filename'))
         if name is None:
             return {"success": False, "message": 'Nome de ficheiro inválido'}, 400
+        if name in names:
+            return {"success": False, "message": 'Nome de ficheiro repetido'}, 400
+        names.add(name)
         f['filename'] = name
 
     attachments = []
+    pending_files = []
 
     message_uuid = str(uuid.uuid4().hex)
 
@@ -250,9 +255,7 @@ def send_viewer_contact_message(viewer_id, data):
     else:
         record.name =  data['name'] if 'name' in data else None
         record.email = data['email'] if 'email' in data else None
-    # GET message text from message or description field
-    record.message = data['message'] if 'message' in data else None
-    record.message = data['description'] if 'description' in data else None
+    record.message = data.get('description') or data.get('message')
 
     record.message_json = json.dumps(data, indent = 4)
 
@@ -273,16 +276,9 @@ def send_viewer_contact_message(viewer_id, data):
                 file_dict = re.match("data:(?P<type>.*?);(?P<encoding>.*?),(?P<data>.*)",
                                      f.get('data')).groupdict()
 
-                if not os.path.exists(folder_path):
-                    os.makedirs(folder_path)
-
                 filepath = contained_path(folder_path, original_filename)
 
-                output = open(filepath, 'wb')
-                output.write(base64.b64decode(file_dict['data']))
-                output.close()
-
-                file_stats = os.stat(filepath)
+                pending_files.append((filepath, base64.b64decode(file_dict['data'])))
 
                 attachments.append({ "filename": original_filename, "filepath": filepath})
     #------ End Files ---------------------------
@@ -290,6 +286,12 @@ def send_viewer_contact_message(viewer_id, data):
     db.session.add(record)
 
     db.session.commit()
+
+    if pending_files:
+        os.makedirs(os.path.dirname(pending_files[0][0]), exist_ok=True)
+    for filepath, content in pending_files:
+        with open(filepath, 'wb') as output:
+            output.write(content)
 
     html = 'Mensagem submetida com sucesso. Obrigado pela sua participação.'
 

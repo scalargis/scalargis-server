@@ -7,10 +7,10 @@ from flask_restx import Resource
 from instance import settings
 from app.utils import http
 from app.utils.documents import path_hierarchy
-from app.utils.files import bare_filename, contained_path
+from app.utils.files import bare_filename, contained_path, request_user
 from app.database import db
 from app.models.files import DocumentDirectory
-from ..endpoints import ns_documents as ns, get_user
+from ..endpoints import ns_documents as ns
 
 
 logger = logging.getLogger(__name__)
@@ -207,11 +207,8 @@ class FileDir(Resource):
         if not dir.allow_delete:
             return {"message": "Forbidden"}, 403
 
-        # Check Permissions
-        if not dir.delete_anonymous:
-            user = get_user(request)
-            if not user:
-                return {"message": "Unauthorized"}, 401
+        if not dir.delete_anonymous and request_user() is None:
+            return {"message": "Unauthorized"}, 401
 
         filepath = contained_path(dir.path, path)
 
@@ -238,11 +235,8 @@ class FileDir(Resource):
         if not dir.allow_upload:
             return {"message": "Forbidden"}, 403
 
-        # Check Permissions
-        if not dir.upload_anonymous:
-            user = get_user(request)
-            if not user:
-                return {"message": "Unauthorized"}, 401
+        if not dir.upload_anonymous and request_user() is None:
+            return {"message": "Unauthorized"}, 401
 
         target_dir = contained_path(dir.path, path)
         if target_dir is None:
@@ -285,4 +279,6 @@ class FileDir(Resource):
                     data.append({'upload': False, 'source': file.filename, 'filename': None, 'overwrite': None,
                                  'resource_url': None, 'message': 'Error uploading file'})
 
-        return { "files": data }, 201
+        saved = any(item['upload'] for item in data)
+
+        return {"files": data, "errors": errors}, 201 if saved else 400

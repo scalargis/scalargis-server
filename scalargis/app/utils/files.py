@@ -1,5 +1,7 @@
 import os
 
+from flask import request
+from flask_security import current_user
 from werkzeug.utils import safe_join
 
 
@@ -31,4 +33,16 @@ def notifications_folder():
         parent = get_config_value(key)
         if parent and os.path.exists(parent):
             return os.path.join(parent, 'notifications')
+    return None
+
+
+def request_user():
+    """Returns the active session user, or the user of a valid X-API-KEY token, or None."""
+    from app.utils.security import get_user_from_token
+
+    if current_user and current_user.is_authenticated and current_user.is_active:
+        return current_user
+    token = request.headers.get('X-API-KEY')
+    if token:
+        return get_user_from_token(token)
     return None

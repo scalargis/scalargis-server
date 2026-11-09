@@ -2,15 +2,13 @@ import os
 import os.path
 import uuid
 
-from flask import Blueprint, send_file, request, jsonify, abort, render_template, url_for, Response
-from flask_security import current_user
+from flask import Blueprint, send_file, request, jsonify, abort, url_for, Response
 
 from app.models.files import DocumentDirectory
 from app.database import db
 from instance import settings
 from app.utils import http
-from app.utils.files import bare_filename, contained_path
-from app.utils.security import get_user_from_token
+from app.utils.files import bare_filename, contained_path, request_user
 
 
 mod = Blueprint('file',  __name__, template_folder='templates', static_folder='static')
@@ -91,61 +89,6 @@ def get_doc_file(folder, filename):
         return str(e)
 
 
-@mod.route('/dir/<folder>', defaults={'path': ''})
-@mod.route('/dir/<folder>/<path:path>')
-def get_folder(folder, path):
-
-    dir = db.session.query(DocumentDirectory).filter(DocumentDirectory.codigo.ilike(folder)).first()
-
-    if dir is None:
-        abort(404)
-    else:
-        filepath = contained_path(dir.path, path)
-        if filepath is None:
-            abort(404)
-        if not os.path.exists(filepath):
-            html = path + '<P><h6>[Não existem documentos]</h6>'
-            return jsonify(Success=False, Message=html, Data=None)
-            #abort(404)
-
-    map_id = None
-    if 'mapId' in request.values and request.values['mapId'] != '':
-        map_id = int(request.values['mapId'])
-
-    files_filter = []
-    files_exclude = []
-    dirs_exclude = []
-
-    if not request.args.get('filter') is None:
-        files_filter = request.args.get('filter').split(',')
-
-    for doc_rule in dir.rules:
-        if doc_rule.viewer_id is None or doc_rule.viewer_id == map_id:
-            if not doc_rule.filtro is None:
-                list_filter = doc_rule.filtro.split(',')
-                files_filter.extend(x.strip().lower() for x in list_filter if x not in files_filter)
-
-            if not doc_rule.excluir is None:
-                list_exclude = doc_rule.excluir.split(',')
-                files_exclude.extend(x.strip().lower() for x in list_exclude if x not in files_exclude)
-
-            if not doc_rule.excluir_dir is None:
-                list_exclude_dir = doc_rule.excluir_dir.split(',')
-                dirs_exclude.extend(x.strip().lower() for x in list_exclude_dir if x not in dirs_exclude)
-
-
-    recursive = False if (not request.args.get('recursive') is None and request.args.get('recursive').lower() == 'false') else True
-
-    tree = path_hierarchy(http.get_script_root(), folder, path, filepath, files_filter, files_exclude, dirs_exclude, recursive)
-
-    html = render_template("map/_dir_list.html", dir=tree, folder=folder, path=path)
-
-    return jsonify(Success=True, Message=html, Data=tree)
-
-
-@mod.route('/file/<folder>', defaults={'path': ''}, methods=['GET', 'HEAD', 'OPTIONS'])
-@mod.route('/file/<folder>/<path:path>', methods=['GET', 'HEAD', 'OPTIONS'])
-@http.crossdomain(origin='*', methods=['GET', 'DELETE', 'HEAD', 'OPTIONS'], headers=['Origin', 'Content-Type', 'X-API-KEY'])
 def get_file_folder(folder, path):
     dir = db.session.query(DocumentDirectory).filter(DocumentDirectory.codigo.ilike(folder)).first()
 
@@ -182,17 +125,8 @@ def delete_file_folder(folder, path):
     if not dir.allow_delete:
         return jsonify(Success=False, Message='Permission denied', Data=None), 403
 
-    #Check Permissions
-    if not dir.delete_anonymous:
-        if not current_user or not current_user.is_authenticated:
-            if 'X-API-KEY' in request.headers:
-                token = request.headers['X-API-KEY']
-                user = get_user_from_token(token)
-
-                if not user:
-                    return jsonify(Success=False, Message='Bad credentials', Data=None), 401
-            else:
-                return jsonify(Success=False, Message='Permission denied', Data=None), 401
+    if not dir.delete_anonymous and request_user() is None:
+        return jsonify(Success=False, Message='Permission denied', Data=None), 401
 
     filepath = contained_path(dir.path, path)
 
@@ -218,17 +152,8 @@ def upload_file_folder(folder, path):
     if not dir.allow_upload:
         return jsonify(Success=False, Message='Permission denied', Data=None), 403
 
-    #Check Permissions
-    if not dir.upload_anonymous:
-        if not current_user or not current_user.is_authenticated:
-            if 'X-API-KEY' in request.headers:
-                token = request.headers['X-API-KEY']
-                user = get_user_from_token(token)
-
-                if not user:
-                    return jsonify(Success=False, Message='Bad credentials', Data=None), 401
-            else:
-                return jsonify(Success=False, Message='Permission denied', Data=None), 401
+    if not dir.upload_anonymous and request_user() is None:
+        return jsonify(Success=False, Message='Permission denied', Data=None), 401
 
     target_dir = contained_path(dir.path, path)
     if target_dir is None:
@@ -261,7 +186,7 @@ def upload_file_folder(folder, path):
 
                 file.save(filepath)
 
-                file_url = url_for('.get_file_folder', folder=folder,
+                file_url = url_for('.get_file_tmp_folder', folder=folder,
                                    path='{}/{}'.format(path, filename) if path else filename)
 
                 data.append({'upload': True, 'source': file.filename, 'filename': filename, 'overwrite': overwrite,
@@ -271,40 +196,7 @@ def upload_file_folder(folder, path):
                 data.append({'upload': False, 'source': file.filename, 'filename': None, 'overwrite': None,
                              'url': None, 'message': 'Existe um ficheiro com o mesmo nome.'})
 
-    return jsonify(Success=True, Message=None, Errors=errors, Data=data)
+    saved = any(item['upload'] for item in data)
 
+    return jsonify(Success=saved, Message=None, Errors=errors, Data=data)
 
-def path_hierarchy(root, folder, base_path, path, files_filter, files_exclude, dirs_exclude, recursive):
-
-    name = os.path.basename(path)
-
-    hierarchy = {
-        'name': name,
-        'type': ''
-    }
-
-    if os.path.isdir(path):
-        try:
-            hierarchy['type'] = 'folder'
-            hierarchy['folder_id'] = str(uuid.uuid4().hex)
-            hierarchy['url'] = url_for('.get_folder', folder=folder, path=base_path).replace(r'//',r'/'),
-            hierarchy['children'] = [
-                path_hierarchy(root, folder, ''.join([base_path, r'/',  contents]).replace(r'//',r'/'), os.path.join(path, contents), files_filter, files_exclude, dirs_exclude, recursive)
-                for contents in os.listdir(path)
-                if (os.path.isdir(os.path.join(path, contents)) and not contents.lower() in tuple(dirs_exclude) and recursive) or
-                (not os.path.isdir(os.path.join(path, contents)) and
-                 (len(files_filter) == 0 or contents.lower().endswith(tuple(files_filter))) and
-                 (len(files_exclude) == 0 or not contents.lower().endswith(tuple(files_exclude)))
-                 )
-            ]
-        except:
-            pass
-    else:
-        try:
-            hierarchy['type'] = 'file'
-            hierarchy['url'] = url_for('.get_file_folder', folder=folder,
-                                       path=base_path.encode('utf8', 'surrogateescape')).replace(r'//', r'/')
-        except:
-            pass
-
-    return hierarchy
