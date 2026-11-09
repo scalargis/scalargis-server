@@ -15,6 +15,7 @@ from app.database.schema import get_db_schema
 from app.utils import pdf_layout, auditoria
 from app.models.portal import Print, PrintLayout, PrintGroup, PrintOutput, CoordinateSystems
 from app.utils import constants, geo, utc_now, local_now
+from app.utils.files import contained_path
 from instance import settings
 
 
@@ -340,7 +341,7 @@ def viewer_generate_pdf(code, user, request=request):
     return { "Success": True, "Message": None, "Data": data}
 
 
-def viewer_merge_pdf(user, request=request):
+def viewer_merge_pdf(user, request=request, trusted_paths=False):
     data = request.get_json()
 
     viewer_id = None
@@ -350,7 +351,13 @@ def viewer_merge_pdf(user, request=request):
     files = []
     if 'files' in data:
         for f in data.get('files'):
-            files.append(os.path.join(settings.APP_TMP_DIR, f))
+            if trusted_paths:
+                filepath = os.path.join(settings.APP_TMP_DIR, f)
+            else:
+                filepath = contained_path(settings.APP_TMP_DIR, f)
+            if filepath is None:
+                return {"Success": False, "Message": None, "Data": None}
+            files.append(filepath)
 
     filename = str(uuid.uuid4()) + ".pdf"
 

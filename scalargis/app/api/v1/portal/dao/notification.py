@@ -21,6 +21,7 @@ from app.utils.constants import ROLE_ANONYMOUS, ROLE_AUTHENTICATED, ROLE_ADMIN, 
 from app.utils.security import is_admin_or_manager
 from app.utils.settings import get_config_value
 from app.utils import local_today
+from app.utils.files import contained_path, notifications_folder
 from instance import settings
 
 
@@ -209,14 +210,7 @@ def get_file(id, filename):
 
     message_uuid = record.message_uuid
 
-    folder_path = None
-
-    if os.path.exists(get_config_value('EMAIL_NOTIFICATIONS_FOLDER')):
-        folder_path = get_config_value('EMAIL_NOTIFICATIONS_FOLDER')
-    elif os.path.exists(get_config_value('APP_UPLOADS')):
-        folder_path = os.path.join(get_config_value('APP_UPLOADS'), 'notifications')
-    elif os.path.exists(get_config_value('APP_TMP_DIR')):
-        folder_path = os.path.join(get_config_value('APP_TMP_DIR'), 'notifications')
+    folder_path = notifications_folder()
 
     if folder_path:
         folder_path = os.path.join(folder_path, message_uuid)
@@ -231,9 +225,9 @@ def get_file(id, filename):
             data = json.loads(record.message_json)
 
     if folder_path:
-        filepath = os.path.join(folder_path, filename)
+        filepath = contained_path(folder_path, filename)
 
-        if os.path.exists(filepath):
+        if filepath is not None and os.path.exists(filepath):
             try:
                 response = make_response(send_file(filepath, download_name=os.path.basename(filepath)))
                 response.headers['Content-Type'] = guess_type(filename)

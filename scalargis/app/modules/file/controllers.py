@@ -9,6 +9,7 @@ from app.models.files import DocumentDirectory
 from app.database import db
 from instance import settings
 from app.utils import http
+from app.utils.files import bare_filename, contained_path
 from app.utils.security import get_user_from_token
 
 
@@ -17,8 +18,11 @@ mod = Blueprint('file',  __name__, template_folder='templates', static_folder='s
 
 @mod.route('/file/<filename>')
 def get(filename):
+    filepath = contained_path(settings.APP_TMP_DIR, filename)
+    if filepath is None:
+        abort(404)
     try:
-        return send_file(os.path.join(settings.APP_TMP_DIR, filename),
+        return send_file(filepath,
                          #attachment_filename=filename)
                          download_name=filename)
     except Exception as e:
@@ -32,8 +36,8 @@ def get_file_tmp_folder(folder, path):
     if settings.APP_TMP_DIR is None:
         abort(404)
     else:
-        filepath = os.path.join(settings.APP_TMP_DIR, folder, path)
-        if not os.path.exists(filepath):
+        filepath = contained_path(settings.APP_TMP_DIR, folder, path)
+        if filepath is None or not os.path.exists(filepath):
             #Get file based on document directory folder (for compatibility issues)
             return get_file_folder(folder, path)
             #abort(404)
@@ -53,32 +57,15 @@ def get_file_tmp_folder(folder, path):
 
 @mod.route('/file/plantas/template/<filename>')
 def get_planta_template(filename):
+    filepath = contained_path(os.path.join(settings.APP_RESOURCES, 'pdf'), filename)
+    if filepath is None:
+        abort(404)
     try:
-        return send_file(os.path.join(settings.APP_RESOURCES, 'pdf', filename),
+        return send_file(filepath,
                          #attachment_filename=filename)
                          download_name=filename)
     except Exception as e:
         return str(e)
-
-@mod.route('/file/plantas/template/upload', methods=['GET', 'POST'])
-def upload_planta_template():
-    if request.method == 'POST':
-        files = request.files.getlist("files[]")
-
-        data = []
-
-        for file in files:
-            filepath = os.path.join(settings.APP_RESOURCES, 'pdf', file.filename)
-
-            if not os.path.isfile(filepath):
-                file.save(filepath)
-                data.append({'Success': True, 'Filename': file.filename, 'Message': 'Ficheiro gravado com sucesso.'})
-            else:
-                data.append({'Success': False, 'Filename': file.filename, 'Message': 'Existe um ficheiro com o mesmo nome.'})
-
-        return jsonify(Success=True, Message=None, Data=data)
-
-    return jsonify(Success=False, Message='Erro', Data=None)
 
 
 @mod.route('/docs/<folder>/<filename>')
@@ -91,8 +78,8 @@ def get_doc_file(folder, filename):
     if dir is None:
         abort(404)
     else:
-        filepath = os.path.join(dir.path, filename)
-        if not os.path.exists(filepath):
+        filepath = contained_path(dir.path, filename)
+        if filepath is None or not os.path.exists(filepath):
             abort(404)
 
     #file_ext = os.path.splitext(filename)[1][1:]
@@ -113,7 +100,9 @@ def get_folder(folder, path):
     if dir is None:
         abort(404)
     else:
-        filepath = os.path.join(dir.path, path)
+        filepath = contained_path(dir.path, path)
+        if filepath is None:
+            abort(404)
         if not os.path.exists(filepath):
             html = path + '<P><h6>[Não existem documentos]</h6>'
             return jsonify(Success=False, Message=html, Data=None)
@@ -131,7 +120,7 @@ def get_folder(folder, path):
         files_filter = request.args.get('filter').split(',')
 
     for doc_rule in dir.rules:
-        if doc_rule.mapa_id is None or doc_rule.mapa_id == map_id:
+        if doc_rule.viewer_id is None or doc_rule.viewer_id == map_id:
             if not doc_rule.filtro is None:
                 list_filter = doc_rule.filtro.split(',')
                 files_filter.extend(x.strip().lower() for x in list_filter if x not in files_filter)
@@ -163,8 +152,8 @@ def get_file_folder(folder, path):
     if dir is None:
         abort(404)
     else:
-        filepath = os.path.join(dir.path, path)
-        if not os.path.exists(filepath):
+        filepath = contained_path(dir.path, path)
+        if filepath is None or not os.path.exists(filepath):
             abort(404)
 
     if request.method == 'HEAD':
@@ -205,9 +194,9 @@ def delete_file_folder(folder, path):
             else:
                 return jsonify(Success=False, Message='Permission denied', Data=None), 401
 
-    filepath = os.path.join(dir.path, path)
+    filepath = contained_path(dir.path, path)
 
-    if os.path.isfile(filepath):
+    if filepath is not None and os.path.isfile(filepath):
         os.unlink(filepath)
     else:
         return jsonify(Success=False, Message='File not found', Data=None), 404
@@ -241,6 +230,10 @@ def upload_file_folder(folder, path):
             else:
                 return jsonify(Success=False, Message='Permission denied', Data=None), 401
 
+    target_dir = contained_path(dir.path, path)
+    if target_dir is None:
+        abort(404)
+
     errors = False
     data = []
 
@@ -254,13 +247,17 @@ def upload_file_folder(folder, path):
             if dir.upload_generate_filename:
                 filename = '{}{}'.format(str(uuid.uuid4().hex), extension)
 
-            filepath = os.path.join(dir.path, path, filename)
+            filepath = contained_path(target_dir, filename) if bare_filename(filename) == filename else None
 
-            if dir.upload_overwrite or not os.path.isfile(filepath):
+            if filepath is None:
+                errors = True
+                data.append({'upload': False, 'source': file.filename, 'filename': None, 'overwrite': None,
+                             'url': None, 'message': 'Nome de ficheiro inválido.'})
+            elif dir.upload_overwrite or not os.path.isfile(filepath):
                 overwrite = os.path.isfile(filepath)
 
-                if not os.path.exists(os.path.join(dir.path, path)):
-                    os.makedirs(os.path.join(dir.path, path))
+                if not os.path.exists(target_dir):
+                    os.makedirs(target_dir)
 
                 file.save(filepath)
 

@@ -20,6 +20,7 @@ from app.utils.security import get_roles_names, get_user_roles, is_admin_or_mana
 from app.utils.mailing import send_mail
 from app.utils.http import get_host_url, get_script_root, get_base_url, http_session
 from app.utils import auditoria
+from app.utils.files import bare_filename, contained_path, notifications_folder
 from instance import settings
 from ..serializers import generic_api_model, viewer_api_model
 from ..serializers.print import print_api_model, print_group_api_model
@@ -230,6 +231,12 @@ def send_viewer_contact_message(viewer_id, data):
         else:
             return captcha_error_response, 403
 
+    for f in data.get('files') or []:
+        name = bare_filename(f.get('filename'))
+        if name is None:
+            return {"success": False, "message": 'Nome de ficheiro inválido'}, 400
+        f['filename'] = name
+
     attachments = []
 
     message_uuid = str(uuid.uuid4().hex)
@@ -255,23 +262,12 @@ def send_viewer_contact_message(viewer_id, data):
 
     #------ Files -------------------------------
     if 'files' in data:
-        folder_path = None
-
-        if os.path.exists(get_config_value('EMAIL_NOTIFICATIONS_FOLDER')):
-            folder_path = get_config_value('EMAIL_NOTIFICATIONS_FOLDER')
-        elif os.path.exists(get_config_value('APP_UPLOADS')):
-            folder_path = os.path.join(get_config_value('APP_UPLOADS'), 'notifications')
-        elif os.path.exists(get_config_value('APP_TMP_DIR')):
-            folder_path = os.path.join(get_config_value('APP_TMP_DIR'), 'notifications')
+        folder_path = notifications_folder()
 
         if folder_path:
             folder_path = os.path.join(folder_path, message_uuid)
             for f in data.get('files'):
                 original_filename = f.get('filename')
-                name, extension = os.path.splitext(original_filename)
-                filename = str(uuid.uuid4().hex)
-                if extension:
-                    filename = '{}{}'.format(str(uuid.uuid4().hex), extension)
 
                 # Reference: https://www.codestudyblog.com/sfb2002b1/0225213558.html
                 file_dict = re.match("data:(?P<type>.*?);(?P<encoding>.*?),(?P<data>.*)",
@@ -280,7 +276,7 @@ def send_viewer_contact_message(viewer_id, data):
                 if not os.path.exists(folder_path):
                     os.makedirs(folder_path)
 
-                filepath = os.path.join(folder_path, original_filename)
+                filepath = contained_path(folder_path, original_filename)
 
                 output = open(filepath, 'wb')
                 output.write(base64.b64decode(file_dict['data']))

@@ -880,7 +880,7 @@ def create_intersect_attachments(record, filename):
         }
         req = Request.from_values(headers={'Content-Type': 'application/json'}, data=json.dumps(data), method="POST")
 
-        resp = viewer_merge_pdf(user, request=req)
+        resp = viewer_merge_pdf(user, request=req, trusted_paths=True)
 
         if resp and resp.get('Success'):
             final_filename = resp.get('Data', {}).get('filename', None)

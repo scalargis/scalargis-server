@@ -7,6 +7,7 @@ from flask_restx import Resource
 from instance import settings
 from app.utils import http
 from app.utils.documents import path_hierarchy
+from app.utils.files import bare_filename, contained_path
 from app.database import db
 from app.models.files import DocumentDirectory
 from ..endpoints import ns_documents as ns, get_user
@@ -29,8 +30,9 @@ class FileFromTmpDir(Resource):
     @http.crossdomain(origin='*', methods=['GET', 'HEAD', 'OPTIONS'],
                       headers=['Origin', 'Content-Type', 'X-API-KEY'])
     def get(self, filename):
-        if os.path.exists(os.path.join(settings.APP_TMP_DIR, filename)):
-            response = make_response(send_file(os.path.join(settings.APP_TMP_DIR, filename),
+        filepath = contained_path(settings.APP_TMP_DIR, filename)
+        if filepath is not None and os.path.exists(filepath):
+            response = make_response(send_file(filepath,
                              download_name=filename))
 
             return response
@@ -100,8 +102,8 @@ class ListDir(Resource):
         if dir is None:
             return {"message": "Document directory does not exists"}, 404
         else:
-            filepath = os.path.join(dir.path, path)
-            if not os.path.exists(filepath):
+            filepath = contained_path(dir.path, path)
+            if filepath is None or not os.path.exists(filepath):
                 return {"message": "Document directory not found"}, 404
 
         map_id = None
@@ -116,7 +118,7 @@ class ListDir(Resource):
             files_filter = request.args.get('filter').split(',')
 
         for doc_rule in dir.rules:
-            if doc_rule.mapa_id is None or doc_rule.mapa_id == map_id:
+            if doc_rule.viewer_id is None or doc_rule.viewer_id == map_id:
                 if not doc_rule.filtro is None:
                     list_filter = doc_rule.filtro.split(',')
                     files_filter.extend(x.strip().lower() for x in list_filter if x not in files_filter)
@@ -155,8 +157,8 @@ class FileDir(Resource):
         if dir is None:
             return {"message": "Document directory does not exists"}, 404
         else:
-            filepath = os.path.join(dir.path, path)
-            if not os.path.exists(filepath):
+            filepath = contained_path(dir.path, path)
+            if filepath is None or not os.path.exists(filepath):
                 return {"message": "File path not found"}, 404
 
         response = Response()
@@ -175,8 +177,8 @@ class FileDir(Resource):
         if dir is None:
             return {"message": "Document directory does not exists"}, 404
         else:
-            filepath = os.path.join(dir.path, path)
-            if not os.path.exists(filepath):
+            filepath = contained_path(dir.path, path)
+            if filepath is None or not os.path.exists(filepath):
                 return {"message": "File path not found"}, 404
 
         if os.path.isfile(filepath):
@@ -211,9 +213,9 @@ class FileDir(Resource):
             if not user:
                 return {"message": "Unauthorized"}, 401
 
-        filepath = os.path.join(dir.path, path)
+        filepath = contained_path(dir.path, path)
 
-        if os.path.isfile(filepath):
+        if filepath is not None and os.path.isfile(filepath):
             os.unlink(filepath)
         else:
             return {"message": "File path not found"}, 404
@@ -242,6 +244,10 @@ class FileDir(Resource):
             if not user:
                 return {"message": "Unauthorized"}, 401
 
+        target_dir = contained_path(dir.path, path)
+        if target_dir is None:
+            return {"message": "File path not found"}, 404
+
         errors = False
         data = []
 
@@ -255,13 +261,17 @@ class FileDir(Resource):
                 if dir.upload_generate_filename:
                     filename = '{}{}'.format(str(uuid.uuid4().hex), extension)
 
-                filepath = os.path.join(dir.path, path, filename)
+                filepath = contained_path(target_dir, filename) if bare_filename(filename) == filename else None
 
-                if dir.upload_overwrite or not os.path.isfile(filepath):
+                if filepath is None:
+                    errors = True
+                    data.append({'upload': False, 'source': file.filename, 'filename': None, 'overwrite': None,
+                                 'resource_url': None, 'message': 'Invalid file name'})
+                elif dir.upload_overwrite or not os.path.isfile(filepath):
                     overwrite = os.path.isfile(filepath)
 
-                    if not os.path.exists(os.path.join(dir.path, path)):
-                        os.makedirs(os.path.join(dir.path, path))
+                    if not os.path.exists(target_dir):
+                        os.makedirs(target_dir)
 
                     file.save(filepath)
 
