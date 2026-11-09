@@ -20,6 +20,7 @@ import pyproj
 from sqlalchemy import text
 from PIL import Image
 from io import BytesIO
+import ast
 import os
 import re
 from math import pi, cos, sin, floor, ceil
@@ -46,6 +47,21 @@ db_schema = get_db_schema()
 
 ATTRIBUTION_SLOT = 'atribuicoes_val'
 ATTRIBUTION_LINK_SCHEMES = ('http://', 'https://', 'mailto:')
+DB_VAR_PATTERN = re.compile(r'%\[.*\]%')
+
+
+def db_var_reference(txt):
+    """Return the (name, key) pair of a %[...]% layout value, or None when it is not a literal pair."""
+    try:
+        reference = ast.literal_eval(re.search('%.*%', txt).group()[1:-1])
+    except (ValueError, SyntaxError, TypeError, MemoryError, RecursionError):
+        return None
+    if not isinstance(reference, (list, tuple)) or len(reference) != 2:
+        return None
+    name, key = reference
+    if not isinstance(name, str) or isinstance(key, bool) or not isinstance(key, (str, int)):
+        return None
+    return name, key
 
 
 class _AttributionParser(HTMLParser):
@@ -984,19 +1000,23 @@ class Pdf:
                     font = string["font"]
                     fontsize = string["fontsize"]
                     fontcolor = string["fontcolor"]
-                    if str_name in self.config_strings.keys():
-                        page_id = self.config_strings[str_name][1]
-                        if (page_id is None) or (page_id == config["page_id"]):
-                            txt = self.config_strings[str_name][0]
 
-                    if txt is not None and str_name != ATTRIBUTION_SLOT and bool(re.search('%\[.*\]%', txt)):  # find a db_var pattern
-                        var_idenf = eval(re.search('%.*%', txt).group()[1:-1])
-                        if var_idenf[0] in self.db_vars:
+                    if isinstance(txt, str) and str_name != ATTRIBUTION_SLOT and DB_VAR_PATTERN.search(txt):
+                        var_idenf = db_var_reference(txt)
+                        if var_idenf is None:
+                            logger.warning('String %s: the db variable reference is not a [name, key] literal', str_name)
+                            txt = None
+                        elif var_idenf[0] in self.db_vars:
                             dbval = self.db_vars[var_idenf[0]][var_idenf[1]]
                             var_to_rep = re.search('%.*%', txt).group()
                             txt = txt.replace(var_to_rep, dbval)
                         else:
                             txt = None
+
+                    if str_name in self.config_strings.keys():
+                        page_id = self.config_strings[str_name][1]
+                        if (page_id is None) or (page_id == config["page_id"]):
+                            txt = self.config_strings[str_name][0]
 
                     if txt is not None:
                         self.insert_string(x, y, txt, font, fontsize, fontcolor,mode=mode,rotation=rotation)
