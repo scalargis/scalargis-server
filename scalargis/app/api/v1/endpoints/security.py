@@ -311,29 +311,19 @@ class RegistrationConfirmation(Resource):
     """Register confirmation"""
 
     def options(self):
-        return {'Allow': 'GET, POST'}, 200, \
+        return {'Allow': 'POST'}, 200, \
                {'Access-Control-Allow-Origin': '*',
-                'Access-Control-Allow-Methods': 'POST, GET',
+                'Access-Control-Allow-Methods': 'POST',
                 'Access-Control-Allow-Headers': 'Origin, X-Requested-With, Content-Type, Accept'
                 }
 
-    def get(self):
+    def post(self):
         """Confirm user registration with given token"""
 
         data, status = dao_security.confirm_email(request)
 
         return data, status, {'Access-Control-Allow-Origin': '*',
-                              'Access-Control-Allow-Methods': 'POST, GET',
-                              'Access-Control-Allow-Headers': 'Origin, X-Requested-With, Content-Type, Accept'
-                              }
-
-    def post(self):
-        """Confirm user registration with given token and returns authentication token"""
-
-        data, status = dao_security.confirm_email(request)
-
-        return data, status, {'Access-Control-Allow-Origin': '*',
-                              'Access-Control-Allow-Methods': 'POST, GET',
+                              'Access-Control-Allow-Methods': 'POST',
                               'Access-Control-Allow-Headers': 'Origin, X-Requested-With, Content-Type, Accept'
                               }
 

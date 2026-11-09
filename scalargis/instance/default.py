@@ -1,4 +1,5 @@
 import os
+from datetime import timedelta
 
 # -- Turns on debugging features in Flask --
 DEBUG = False
@@ -10,6 +11,8 @@ SECURITY_USER_IDENTITY_ATTRIBUTES = ('username', 'email')
 SECURITY_PASSWORD_HASH = 'bcrypt'
 SECURITY_PASSWORD_SALT = SECRET_KEY
 SECURITY_TRACKABLE = True
+SECURITY_CONFIRM_EMAIL_WITHIN = timedelta(hours=24)
+SECURITY_RESET_PASSWORD_WITHIN = timedelta(hours=2)
 # Avoid conflicts with client endpoints
 SECURITY_URL_PREFIX = "/server"
 

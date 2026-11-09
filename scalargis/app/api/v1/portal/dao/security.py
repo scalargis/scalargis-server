@@ -7,8 +7,8 @@ from werkzeug.local import LocalProxy
 from sqlalchemy import cast, or_, Integer, Boolean, func
 from flask_security.utils import hash_password
 from app.utils.password_policy import enforce_password_policy
-from app.utils.tokens import (confirmation_token as generate_confirmation_token,
-                              confirmation_token_status as confirm_email_token_status)
+from app.utils.tokens import (activation_token, activation_token_status, reset_token, reset_token_status,
+                              new_stamp, within_hours, ACTIVATION_WITHIN_KEY)
 from flask_restx import marshal
 from ..parsers import *
 from app.models.portal import *
@@ -65,11 +65,15 @@ def _get_email_template(template_name, locale):
     return '/v1/security/email/{}/{}'.format(loc, template_name)
 
 
-def send_email_confirmation(user, subject=None, msg=None, template=None, redirect=None, locale=None):
-    #Avoid circular references. TODO: improve main_app reference
-    from app.main import app as main_app
+def _new_link_token(user, build):
+    new_stamp(user)
+    db.session.add(user)
+    db.session.commit()
+    return build(user)
 
-    token = generate_confirmation_token(user)
+
+def send_email_confirmation(user, subject=None, msg=None, template=None, redirect=None, locale=None):
+    token = _new_link_token(user, activation_token)
 
     msg_subject = subject if subject else _get_email_subject('registration', locale)
 
@@ -80,14 +84,11 @@ def send_email_confirmation(user, subject=None, msg=None, template=None, redirec
                                                security=_security,
                                                user=user, token=token, redirect=redirect)
 
-    send_mail(main_app, [user.email], msg_subject, msg_text)
+    send_mail(current_app._get_current_object(), [user.email], msg_subject, msg_text)
 
 
 def send_email_password_reset(user, subject=None, msg=None, template=None, redirect=None, locale=None):
-    # Avoid circular references. TODO: improve main_app reference
-    from app.main import app as main_app
-
-    token = generate_confirmation_token(user)
+    token = _new_link_token(user, reset_token)
 
     msg_subject = subject if subject else _get_email_subject('password_reset', locale)
     msg_text = msg if msg else render_template(template or _get_email_template('reset_instructions.html', locale),
@@ -97,14 +98,11 @@ def send_email_password_reset(user, subject=None, msg=None, template=None, redir
                                             security=_security,
                                             user=user, token=token, redirect=redirect)
 
-    send_mail(main_app, [user.email], msg_subject, msg_text)
+    send_mail(current_app._get_current_object(), [user.email], msg_subject, msg_text)
 
 
 def send_email_user_registration(user, subject=None, msg=None, template=None, redirect=None, locale=None):
-    # Avoid circular references. TODO: improve main_app reference
-    from app.main import app as main_app
-
-    token = generate_confirmation_token(user)
+    token = _new_link_token(user, activation_token)
 
     msg_subject = subject if subject else _get_email_subject('registration', locale)
     msg_text = msg if msg else render_template(template or _get_email_template('registration_instructions.html', locale),
@@ -114,7 +112,7 @@ def send_email_user_registration(user, subject=None, msg=None, template=None, re
                                     security=_security,
                                     user=user, token=token, redirect=redirect)
 
-    send_mail(main_app, [user.email], msg_subject, msg_text)
+    send_mail(current_app._get_current_object(), [user.email], msg_subject, msg_text)
 
 
 def is_pending(user):
@@ -153,7 +151,8 @@ def register_user(request):
     pending = _find_user_by_email(email)
     if is_pending(pending):
         send_email_user_registration(pending, redirect=redirect, locale=locale)
-        return {'success': True, 'message': 'registration_email_sent', 'email': pending.email}, 200
+        return {'success': True, 'message': 'registration_email_sent', 'email': pending.email,
+                'confirm_within_hours': within_hours(ACTIVATION_WITHIN_KEY)}, 200
 
     user = _find_user_by_username_or_email(username, email)
 
@@ -176,7 +175,8 @@ def register_user(request):
 
     send_email_user_registration(user, redirect=redirect, locale=locale)
 
-    return {'success': True, 'message': 'registration_email_sent', 'email': email}, 200
+    return {'success': True, 'message': 'registration_email_sent', 'email': email,
+            'confirm_within_hours': within_hours(ACTIVATION_WITHIN_KEY)}, 200
 
 
 
@@ -202,66 +202,33 @@ def send_confirmation(request):
 
 
 def confirm_email(request):
-    token = None
-
-    authenticated = False
-    user_token = None
-
     from app.database import db
 
-    if request.method == 'POST':
-        if request.is_json:
-            token = request.json.get('token')
-        else:
-            cred = json.loads(request.data.decode('utf-8'))
-            token = cred.get('token')
+    if request.is_json:
+        token = request.json.get('token')
     else:
-        if 'token' in request.args:
-            token = request.args.get('token')
+        token = json.loads(request.data.decode('utf-8') or '{}').get('token')
 
-    if token:
-        expired, invalid, user = confirm_email_token_status(token)
-    else:
-        return { 'status': 401, 'error': True, 'message': 'registration_confirmation_invalid'}, 401
-
-    already_confirmed = user is not None and user.confirmed_at is not None
-
-    if expired and not already_confirmed:
-        return { 'status': 401, 'error': True, 'message': 'registration_confirmation_expired'}, 401
-    if invalid or (expired and not already_confirmed):
-        return { 'status': 401, 'error': True, 'message': 'registration_confirmation_invalid'}, 401
-
-    if user:
-        user_token = user.get_auth_token()
-
-        authenticated = True
-
-        user_roles = []
-        for ru in user.roles:
-            user_roles.append(ru.name)
-        user_roles.append(constants.ROLE_AUTHENTICATED)
-
-        if not already_confirmed:
-            user.active = True
-            user.confirmed_at = utc_now()
-
-            db.session.add(user)
-            db.session.commit()
-
-        data = {
-            'authenticated': authenticated,
-            'token': user_token or '',
-            'username': user.username,
-            'name': user.name,
-            'userroles': user_roles,
-            'auth_token': user.auth_token if user.auth_token and
-                                             (
-                                             not user.auth_token_expire or user.auth_token_expire >= utc_now()) else ''
-        }
-    else:
+    if not token:
         return {'status': 401, 'error': True, 'message': 'registration_confirmation_invalid'}, 401
 
-    return data, 200
+    expired, invalid, user = activation_token_status(token)
+
+    if invalid or user is None:
+        return {'status': 401, 'error': True, 'message': 'registration_confirmation_invalid'}, 401
+    if expired:
+        return {'status': 401, 'error': True, 'message': 'registration_confirmation_expired'}, 401
+
+    if user.confirmed_at is not None:
+        return {'confirmed': True, 'username': user.username, 'message': 'registration_already_confirmed'}, 200
+
+    user.active = True
+    user.confirmed_at = utc_now()
+    new_stamp(user)
+    db.session.add(user)
+    db.session.commit()
+
+    return {'confirmed': True, 'username': user.username, 'message': 'registration_confirmed'}, 200
 
 
 def send_password_reset(request):
@@ -281,7 +248,7 @@ def send_password_reset(request):
     if user is None:
         user = User.query.filter(func.lower(User.username) == func.lower(username)).first() if username else None
 
-    if user is not None:
+    if user is not None and user.is_active:
         redirect = redirect if redirect else user.default_viewer or ''
         send_email_password_reset(user, redirect=redirect, locale=locale)
 
@@ -299,15 +266,15 @@ def password_reset_validation(request):
             token = cred.get('token')
 
     if token:
-        expired, invalid, user = confirm_email_token_status(token)
+        expired, invalid, user = reset_token_status(token)
     else:
+        return {'status': 401, 'error': True, 'message': 'password_reset_validation_invalid'}, 401
+
+    if invalid:
         return {'status': 401, 'error': True, 'message': 'password_reset_validation_invalid'}, 401
 
     if expired:
         return {'status': 401, 'error': True, 'message': 'password_reset_validation_expired'}, 401
-
-    if invalid:
-        return {'status': 401, 'error': True, 'message': 'password_reset_validation_invalid'}, 401
 
     if user:
         if not user.is_active:
@@ -341,16 +308,20 @@ def set_password(request):
             password = cred.get('password')
 
     if token:
-        expired, invalid, user = confirm_email_token_status(token)
+        expired, invalid, user = reset_token_status(token)
     else:
         return { 'status': 401, 'error': True, 'message': 'password_set_invalid'}, 401
 
-    if expired or invalid:
+    if invalid or user is None or not user.is_active:
+        return { 'status': 401, 'error': True, 'message': 'password_set_invalid'}, 401
+
+    if expired:
         return { 'status': 401, 'error': True, 'message': 'password_set_expired'}, 401
 
     if user:
         enforce_password_policy(password)
         user.password = hash_password(password)
+        new_stamp(user)
         db.session.add(user)
         db.session.commit()
 

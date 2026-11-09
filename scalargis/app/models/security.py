@@ -1,8 +1,6 @@
 import uuid
 
-from flask import current_app
 from sqlalchemy.ext.hybrid import hybrid_property
-from werkzeug.local import LocalProxy
 from flask_security import UserMixin, RoleMixin
 
 from app.database import db
@@ -33,9 +31,6 @@ groups_users = db.Table('groups_users',
                        db.Column('user_id', db.Integer(), db.ForeignKey('{schema}.user.id'.format(schema=db_schema))),
                        db.Column('group_id', db.Integer(), db.ForeignKey('{schema}.group.id'.format(schema=db_schema))),
                        schema=db_schema)
-
-
-_security = LocalProxy(lambda: current_app.extensions['security'])
 
 
 class Permission(db.Model, PortalTable):
@@ -106,32 +101,6 @@ class User(db.Model, PortalTable, UserMixin):
                             backref=db.backref('users', lazy='dynamic'))
     groups = db.relationship('Group', secondary=groups_users,
                             backref=db.backref('users', lazy='dynamic'))
-
-    '''
-    def get_mail_confirm_token(self):
-        confirm_salt = _security.confirm_salt or "confirm-salt"
-
-        s = URLSafeTimedSerializer(
-            current_app.config["SECRET_KEY"], salt=confirm_salt
-        )
-        return s.dumps(self.email, salt=confirm_salt)
-
-
-    @staticmethod
-    def verify_mail_confirm_token(token):
-        confirm_salt = _security.confirm_salt or "confirm-salt"
-        max_age = _security.SECURITY_CONFIRM_EMAIL_WITHIN * 24 * 60 * 60 * 60 if _security.SECURITY_CONFIRM_EMAIL_WITHIN  else 3600
-
-        try:
-            s = URLSafeTimedSerializer(
-                current_app.config["SECRET_KEY"], salt=confirm_salt
-            )
-            email = s.loads(token, salt=confirm_salt, max_age=3600)
-            return email
-        except (SignatureExpired, BadSignature):
-            return None
-    '''
-
 
     def __str__(self):
         return '<User id=%s email=%s>' % (self.id, self.email)
