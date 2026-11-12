@@ -1,8 +1,15 @@
 # ScalarGIS Server
 
-Python/Flask backend — REST API, database (PostGIS), Waitress server. Serves static frontend builds in production.
+ScalarGIS is an open source WebGIS platform: map viewers, an admin backoffice, and a plugin system.
+This repo is the Python/Flask backend: REST API, PostGIS database, Waitress server. It serves the client builds in production.
 
-> **Two-repo setup:** run the server first, then set up the client. → [scalargis-client README](../scalargis-client/README.md)
+[![License](https://img.shields.io/github/license/scalargis/scalargis-server)](LICENSE.md)
+[![Build](https://img.shields.io/github/actions/workflow/status/scalargis/scalargis-server/docker-latest.yml?branch=main&label=build)](https://github.com/scalargis/scalargis-server/actions/workflows/docker-latest.yml)
+[![Release](https://img.shields.io/github/v/release/scalargis/scalargis-server?include_prereleases)](https://github.com/scalargis/scalargis-server/releases)
+
+[Website](https://scalargis.com) · [Docs](https://docs.scalargis.com) · [Demo](https://demo.scalargis.com) · [Client repo](https://github.com/scalargis/scalargis-client#readme)
+
+> **Two-repo setup:** run the server first, then set up the [client](https://github.com/scalargis/scalargis-client#readme).
 
 ---
 
@@ -68,3 +75,12 @@ docker exec scalargis-local-db psql -U postgres -d scalargis -c "DROP SCHEMA IF 
 
 **Multiple project configs:** create one file per project (e.g. `development_local_projecta.py`) and switch `APP_CONFIG_FILE` between them.
 
+---
+
+## Extend it
+
+Server extensions add routes, models, and jobs. See the [components and extensions guide](https://docs.scalargis.com/development/components-extensions/).
+
+## License
+
+[AGPL-3.0](LICENSE.md)
