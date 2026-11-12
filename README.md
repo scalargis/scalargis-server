@@ -3,13 +3,12 @@
 ScalarGIS is an open source WebGIS platform: map viewers, an admin backoffice, and a plugin system.
 This repo is the Python/Flask backend: REST API, PostGIS database, Waitress server. It serves the client builds in production.
 
-[![License](https://img.shields.io/github/license/scalargis/scalargis-server)](LICENSE.md)
 [![Build](https://img.shields.io/github/actions/workflow/status/scalargis/scalargis-server/docker-latest.yml?branch=main&label=build)](https://github.com/scalargis/scalargis-server/actions/workflows/docker-latest.yml)
 [![Release](https://img.shields.io/github/v/release/scalargis/scalargis-server?include_prereleases)](https://github.com/scalargis/scalargis-server/releases)
 
 [Website](https://scalargis.com) · [Docs](https://docs.scalargis.com) · [Demo](https://demo.scalargis.com) · [Client repo](https://github.com/scalargis/scalargis-client#readme)
 
-![A ScalarGIS map viewer with Sentinel-2 imagery and the administrative boundaries of Portugal](.github/assets/demo-viewer.png)
+<img src=".github/assets/demo-viewer.png" alt="A ScalarGIS map viewer with Sentinel-2 imagery and the administrative boundaries of Portugal" width="600">
 
 > **Two-repo setup:** run the server first, then set up the [client](https://github.com/scalargis/scalargis-client#readme).
 
@@ -82,7 +81,3 @@ docker exec scalargis-local-db psql -U postgres -d scalargis -c "DROP SCHEMA IF 
 ## Extend it
 
 Server extensions add routes, models, and jobs. See the [components and extensions guide](https://docs.scalargis.com/development/components-extensions/).
-
-## License
-
-[AGPL-3.0](LICENSE.md)
