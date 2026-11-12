@@ -128,13 +128,25 @@ def get_by_id(id):
     if data is None:
         return None
 
-    user_roles = [r.name for r in user.roles]
-
-    if not is_admin_or_manager(user) and data.viewer.owner_id != user.id:
-        if not (set(user_roles or []) & set(data.viewer.notifications_manager_roles or [])):
-            return None
+    if not can_read_message(user, data):
+        return None
 
     return data
+
+
+def can_read_message(user, record):
+    """True when the user is an admin, a manager, the viewer owner, or holds a notification role of the viewer."""
+    if user is None or user.id is None:
+        return False
+    if is_admin_or_manager(user):
+        return True
+    viewer = record.viewer
+    if viewer is None:
+        return False
+    if viewer.owner_id == user.id:
+        return True
+    user_roles = [r.name for r in user.roles]
+    return bool(set(user_roles) & set(viewer.notifications_manager_roles or []))
 
 
 def get_new_notifications():
@@ -170,11 +182,8 @@ def update(id, data):
         return None
 
     if record:
-        user_roles = [r.name for r in user.roles]
-
-        if not is_admin_or_manager(user) and record.viewer.owner_id != user.id:
-            if not (set(user_roles or []) & set(record.viewer.notifications_manager_roles or [])):
-                return None
+        if not can_read_message(user, record):
+            return None
 
         for key in ('checked', 'closed'):
             if key in data and data[key] is not None:
@@ -195,18 +204,10 @@ def update(id, data):
 def get_file(id, filename):
     user = get_user(request)
 
-    # TODO
-    #if user is None or user.id is None:
-    #    return None, None
-
     record = get_record_by_id(ContactMessage, id)
 
-    if not record:
+    if not record or not can_read_message(user, record):
         return None, None
-
-    # TODO
-    #if not is_admin_or_manager(user) and record.viewer.owner_id != user.id:
-    #    return None, None
 
     message_uuid = record.message_uuid
 

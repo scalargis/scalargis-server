@@ -3,6 +3,7 @@ from app.utils import utc_now
 import logging
 
 from flask import request
+from werkzeug.exceptions import Forbidden
 import sqlalchemy
 from sqlalchemy.orm import aliased
 from sqlalchemy import cast, or_, Integer, Boolean
@@ -13,7 +14,7 @@ from geoalchemy2 import shape
 from app.database import db
 from ..parsers import *
 from app.models.security import Role
-from app.utils.security import is_admin_or_manager
+from app.utils.security import is_admin_or_manager, can_edit
 from app.models.portal import Print, PrintGroup, PrintElement, PrintLayout, PrintGroupPrint, \
     PrintGroupChild, PrintGroupLayout, Viewer, ViewerPrint, ViewerPrintGroup
 from ...endpoints import get_user
@@ -215,7 +216,7 @@ def create(data):
                     break
 
     record.owner_id = user.id
-    if 'owner_id' in data:
+    if 'owner_id' in data and is_admin_or_manager(user):
         record.owner_id = data.get('owner_id')
 
     record.id_user_create= user.id
@@ -233,8 +234,8 @@ def update(id, data):
     record = Print.query.filter(Print.id == id).one_or_none()
 
     if record:
-        if not is_admin_or_manager(user) and record.owner_id != user.id:
-            return None
+        if not can_edit(user, record):
+            raise Forbidden()
 
         roles = db.session.query(Role).all()
 
@@ -295,7 +296,7 @@ def update(id, data):
                         record.roles.append(role)
                         break
 
-        if 'owner_id' in data:
+        if 'owner_id' in data and is_admin_or_manager(user):
             record.owner_id = data.get('owner_id')
 
         record.id_user_update = user.id
@@ -314,7 +315,7 @@ def delete(id):
     record = Print.query.filter(Print.id == id).one_or_none()
 
     if record:
-        if not is_admin_or_manager(user) and record.owner_id != user.id:
+        if not can_edit(user, record):
             return 403
 
         db.session.delete(record)
@@ -341,9 +342,12 @@ def delete_list(data):
         filter = json.loads(data or '{}')
         if 'id' in filter:
             values = filter['id']
-            for id in values:
-                rec = db.session.query(model).filter(model.id == id).one()
-
+            records = db.session.query(model).filter(model.id.in_(values)).all()
+            if len(records) != len(set(values)):
+                return 404
+            if not all(can_edit(user, rec) for rec in records):
+                return 403
+            for rec in records:
                 db.session.delete(rec)
 
             try:
@@ -579,7 +583,7 @@ def create_print_group(data):
                     break
 
     record.owner_id = user.id
-    if 'owner_id' in data:
+    if 'owner_id' in data and is_admin_or_manager(user):
         record.owner_id = data.get('owner_id')
 
     record.id_user_create = user.id
@@ -597,8 +601,8 @@ def update_print_group(id, data):
     record = PrintGroup.query.filter(PrintGroup.id == id).one_or_none()
 
     if record:
-        if not is_admin_or_manager(user) and record.owner_id != user.id:
-            return None
+        if not can_edit(user, record):
+            raise Forbidden()
 
         roles = db.session.query(Role).all()
 
@@ -675,7 +679,7 @@ def update_print_group(id, data):
                         record.roles.append(role)
                         break
 
-        if 'owner_id' in data:
+        if 'owner_id' in data and is_admin_or_manager(user):
             record.owner_id = data.get('owner_id')
 
         record.id_user_update = user.id
@@ -694,7 +698,7 @@ def delete_print_group(id):
     record = PrintGroup.query.filter(PrintGroup.id == id).one_or_none()
 
     if record:
-        if not is_admin_or_manager(user) and record.owner_id != user.id:
+        if not can_edit(user, record):
             return 403
 
         db.session.delete(record)
@@ -721,9 +725,12 @@ def delete_print_group_list(data):
         filter = json.loads(data or '{}')
         if 'id' in filter:
             values = filter['id']
-            for id in values:
-                rec = db.session.query(model).filter(model.id == id).one()
-
+            records = db.session.query(model).filter(model.id.in_(values)).all()
+            if len(records) != len(set(values)):
+                return 404
+            if not all(can_edit(user, rec) for rec in records):
+                return 403
+            for rec in records:
                 db.session.delete(rec)
 
             try:

@@ -4,6 +4,7 @@ import uuid
 from app.utils import utc_now
 
 from flask import request
+from werkzeug.exceptions import Forbidden
 from sqlalchemy import cast, or_, Integer, Boolean
 from sqlalchemy.exc import IntegrityError
 
@@ -13,7 +14,7 @@ from app.models.portal import *
 from ...endpoints import get_user
 from . import get_record_by_id
 from app.utils.constants import ROLE_ANONYMOUS, ROLE_AUTHENTICATED
-from app.utils.security import is_admin_or_manager
+from app.utils.security import is_admin_or_manager, can_edit
 from ..dao.app import get_viewer_record
 
 
@@ -208,8 +209,8 @@ def update(id, data):
     record = Viewer.query.filter(Viewer.id == id).one_or_none()
 
     if record:
-        if not is_admin_or_manager(user) and record.owner_id != user.id:
-            return None
+        if not can_edit(user, record):
+            raise Forbidden()
 
         roles = db.session.query(Role).all()
 
@@ -260,7 +261,7 @@ def update(id, data):
                         break
         # End Roles
 
-        if 'owner_id' in data:
+        if 'owner_id' in data and is_admin_or_manager(user):
             record.owner_id = data.get('owner_id')
 
         record.id_user_update = user.id
@@ -279,7 +280,7 @@ def delete(id):
     record = Viewer.query.filter(Viewer.id == id).one_or_none()
 
     if record:
-        if not is_admin_or_manager(user) and record.owner_id != user.id:
+        if not can_edit(user, record):
             return 403
 
         # Delete user viewer sessions
@@ -319,7 +320,7 @@ def delete_list(data):
             for id in values:
                 record = db.session.query(model).filter(model.id == id).one()
 
-                if is_admin_or_manager(user) or record.owner_id == user.id:
+                if can_edit(user, record):
                     # Tipos Plantas (Child Groups)
                     for print_group in reversed(record.print_group_assoc):
                         db.session.delete(print_group)

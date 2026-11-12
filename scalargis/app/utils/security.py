@@ -655,3 +655,12 @@ def is_admin_or_manager(user):
                 is_admin_manager = True
                 break
     return is_admin_manager
+
+
+def can_edit(user, record):
+    """True when the user is an admin or a manager, or owns the record. A record with no owner column needs a manager."""
+    if user is None or user.id is None:
+        return False
+    if is_admin_or_manager(user):
+        return True
+    return hasattr(type(record), 'owner_id') and record.owner_id is not None and record.owner_id == user.id
