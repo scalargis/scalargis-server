@@ -11,6 +11,7 @@ from requests.adapters import HTTPAdapter
 
 
 HTTP_POOL_SIZE = 32
+HTTP_USER_AGENT = 'ScalarGIS'
 PDF_STRICT_READ_TIMEOUT = 30
 
 _session = None
@@ -155,11 +156,12 @@ def strict_print_timeout():
 
 
 class TimeoutSession(requests.Session):
-    """Session that applies a default timeout and keeps no cookies between requests."""
+    """Session that applies a default timeout, sends the ScalarGIS User-Agent, and keeps no cookies between requests."""
 
     def __init__(self, timeout=None):
         super().__init__()
         self.default_timeout = timeout
+        self.headers['User-Agent'] = HTTP_USER_AGENT
         self.cookies.set_policy(DefaultCookiePolicy(allowed_domains=[]))
         adapter = HTTPAdapter(pool_connections=HTTP_POOL_SIZE, pool_maxsize=HTTP_POOL_SIZE)
         self.mount('http://', adapter)
