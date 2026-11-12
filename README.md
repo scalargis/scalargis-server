@@ -9,6 +9,8 @@ This repo is the Python/Flask backend: REST API, PostGIS database, Waitress serv
 
 [Website](https://scalargis.com) · [Docs](https://docs.scalargis.com) · [Demo](https://demo.scalargis.com) · [Client repo](https://github.com/scalargis/scalargis-client#readme)
 
+![A ScalarGIS map viewer with Sentinel-2 imagery and the administrative boundaries of Portugal](.github/assets/demo-viewer.png)
+
 > **Two-repo setup:** run the server first, then set up the [client](https://github.com/scalargis/scalargis-client#readme).
 
 ---
