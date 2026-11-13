@@ -14,7 +14,7 @@ from ..parsers import *
 from app.models.portal import *
 from ...endpoints import check_user, get_user
 from ..serializers import account_api_model
-from . import get_record_by_id
+from . import get_record_by_id, refuse_read_only
 from sqlalchemy.exc import IntegrityError
 from app.utils.constants import ROLE_ANONYMOUS, ROLE_AUTHENTICATED
 from app.utils.mailing import send_mail
@@ -558,6 +558,7 @@ def update_role(id, data):
     model = Role
 
     record = db.session.query(model).filter(model.id == id).one()
+    refuse_read_only(record)
 
     #for key in data:
     #    print(key)
@@ -576,6 +577,7 @@ def delete_role(id):
     model = Role
 
     record = db.session.query(model).filter(model.id == id).one()
+    refuse_read_only(record)
     db.session.delete(record)
     try:
         db.session.commit()
@@ -596,8 +598,9 @@ def delete_role_list(data):
         filter = json.loads(data or '{}')
         if 'id' in filter:
             values = filter['id']
-            for id in values:
-                rec = db.session.query(model).filter(model.id == id).one()
+            recs = [db.session.query(model).filter(model.id == id).one() for id in values]
+            refuse_read_only(*recs)
+            for rec in recs:
                 db.session.delete(rec)
 
             try:
@@ -718,6 +721,7 @@ def update_group(id, data):
     model = Group
 
     record = db.session.query(model).filter(model.id == id).one()
+    refuse_read_only(record)
 
     roles = db.session.query(Role).all()
     users = db.session.query(User).all()
@@ -765,6 +769,7 @@ def delete_group(id):
     model = Group
 
     record = db.session.query(model).filter(model.id == id).one()
+    refuse_read_only(record)
     db.session.delete(record)
     try:
         db.session.commit()
@@ -785,8 +790,9 @@ def delete_group_list(data):
         filter = json.loads(data or '{}')
         if 'id' in filter:
             values = filter['id']
-            for id in values:
-                rec = db.session.query(model).filter(model.id == id).one()
+            recs = [db.session.query(model).filter(model.id == id).one() for id in values]
+            refuse_read_only(*recs)
+            for rec in recs:
                 db.session.delete(rec)
 
             try:

@@ -995,7 +995,7 @@ def get_viewer_content(content_id):
 
     record = ViewerContent.query.filter(ViewerContent.id == content_id).one_or_none()
 
-    if record is None:
+    if record is None or record.active is False:
         return None, 404
 
     if record.roles:

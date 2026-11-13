@@ -10,6 +10,7 @@ from app.database import db
 from ..parsers import *
 from app.models.portal import CoordinateSystems
 from app.api.v1.endpoints import get_user
+from . import refuse_read_only
 
 
 generic_models = {
@@ -18,6 +19,7 @@ generic_models = {
     }
 
 generic_fields = [
+    "read_only",
     "code",
     "name",
     "description",
@@ -111,6 +113,7 @@ def update_generic(entity_name, id, data):
     model = generic_models[entity_name.lower()]
 
     record = db.session.query(model).filter(model.id == id).one()
+    refuse_read_only(record)
 
     record.code = data['code'] if 'code' in data else None
     record.name = data['name'] if 'name' in data else None
@@ -142,6 +145,7 @@ def delete_generic(entity_name, id):
     model = generic_models[entity_name.lower()]
 
     record = db.session.query(model).filter(model.id == id).one()
+    refuse_read_only(record)
     db.session.delete(record)
     try:
         db.session.commit()
@@ -162,8 +166,9 @@ def delete_generic_list(entity_name, data):
         filter = json.loads(data or '{}')
         if 'id' in filter:
             values = filter['id']
-            for id in values:
-                rec = db.session.query(model).filter(model.id == id).one()
+            recs = [db.session.query(model).filter(model.id == id).one() for id in values]
+            refuse_read_only(*recs)
+            for rec in recs:
                 db.session.delete(rec)
 
             try:

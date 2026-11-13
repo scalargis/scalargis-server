@@ -22,8 +22,8 @@ def app():
         db.session.execute(text("attach database ':memory:' as {0}".format(analysis.db_schema)))
         db.session.execute(text("create table {0}.site_settings (code text, setting_value text)".format(analysis.db_schema)))
         db.session.execute(text("insert into {0}.site_settings values ('cc_intersect', '{{\"layers\": []}}')".format(analysis.db_schema)))
-        db.session.execute(text("create table {0}.widget (code text, config text)".format(analysis.db_schema)))
-        db.session.execute(text("insert into {0}.widget values ('w1', '{{\"strings\": []}}')".format(analysis.db_schema)))
+        db.session.execute(text("create table {0}.widget (code text, config text, active boolean)".format(analysis.db_schema)))
+        db.session.execute(text("insert into {0}.widget (code, config) values ('w1', '{{\"strings\": []}}')".format(analysis.db_schema)))
         yield flask_app
         db.session.remove()
 

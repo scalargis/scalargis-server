@@ -12,6 +12,7 @@ from app.database import db
 from ..parsers import *
 from app.models.portal import SiteSettings
 from app.api.v1.endpoints import get_user
+from . import refuse_read_only
 
 settings_models = {
     "site": SiteSettings
@@ -96,6 +97,7 @@ def update(entity_name, id, data):
     model = settings_models[entity_name.lower()]
 
     record = db.session.query(model).filter(model.id == id).one()
+    refuse_read_only(record)
 
     #for key in data:
     #    print(key)
@@ -116,6 +118,7 @@ def delete(entity_name, id):
     model = settings_models[entity_name.lower()]
 
     record = db.session.query(model).filter(model.id == id).one()
+    refuse_read_only(record)
     db.session.delete(record)
     try:
         db.session.commit()
@@ -136,8 +139,9 @@ def delete_list(entity_name, data):
         filter = json.loads(data or '{}')
         if 'id' in filter:
             values = filter['id']
-            for id in values:
-                rec = db.session.query(model).filter(model.id == id).one()
+            recs = [db.session.query(model).filter(model.id == id).one() for id in values]
+            refuse_read_only(*recs)
+            for rec in recs:
                 db.session.delete(rec)
 
             try:
