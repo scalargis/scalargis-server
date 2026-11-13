@@ -9,6 +9,7 @@ import io
 from flask import Request, request, send_file, render_template, render_template_string
 from flask_restx import abort
 from sqlalchemy import text
+from werkzeug.wsgi import ClosingIterator
 from pyexcel_xls import save_data as save_xls
 from pyexcel_io import save_data as save_csv
 from reportlab.pdfgen import canvas
@@ -287,40 +288,51 @@ def export_intersect_results(record, out_format, geom_wkt=None, geom_srid=4326, 
 
         data[group] = records
 
-    # Default filename
-    file_name = "intersect_layers"
+    made_files = []
+    try:
+        return _write_and_send_export(record, out_format, data, made_files, out_srid)
+    except Exception:
+        _remove_files(made_files)
+        raise
+
+
+def _remove_files(paths):
+    """Deletes the files of a list and logs the ones that cannot be deleted."""
+    for path in paths:
+        try:
+            if os.path.isfile(path):
+                os.remove(path)
+        except OSError as err:
+            logger.warning("Could not delete export file %s: %s", path, err)
+
+
+def _send_and_remove(path, download_name, made_files):
+    """Sends a file and deletes the files of the export when the response closes."""
+    response = send_file(path, download_name=download_name)
+    response.response = ClosingIterator(response.response, [lambda: _remove_files(made_files)])
+    return response
+
+
+def _write_and_send_export(record, out_format, data, made_files, out_srid):
+    """Writes the export of an intersect result to a new file in tmp and sends it."""
+    base_name = "intersect_layers"
+    extension = 'csvz' if out_format not in ('xls', 'pdf', 'gpkg') else out_format
+    file_name = "{0}-{1}.{2}".format(base_name, uuid.uuid4(), extension)
+    filename = os.path.join(settings.APP_TMP_DIR, file_name)
+    made_files.append(filename)
 
     # Send XLS file
     if out_format == 'xls':
-        outfile = file_name + ".xls"
-        file_name = "{0}-{1}.{2}".format(file_name, uuid.uuid4(), out_format)
-        filename = os.path.join(settings.APP_TMP_DIR, file_name)
-        if os.path.exists(filename):
-            os.remove(filename)
         save_xls(filename, data)
-        return send_file(filename, download_name=outfile)
+        return _send_and_remove(filename, base_name + ".xls", made_files)
     # Send PDF file
     if out_format == 'pdf':
-        outfile = file_name + ".pdf"
-        file_name = "{0}-{1}.{2}".format(file_name, uuid.uuid4(), out_format)
-        filename = os.path.join(settings.APP_TMP_DIR, file_name)
-        if os.path.exists(filename):
-            os.remove(filename)
-
         if create_pdf_intersect_results(record, filename):
-            prints_filename = create_intersect_attachments(record, file_name)
-            if prints_filename:
-                return send_file(prints_filename, download_name=outfile)
-            else:
-                return send_file(filename, download_name=outfile)
-
-        else:
-            abort(500, custom='value')
+            prints_filename = create_intersect_attachments(record, file_name, made_files)
+            return _send_and_remove(prints_filename or filename, base_name + ".pdf", made_files)
+        abort(500, custom='value')
     # Send GeoPackage file
     elif out_format == 'gpkg':
-        outfile = file_name + ".gpkg"
-        file_name = "{0}-{1}.{2}".format(file_name, uuid.uuid4(), out_format)
-        filename = os.path.join(settings.APP_TMP_DIR, file_name)
         _layers = record.get("layers", [])
         if record.get("output_geom", None):
             _layers.append({
@@ -334,25 +346,16 @@ def export_intersect_results(record, out_format, geom_wkt=None, geom_srid=4326, 
                     { "geom": record.get("output_geom")}
                 ]
             })
-        if os.path.exists(filename):
-            os.remove(filename)
         build_geopackage(
             json_payload=_layers,
             filename=filename,
             target_crs="EPSG:{0}".format(out_srid)
         )
-        return send_file(filename, download_name=outfile)
+        return _send_and_remove(filename, base_name + ".gpkg", made_files)
     # Send CSV file
     else:
-        outfile = file_name + ".zip"
-        filename = os.path.join(settings.APP_TMP_DIR, file_name + ".csvz")
-        if os.path.exists(filename):
-            os.remove(filename)
         save_csv(filename, data)
-        if os.path.exists(os.path.join(settings.APP_TMP_DIR, outfile)):
-            os.remove(os.path.join(settings.APP_TMP_DIR, outfile))
-
-        return send_file(filename, download_name=outfile)
+        return _send_and_remove(filename, base_name + ".zip", made_files)
 
 
 def _format_number(value):
@@ -527,8 +530,6 @@ def create_pdf_intersect_results(record, filename):
 
 
 def create_map_image(geom_ewkt, map_config):
-    img_str = None
-
     geom_srid = geom_ewkt.split(';')[0].split('=')[1]
     geom_wkt = geom_ewkt.split(';')[1]
 
@@ -557,13 +558,21 @@ def create_map_image(geom_ewkt, map_config):
 
     layers = map_config.get('layers', [])
 
-    if (len(layers)) < 0:
-        return None, None, None, None, None
+    filepath = os.path.join(settings.APP_TMP_DIR, str(uuid.uuid4()) + ".pdf")
+    try:
+        img_str, map_extent = _draw_map_image(filepath, layers, bbox, width, height, geom, geom_wkt, out_srid,
+                                              scale, center, map_config.get('style'))
+    finally:
+        _remove_files([filepath])
 
-    filename = str(uuid.uuid4()) + ".pdf"
+    return img_str, img_width, img_height, map_extent, scale
 
-    can = canvas.Canvas(os.path.join(settings.APP_TMP_DIR, filename), pagesize=(width, height))
-    #can = canvas.Canvas(os.path.join(settings.APP_TMP_DIR, filename), pagesize=A4)
+
+def _draw_map_image(filepath, layers, bbox, width, height, geom, geom_wkt, out_srid, scale, center, style):
+    """Draws the map layers and the geometry to a PDF file and returns it as a base64 PNG with its extent."""
+    img_str = None
+
+    can = canvas.Canvas(filepath, pagesize=(width, height))
 
     map_extent = bbox
 
@@ -587,32 +596,48 @@ def create_map_image(geom_ewkt, map_config):
         except Exception as err:
             logger.warning(err)
 
-    #draw_geometry(can, 6000, center.x, center.y, width / mm, height / mm, 0, 0, geom, map_config.get('style', None))
-    draw_geometry(can, scale, center.x, center.y, width, height, 0, 0, geom, map_config.get('style', None))
+    draw_geometry(can, scale, center.x, center.y, width, height, 0, 0, geom, style)
 
     can.showPage()
 
     can.save()
 
-    doc = fitz.open(os.path.join(settings.APP_TMP_DIR, filename))
-    for page in doc:
-        pix = page.get_pixmap()  # render page to an image
+    doc = fitz.open(filepath)
+    try:
+        for page in doc:
+            pix = page.get_pixmap()  # render page to an image
 
-        img = PILImage.frombytes("RGB", [pix.width, pix.height], pix.samples)
+            img = PILImage.frombytes("RGB", [pix.width, pix.height], pix.samples)
 
-        buffered = io.BytesIO()
-        img.save(buffered, format="PNG")
-        img_str = base64.b64encode(buffered.getvalue()).decode("utf-8")
-
-    if os.path.exists(os.path.join(settings.APP_TMP_DIR, filename)):
+            buffered = io.BytesIO()
+            img.save(buffered, format="PNG")
+            img_str = base64.b64encode(buffered.getvalue()).decode("utf-8")
+    finally:
         doc.close()
-        os.remove(os.path.join(settings.APP_TMP_DIR, filename))
 
-    return img_str, img_width, img_height, map_extent, scale
+    return img_str, map_extent
+
+
+DEFAULT_GEOM_STYLE = {
+    "vertice_size": 0.5,
+    "point_size": 2,
+    "point_stroke_color": [0.8, 0, 0, 0.1],
+    "point_fill_color": [0.8, 0, 0, 1],
+    "line_width": 3,
+    "line_color": [0.8, 0, 0, 1],
+    "line_dash": False,
+    "line_vertice": False,
+    "polygon_stroke_width": 3,
+    "polygon_stroke_color": [0.85, 0, 0, 1],
+    "polygon_stroke_dash": False,
+    "polygon_vertice": False,
+    "polygon_fill_color": [150, 150, 150, 0],
+}
 
 
 def draw_geometry(canvas, scale, mapcenter_x, mapcenter_y, width, height, ll_x, ll_y, geom, style,
                   draw_centroid=False, unit_factor=1):
+    style = {**DEFAULT_GEOM_STYLE, **(style or {})}
     vertice_size = style["vertice_size"]
     point_size = style["point_size"]
     point_stroke_color = style["point_stroke_color"]
@@ -727,7 +752,9 @@ def draw_geometry(canvas, scale, mapcenter_x, mapcenter_y, width, height, ll_x, 
         canvas.restoreState()
 
 
-def create_intersect_attachments(record, filename):
+def create_intersect_attachments(record, filename, made_files=None):
+    if made_files is None:
+        made_files = []
 
     viewer_id = None
     if request.args.get('viewerId', None):
@@ -796,6 +823,7 @@ def create_intersect_attachments(record, filename):
 
             if print_obj is not None and print_obj.get('Success', False):
                 prt_filename = print_obj.get('Data').get('filename')
+                made_files.append(os.path.join(settings.APP_TMP_DIR, prt_filename))
                 files.append(prt_filename)
             else:
                 logger.warning("Attachments: could not generate print attachment (id: {0})".format(print_id))
@@ -809,14 +837,16 @@ def create_intersect_attachments(record, filename):
             group = db.session.query(PrintGroup).filter(PrintGroup.id == group_id).one_or_none()
 
             if group is None:
-                return None
+                logger.warning("Attachments: print group not found (id: {0})".format(group_id))
+                continue
 
             geom = getGeometryFromWKT(geom_wkt)
             group_cfg = filter_print_group(viewer, group, geom, geom_srid, [ROLE_ADMIN],
                                            group.show_all_prints or False)
 
             if not group_cfg:
-                return None
+                logger.warning("Attachments: print group has no print for the geometry (id: {0})".format(group_id))
+                continue
 
             #-- Layouts --#
             groups_layouts = []
@@ -858,6 +888,7 @@ def create_intersect_attachments(record, filename):
 
                 if print_obj is not None and print_obj.get('Success', False):
                     prt_filename = print_obj.get('Data').get('filename')
+                    made_files.append(os.path.join(settings.APP_TMP_DIR, prt_filename))
                     files.append(prt_filename)
                 else:
                     logger.warning("Attachments: could not generate print group attachment (id: {0})".format(group_id))
@@ -885,6 +916,8 @@ def create_intersect_attachments(record, filename):
         if resp and resp.get('Success'):
             final_filename = resp.get('Data', {}).get('filename', None)
             if final_filename:
-                return os.path.join(settings.APP_TMP_DIR, final_filename)
+                final_path = os.path.join(settings.APP_TMP_DIR, final_filename)
+                made_files.append(final_path)
+                return final_path
 
     return None

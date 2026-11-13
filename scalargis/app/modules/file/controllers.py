@@ -17,7 +17,7 @@ mod = Blueprint('file',  __name__, template_folder='templates', static_folder='s
 @mod.route('/file/<filename>')
 def get(filename):
     filepath = contained_path(settings.APP_TMP_DIR, filename)
-    if filepath is None:
+    if filepath is None or not os.path.isfile(filepath):
         abort(404)
     try:
         return send_file(filepath,
