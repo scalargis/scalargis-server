@@ -18,7 +18,8 @@ from . import get_record_by_id
 from sqlalchemy.exc import IntegrityError
 from app.utils.constants import ROLE_ANONYMOUS, ROLE_AUTHENTICATED
 from app.utils.mailing import send_mail
-from app.models.security import Role, Group, User
+from app.models.security import Role, Group, User, account_state, ACCOUNT_PENDING
+from flask_security.utils import verify_password
 from instance import settings
 from app.utils import constants
 from app.utils.security import get_token, get_user_token
@@ -117,18 +118,13 @@ def send_email_user_registration(user, subject=None, msg=None, template=None, re
 
 def is_pending(user):
     """True for an inactive account with no confirmed email."""
-    return user is not None and not user.active and user.confirmed_at is None
+    return account_state(user) == ACCOUNT_PENDING
 
 
 def _find_user_by_email(email):
     if not email:
         return None
     return User.query.filter(func.lower(User.email) == func.lower(email)).first()
-
-
-def _find_user_by_username_or_email(username, email):
-    return User.query.filter(or_(func.lower(User.username) == func.lower(username),
-                                 func.lower(User.email) == func.lower(email))).first()
 
 
 def register_user(request):
@@ -148,34 +144,40 @@ def register_user(request):
         redirect = cred.get('redirect')
         locale = cred.get('locale')
 
+    exists = {'status': 409, 'error': True, 'message': 'registration_user_exists'}, 409
+
     pending = _find_user_by_email(email)
-    if is_pending(pending):
-        send_email_user_registration(pending, redirect=redirect, locale=locale)
-        return {'success': True, 'message': 'registration_email_sent', 'email': pending.email,
-                'confirm_within_hours': within_hours(ACTIVATION_WITHIN_KEY)}, 200
+    if not is_pending(pending):
+        pending = None
 
-    user = _find_user_by_username_or_email(username, email)
+    others = User.query.filter(or_(func.lower(User.username) == func.lower(username),
+                                   func.lower(User.email) == func.lower(email)))
+    if pending is not None:
+        others = others.filter(User.id != pending.id)
+    if others.first() is not None:
+        return exists
 
-    if not user is None:
-        return {'status': 409, 'error': True,
-                'message': 'registration_user_exists'}, 409
+    enforce_password_policy(password)
 
-    user = User()
-
+    user = pending or User()
     user.name = name
     user.username = username
-    user.email = email
+    if pending is None:
+        user.email = email
     user.active = False
-    enforce_password_policy(password)
     user.password = hash_password(password)
 
-    db.session.add(user)
-    db.session.commit()
+    try:
+        db.session.add(user)
+        db.session.commit()
+    except IntegrityError:
+        db.session.rollback()
+        return exists
     db.session.refresh(user)
 
     send_email_user_registration(user, redirect=redirect, locale=locale)
 
-    return {'success': True, 'message': 'registration_email_sent', 'email': email,
+    return {'success': True, 'message': 'registration_email_sent', 'email': user.email,
             'confirm_within_hours': within_hours(ACTIVATION_WITHIN_KEY)}, 200
 
 
@@ -204,10 +206,9 @@ def send_confirmation(request):
 def confirm_email(request):
     from app.database import db
 
-    if request.is_json:
-        token = request.json.get('token')
-    else:
-        token = json.loads(request.data.decode('utf-8') or '{}').get('token')
+    data = request.json if request.is_json else json.loads(request.data.decode('utf-8') or '{}')
+    token = data.get('token')
+    password = data.get('password')
 
     if not token:
         return {'status': 401, 'error': True, 'message': 'registration_confirmation_invalid'}, 401
@@ -219,7 +220,10 @@ def confirm_email(request):
     if expired:
         return {'status': 401, 'error': True, 'message': 'registration_confirmation_expired'}, 401
 
-    if user.confirmed_at is not None:
+    if not password or not user.password or not verify_password(password, user.password):
+        return {'status': 401, 'error': True, 'message': 'registration_confirmation_wrong_password'}, 401
+
+    if account_state(user) != ACCOUNT_PENDING:
         return {'confirmed': True, 'username': user.username, 'message': 'registration_already_confirmed'}, 200
 
     user.active = True
@@ -930,8 +934,9 @@ def update_user(id, data):
     record.name = data['name'] if 'name' in data else None
     record.username = data['username'] if 'username' in data else None
     record.email = data['email'] if 'email' in data else None
+    was_pending = is_pending(record)
     record.active = data['active'] if 'active' in data else False
-    if record.confirmed_at is None:
+    if record.confirmed_at is None and (record.active or not was_pending):
         record.confirmed_at = utc_now()
     if 'password' in data and data['password'] is not None:
         enforce_password_policy(data['password'])

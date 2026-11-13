@@ -11,6 +11,19 @@ from app.utils import tokens
 
 db_schema = get_db_schema()
 
+ACCOUNT_PENDING = 'pending'
+ACCOUNT_ACTIVE = 'active'
+ACCOUNT_DEACTIVATED = 'deactivated'
+
+
+def account_state(user):
+    """Returns pending (never confirmed), active, or deactivated for a user, or None for no user."""
+    if user is None:
+        return None
+    if user.active:
+        return ACCOUNT_ACTIVE
+    return ACCOUNT_PENDING if user.confirmed_at is None else ACCOUNT_DEACTIVATED
+
 
 roles_permissions = db.Table('roles_permissions',
                        db.Column('role_id', db.Integer(), db.ForeignKey('{schema}.role.id'.format(schema=db_schema))),

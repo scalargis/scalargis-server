@@ -4,6 +4,7 @@ from flask_restx import fields
 
 from app.api.restx import api as api
 from app.utils import UtcDateTime
+from app.models.security import account_state
 
 
 class ConfigJson(fields.Raw):
@@ -100,6 +101,7 @@ user_api_model = api.model('User Model', {
     'first_name':  fields.String(required=False, description='First Name'),
     'last_name':  fields.String(required=False, description='First Name'),
     'active': fields.Boolean(required=False, description='Active'),
+    'state': fields.String(readonly=True, attribute=account_state, description='pending, active or deactivated'),
     'read_only': fields.Boolean(required=False, description='Read Only'),
     'all_roles': fields.List(fields.Nested(user_role_api_model))
 })

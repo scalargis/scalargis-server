@@ -14,7 +14,8 @@ from app.models.security import Role, User, db_schema
 from app.api.v1.endpoints import ns_authentication, ns_security
 from app.api.v1.endpoints import security as _security_routes
 from app.api.v1.portal.dao import security as dao_security
-from app.utils import security as app_security
+from app.utils import security as app_security, constants, utc_now
+from flask_security.utils import hash_password
 
 PASSWORD = 'Old-Passw0rd-1'
 NEW_PASSWORD = 'New-Passw0rd-2'
@@ -78,15 +79,15 @@ def last_token(mails):
     return re.search(r'token=([^&"\s]+)', mails[-1]).group(1)
 
 
-def register(client, mails, username='ana', email='ana@example.org'):
+def register(client, mails, username='ana', email='ana@example.org', password=PASSWORD):
     answer = client.post('/api/security/register_user',
-                         json={'name': username, 'username': username, 'email': email, 'password': PASSWORD})
+                         json={'name': username, 'username': username, 'email': email, 'password': password})
     assert answer.status_code == 200
     return answer, last_token(mails)
 
 
-def confirm(client, token):
-    return client.post('/api/security/registration/confirmation', json={'token': token})
+def confirm(client, token, password=PASSWORD):
+    return client.post('/api/security/registration/confirmation', json={'token': token, 'password': password})
 
 
 def request_reset(client, mails, username='ana'):
@@ -179,6 +180,82 @@ def test_activation_link_does_not_set_a_password(client, mails):
     assert client.post('/api/security/reset_password_validation', json={'token': token}).status_code == 401
     assert not user().active
     assert confirm(client, token).status_code == 200
+    assert logged_in(client, PASSWORD)
+
+
+def test_registration_of_another_email_gives_no_login(client, mails):
+    _, attacker_link = register(client, mails, username='mallory', password=OTHER_PASSWORD)
+
+    for password in (None, PASSWORD):
+        answer = confirm(client, attacker_link, password)
+        assert answer.status_code == 401
+        assert answer.get_json()['message'] == 'registration_confirmation_wrong_password'
+    assert not user('mallory').active
+    assert not logged_in(client, OTHER_PASSWORD, 'mallory')
+
+    _, own_link = register(client, mails)
+    assert User.query.count() == 1
+    assert confirm(client, attacker_link, OTHER_PASSWORD).status_code == 401
+    assert confirm(client, own_link, OTHER_PASSWORD).status_code == 401
+    assert confirm(client, own_link).status_code == 200
+    assert logged_in(client, PASSWORD)
+    assert not logged_in(client, OTHER_PASSWORD, 'mallory')
+    assert not logged_in(client, OTHER_PASSWORD)
+
+
+def test_registration_of_a_taken_username_or_email_is_refused(client, mails):
+    _, token = register(client, mails)
+    confirm(client, token)
+    for username, email in (('ana', 'other@example.org'), ('other', 'ANA@example.org')):
+        answer = client.post('/api/security/register_user',
+                             json={'name': 'x', 'username': username, 'email': email, 'password': OTHER_PASSWORD})
+        assert answer.status_code == 409
+    assert logged_in(client, PASSWORD)
+
+
+def add_admin():
+    admin_role = Role(name=constants.ROLE_ADMIN)
+    admin = User(username='admin', email='admin@example.org', active=True, confirmed_at=utc_now(),
+                 password=hash_password(OTHER_PASSWORD), fs_uniquifier='admin', roles=[admin_role])
+    db.session.add_all([admin_role, admin])
+    db.session.commit()
+    return admin
+
+
+def test_deactivated_sso_user_cannot_be_registered_again(client, mails):
+    admin = add_admin()
+    sso = User(username='sso', email='ana@example.org', active=True, password=hash_password(NEW_PASSWORD),
+               fs_uniquifier='sso')
+    db.session.add(sso)
+    db.session.commit()
+
+    form = {'name': 'sso', 'username': 'sso', 'email': 'ana@example.org', 'active': False, 'roles': [], 'groups': []}
+    saved = client.put('/api/security/users/{0}'.format(sso.id), json=form,
+                       headers={'X-API-KEY': admin.get_auth_token()})
+    assert saved.get_json()['state'] == 'deactivated'
+
+    answer = client.post('/api/security/register_user',
+                         json={'name': 'x', 'username': 'x', 'email': 'ana@example.org', 'password': PASSWORD})
+    assert answer.status_code == 409
+    assert not user('sso').active
+
+
+def test_backoffice_save_keeps_a_pending_user_pending(client, mails, flask_app):
+    admin = add_admin()
+    _, token = register(client, mails)
+    pending = user()
+
+    listed = client.get('/api/security/users/{0}'.format(pending.id), headers={'X-API-KEY': admin.get_auth_token()})
+    assert listed.get_json()['state'] == 'pending'
+
+    form = {'id': pending.id, 'name': 'Ana', 'username': 'ana', 'email': 'ana@example.org', 'active': False,
+            'roles': [], 'groups': []}
+    saved = client.put('/api/security/users/{0}'.format(pending.id), json=form,
+                       headers={'X-API-KEY': admin.get_auth_token()})
+    assert saved.status_code == 200 and saved.get_json()['state'] == 'pending'
+
+    assert confirm(client, token).status_code == 200
+    assert user().active
     assert logged_in(client, PASSWORD)
 
 
