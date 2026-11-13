@@ -18,11 +18,12 @@ import logging
 from flask import current_app, g, request
 from werkzeug.local import LocalProxy
 from flask_principal import Identity, identity_changed
-from flask_security.utils import verify_and_update_password
+from flask_security.utils import verify_and_update_password, verify_password
 from flask_ldap3_login import LDAP3LoginManager, AuthenticationResponse, AuthenticationResponseStatus
 from ldap3 import (Server, Connection, Tls, ALL, ALL_ATTRIBUTES, SUBTREE, SIMPLE, AUTO_BIND_NO_TLS,
                    AUTO_BIND_TLS_BEFORE_BIND)
 from ldap3.utils.conv import escape_filter_chars
+from ldap3.core.exceptions import LDAPBindError
 from ldap3.utils.dn import escape_rdn
 from sqlalchemy import func
 from . import constants, tokens
@@ -35,6 +36,11 @@ logger.info("=== security.py loaded — LDAP-aware security module active ===")
 
 # List for handling configured LDAP domains
 ldap_managers = []
+
+LDAP_SUCCESS = 'success'
+LDAP_REFUSED = 'refused'
+LDAP_NOT_FOUND = 'not_found'
+LDAP_UNREACHABLE = 'unreachable'
 
 # Convenient references
 _security = LocalProxy(lambda: current_app.extensions['security'])
@@ -234,6 +240,14 @@ class LDAPLoginManager(LDAP3LoginManager):
             if not svc_conn.entries:
                 logger.warning("[search_bind] user '%s' not found in directory.", username)
                 response.status = ARS.fail
+                response.outcome = LDAP_NOT_FOUND
+                svc_conn.unbind()
+                return response
+
+            if len(svc_conn.entries) > 1 and self.config.get('LDAP_FAIL_AUTH_ON_MULTIPLE_FOUND'):
+                logger.warning("[search_bind] %d entries match '%s'; refused.", len(svc_conn.entries), username)
+                response.status = ARS.fail
+                response.outcome = LDAP_REFUSED
                 svc_conn.unbind()
                 return response
 
@@ -250,6 +264,8 @@ class LDAPLoginManager(LDAP3LoginManager):
         except Exception as exc:
             logger.error("[search_bind] service-account search failed: %s: %s", type(exc).__name__, exc)
             response.status = ARS.fail
+            response.outcome = LDAP_UNREACHABLE
+            response.exception = exc
             return response
 
         # ── Step 2: bind as the user to verify password ───────────────────────
@@ -279,6 +295,7 @@ class LDAPLoginManager(LDAP3LoginManager):
         try:
             self._direct_connection(bind_user, password).unbind()
             response.status = AuthenticationResponseStatus.success
+            response.outcome = LDAP_SUCCESS
             response.user_dn = bind_user
             logger.debug("[user_bind] bind OK for '%s' as '%s'", username, bind_user)
         except Exception as exc:
@@ -287,6 +304,7 @@ class LDAPLoginManager(LDAP3LoginManager):
                 username, bind_user, type(exc).__name__, exc,
             )
             response.status = AuthenticationResponseStatus.fail
+            response.outcome = LDAP_REFUSED if isinstance(exc, LDAPBindError) else LDAP_UNREACHABLE
             response.exception = exc
         return response
 
@@ -297,6 +315,7 @@ class LDAPLoginManager(LDAP3LoginManager):
 
         if not password:
             result = AuthenticationResponse(user_id=username)
+            result.outcome = LDAP_REFUSED
         else:
             result = getattr(self, f'authenticate_{mode}')(username, password)
 
@@ -458,35 +477,42 @@ def init_ldap(app):
 # authenticate_ldap_user
 # ---------------------------------------------------------------------------
 
-def authenticate_ldap_user(username, password, domain):
-    """
-    Tries each configured LDAP manager in order.
-    Returns True on the first successful bind.
-    """
+def authenticate_ldap_user(username, password):
+    """Asks each LDAP manager and gives LDAP_SUCCESS, LDAP_REFUSED, or LDAP_UNREACHABLE."""
     if not current_app.config.get('SCALARGIS_LDAP_AUTHENTICATION'):
         logger.debug("[auth_ldap] LDAP authentication disabled.")
-        return False
+        return LDAP_UNREACHABLE
 
+    outcomes = []
     for ldap in ldap_managers:
-        host    = ldap.config.get('LDAP_HOST')
-        base_dn = ldap.config.get('LDAP_BASE_DN')
-
+        host = ldap.config.get('LDAP_HOST')
         try:
-            logger.debug(
-                "[auth_ldap] Trying host=%s  base_dn=%s  for user='%s'",
-                host, base_dn, username,
-            )
             res = ldap.authenticate(username, password)
-            if res.status == AuthenticationResponseStatus.success:
-                return True
-
+            outcome = getattr(res, 'outcome', LDAP_REFUSED)
         except Exception as exc:
-            logger.debug(
-                "[auth_ldap] Exception authenticating '%s' on host=%s base_dn=%s — %s: %s",
-                username, host, base_dn, type(exc).__name__, exc,
+            logger.warning(
+                "[auth_ldap] exception for '%s' on host=%s — %s: %s",
+                username, host, type(exc).__name__, exc,
             )
+            outcome = LDAP_UNREACHABLE
+        logger.debug("[auth_ldap] host=%s user='%s' -> %s", host, username, outcome)
+        if outcome == LDAP_SUCCESS:
+            return LDAP_SUCCESS
+        outcomes.append(outcome)
 
-    return False
+    if LDAP_REFUSED in outcomes:
+        return LDAP_REFUSED
+    if LDAP_UNREACHABLE in outcomes or not outcomes:
+        return LDAP_UNREACHABLE
+    return LDAP_REFUSED
+
+
+def is_directory_account(user):
+    """True when LDAP is on and the user holds the role of SCALARGIS_LDAP_ROLE, directly or through a group."""
+    if not current_app.config.get('SCALARGIS_LDAP_AUTHENTICATION'):
+        return False
+    role = current_app.config.get('SCALARGIS_LDAP_ROLE') or 'LDAP'
+    return any(r['name'] == role for r in user.all_roles)
 
 
 # ---------------------------------------------------------------------------
@@ -526,60 +552,47 @@ def get_token(username):
 
 
 def get_user_token(username, password):
-    """
-    Authenticates with local password first, then falls back to LDAP.
-    On successful LDAP auth the local password hash is refreshed so that
-    subsequent logins work without needing to reach the LDAP server.
-    """
+    """Gives a token: a directory account binds first and uses the local hash only when no directory answers."""
     from flask_security.utils import hash_password
 
-    authenticated = False
-    token = None
-
-    # First try the raw input. get_user() matches both `username` and `email`
-    # columns, so local users named "foo@bar" or with email set to the AD UPN
-    # resolve here without any normalization.
     user = get_user(username)
 
     if user is None:
         logger.warning("[get_user_token] no local user matches '%s'", username)
-    elif not user.is_active:
+        return None
+    if not user.is_active:
         logger.warning("[get_user_token] user '%s' is inactive", username)
+        return None
 
-    if user and user.is_active:
+    if not is_directory_account(user):
         if verify_and_update_password(password, user):
-            authenticated = True
-            logger.debug("[get_user_token] local password OK for '%s'", username)
-        else:
-            logger.debug(
-                "[get_user_token] local password rejected for '%s'; trying LDAP",
-                username,
+            return user.get_auth_token()
+        return None
+
+    outcome = authenticate_ldap_user(user.username, password)
+
+    if outcome == LDAP_SUCCESS:
+        if user.password and verify_password(password, user.password):
+            return user.get_auth_token()
+        try:
+            user.password = hash_password(password)
+            user_datastore.put(user)
+            user_datastore.commit()
+        except Exception as exc:
+            logger.warning(
+                "[get_user_token] could not refresh local password for '%s': %s",
+                user.username, exc,
             )
-            # Always use username for LDAP authentication
-            ldap_username = user.username
-            if authenticate_ldap_user(ldap_username, password, None):
-                authenticated = True
-                # Sync the LDAP-verified password into the local DB.
-                # This means future logins succeed via verify_and_update_password
-                # even if the LDAP server is temporarily unreachable.
-                try:
-                    user.password = hash_password(password)
-                    user_datastore.put(user)
-                    user_datastore.commit()
-                    logger.info(
-                        "[get_user_token] local password refreshed for '%s' after LDAP auth",
-                        ldap_username,
-                    )
-                except Exception as exc:
-                    logger.warning(
-                        "[get_user_token] could not refresh local password for '%s': %s",
-                        ldap_username, exc,
-                    )
+        return user.get_auth_token()
 
-        if authenticated:
-            token = user.get_auth_token()
+    if outcome == LDAP_UNREACHABLE:
+        logger.warning("[get_user_token] no directory answered for '%s'; local password check", user.username)
+        if verify_and_update_password(password, user):
+            return user.get_auth_token()
+        return None
 
-    return token
+    logger.warning("[get_user_token] directory refused '%s'", user.username)
+    return None
 
 
 def check_token(token):

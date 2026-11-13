@@ -370,7 +370,7 @@ def update_password(request):
     db.session.add(user)
     db.session.commit()
 
-    token = get_user_token(user.username, password)
+    token = get_token(user.username)
 
     data = {'data': {'token': token}, 'status': 200, 'success': True, 'message': 'password_update_success'}
 
