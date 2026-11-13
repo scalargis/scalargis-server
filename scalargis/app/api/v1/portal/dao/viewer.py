@@ -4,8 +4,8 @@ import uuid
 from app.utils import utc_now
 
 from flask import request
-from werkzeug.exceptions import Forbidden
-from sqlalchemy import cast, or_, Integer, Boolean
+from werkzeug.exceptions import Forbidden, Conflict
+from sqlalchemy import cast, or_, func, Integer, Boolean
 from sqlalchemy.exc import IntegrityError
 
 from ..parsers import *
@@ -124,6 +124,22 @@ def get_by_filter(request):
     return page
 
 
+def check_slug(slug, viewer_id=None):
+    """Raises Conflict when a slug is all digits or equals the slug, uuid, or name of another viewer."""
+    if not slug:
+        return
+    value = str(slug).lower()
+    if value.isdigit():
+        raise Conflict('The slug cannot be only digits')
+    query = Viewer.query.filter(or_(func.lower(Viewer.slug) == value,
+                                    func.lower(Viewer.uuid) == value,
+                                    func.lower(Viewer.name) == value))
+    if viewer_id is not None:
+        query = query.filter(Viewer.id != viewer_id)
+    if query.first():
+        raise Conflict('The slug is already in use')
+
+
 def get_list(request, is_index=False):
     data = []
     query = db.session.query(Viewer.id, Viewer.name, Viewer.img_homepage).order_by('id')
@@ -144,6 +160,8 @@ def get_by_id(id):
 
 def create(data):
     user = get_user(request)
+
+    check_slug(data.get('slug'))
 
     record = Viewer()
 
@@ -211,6 +229,9 @@ def update(id, data):
     if record:
         if not can_edit(user, record):
             raise Forbidden()
+
+        if 'slug' in data:
+            check_slug(data.get('slug'), record.id)
 
         roles = db.session.query(Role).all()
 
@@ -352,9 +373,11 @@ def app_create(data):
         "id": None, "uuid": None, "name": None, "success": False
     }
 
-    try:
-        user = get_user(request)
+    user = get_user(request)
+    slug = data.get('slug') if user else None
+    check_slug(slug)
 
+    try:
         parent = None
         if 'parent_id' in data and data['parent_id']:
             parent = get_by_id(data['parent_id'])
@@ -365,7 +388,7 @@ def app_create(data):
         record.title = data.get('title')
         record.name = data.get('name') or record.uuid
         record.description = data.get('description')
-        record.slug = data.get('slug') or record.uuid
+        record.slug = slug or record.uuid
         record.config_version = '1.0'
         record.allow_add_layers = data.get('allow_add_layers')
         record.allow_user_session = data.get('allow_user_session')

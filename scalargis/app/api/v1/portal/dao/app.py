@@ -48,6 +48,14 @@ def get_site_config():
     return None, status
 
 
+def first_viewer(query, label, value):
+    """Returns the viewer with the lowest id of a query, with a warning log when more than one matches."""
+    records = query.order_by(Viewer.id).limit(2).all()
+    if len(records) > 1:
+        logger.warning('More than one viewer matches %s %r, using id %s', label, value, records[0].id)
+    return records[0] if records else None
+
+
 def get_viewer_record(viewer_id_or_slug):
     record = None
 
@@ -55,14 +63,15 @@ def get_viewer_record(viewer_id_or_slug):
         #By Id
         record = get_record_by_id(Viewer, int(viewer_id_or_slug))
     elif isinstance(viewer_id_or_slug, str):
+        value = viewer_id_or_slug.lower()
         #By slug
-        record = Viewer.query.filter(func.lower(Viewer.slug)==viewer_id_or_slug.lower()).one_or_none()
+        record = first_viewer(Viewer.query.filter(func.lower(Viewer.slug) == value), 'slug', value)
         if not record:
             #By UUID
-            record = Viewer.query.filter(func.lower(Viewer.uuid)==viewer_id_or_slug.lower()).one_or_none()
+            record = first_viewer(Viewer.query.filter(func.lower(Viewer.uuid) == value), 'uuid', value)
         if not record:
             #By Name
-            record = Viewer.query.filter(func.lower(Viewer.name)==viewer_id_or_slug.lower()).one_or_none()
+            record = first_viewer(Viewer.query.filter(func.lower(Viewer.name) == value), 'name', value)
 
     return record
 
@@ -75,9 +84,10 @@ def get_app_default_viewer():
     status = 200
 
     if user and user.default_viewer:
-        record = Viewer.query.filter(func.lower(Viewer.name) == user.default_viewer.lower()).one_or_none()
+        record = first_viewer(Viewer.query.filter(func.lower(Viewer.name) == user.default_viewer.lower()),
+                              'name', user.default_viewer)
     if not record:
-        record = Viewer.query.filter(Viewer.is_portal == True).one_or_none()
+        record = first_viewer(Viewer.query.filter(Viewer.is_portal == True), 'is_portal', True)
     if not record:
         return {}, 404
 
