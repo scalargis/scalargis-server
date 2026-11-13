@@ -136,7 +136,7 @@ print_child_api_model = api.model('Child Print Model', {
     'code': fields.String(required=True, attribute='print.code', description='Code'),
     'title': fields.String(required=False, attribute='print.title', description='Title'),
     'description': fields.String(required=False, attribute='print.description', description='Description'),
-    'is_active': fields.Boolean(readOnly=False, attribute='is_active', description='Active'),
+    'is_active': fields.Boolean(readOnly=False, attribute='print.is_active', description='Active'),
     'order': fields.Integer(required=False, attribute='order', description='Child order'),
 })
 print_group_api_model['prints'] = fields.List(fields.Nested(print_child_api_model), attribute='print_assoc')

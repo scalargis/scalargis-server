@@ -86,8 +86,11 @@ def get_app_default_viewer():
     if user and user.default_viewer:
         record = first_viewer(Viewer.query.filter(func.lower(Viewer.name) == user.default_viewer.lower()),
                               'name', user.default_viewer)
+        if record and viewer_hidden(record, user):
+            record = None
     if not record:
-        record = first_viewer(Viewer.query.filter(Viewer.is_portal == True), 'is_portal', True)
+        record = first_viewer(Viewer.query.filter(Viewer.is_portal == True, Viewer.is_active.isnot(False)),
+                              'is_portal', True)
     if not record:
         return {}, 404
 
@@ -214,11 +217,11 @@ def send_viewer_contact_message(viewer_id, data):
     }
 
     viewer = get_viewer_record(viewer_id)
-    if not viewer:
+    user = get_user(request)
+    if not viewer or viewer_hidden(viewer, user):
         return response, 404
 
     user_id = None
-    user = get_user(request)
     if user and user.is_authenticated and user.is_active:
         user_id = user.id
 
@@ -326,7 +329,7 @@ def get_app_viewer_print_group_details(viewer_id, group_id):
     status = 200
 
     viewer = db.session.query(Viewer).filter(Viewer.id == viewer_id).one_or_none()
-    if viewer is None:
+    if viewer is None or viewer_hidden(viewer, user):
         return {}, 404
 
     has_permission, status, viewer_roles, user_roles = check_viewer_permissions(viewer, user)
@@ -336,6 +339,14 @@ def get_app_viewer_print_group_details(viewer_id, group_id):
     group = db.session.query(PrintGroup).filter(PrintGroup.id == group_id).one_or_none()
     if group is None:
         return {}, 404
+
+    if constants.ROLE_ADMIN not in user_roles and not viewer_reaches_group(viewer, group.id):
+        mode = print_check_mode()
+        if mode != 'off':
+            logger.warning('Print group request refused (viewer does not reach the group): viewer {0}, group {1}, '
+                           'user {2}, mode {3}'.format(viewer.id, group.id, user.id if user else None, mode))
+        if mode == 'enforce':
+            return {}, 404
 
     group_cfg = {}
     group_uuid = uuid.uuid4()
@@ -401,7 +412,56 @@ def check_viewer_permissions(viewer, user):
     return has_permission, status, viewer_roles, user_roles
 
 
+PRINT_GENERATE_CHECK = 'PRINT_GENERATE_CHECK'
+PRINT_NOT_CONFIGURED = "A planta solicitada não está configurada."
+
+
+def print_check_mode():
+    """The PRINT_GENERATE_CHECK mode: enforce (the default), log, or off."""
+    mode = str(get_config_value(PRINT_GENERATE_CHECK) or 'enforce').strip().lower()
+    return mode if mode in ('log', 'off') else 'enforce'
+
+
+def is_active_flag(value):
+    """True unless the flag is False. NULL counts as active."""
+    return value is not False
+
+
+def viewer_hidden(viewer, user):
+    """True when the viewer is inactive and the caller is not its owner."""
+    return viewer.is_active is False and not (user and user.is_authenticated and viewer.owner_id == user.id)
+
+
+def roles_allow(role_names, user_roles):
+    """True when role_names is empty, the caller is admin, or the caller has one of the roles."""
+    return len(role_names) == 0 or constants.ROLE_ADMIN in user_roles or \
+        len(set(user_roles).intersection(role_names)) > 0
+
+
+def viewer_print_group_paths(viewer):
+    """Yields (group, role lists of the group chain) for each active print group that the viewer reaches."""
+    stack = [(assoc.print_group, []) for assoc in viewer.print_group_assoc]
+    seen = set()
+    while stack:
+        group, chain = stack.pop()
+        if group is None or group.id in seen or not is_active_flag(group.is_active):
+            continue
+        seen.add(group.id)
+        chain = chain + [get_roles_names(group.roles, False)]
+        yield group, chain
+        for child in group.print_group_child_assoc:
+            stack.append((child.print_group_child, chain))
+
+
+def viewer_reaches_group(viewer, group_id):
+    """True when the viewer holds the print group, or holds a group above it."""
+    return any(group.id == group_id for group, chain in viewer_print_group_paths(viewer))
+
+
 def filter_print_group(viewer, group, geom_filter, geom_proj, user_roles, show_all):
+
+    if not is_active_flag(group.is_active):
+        return None
 
     group_roles = get_roles_names(group.roles, False)
 
@@ -424,6 +484,9 @@ def filter_print_group(viewer, group, geom_filter, geom_proj, user_roles, show_a
 
     for p in sorted(group.print_assoc, key=lambda x: x.order or 1):
         print = p.print
+
+        if not is_active_flag(print.is_active):
+            continue
 
         print_roles = get_roles_names(print.roles,False)
 
@@ -550,6 +613,8 @@ def build_viewer_config(record, user_roles, user=None, session=False):
 
     viewer_cfg['printing']['prints'] = []
     for prt in sorted(record.print_assoc, key=lambda x: x.order or 1):
+        if not is_active_flag(prt.print.is_active):
+            continue
         print_roles = get_roles_names(prt.print.roles, False)
         if len(print_roles) == 0 or constants.ROLE_ADMIN in user_roles or \
                         len(set(user_roles).intersection(print_roles)) > 0:
@@ -559,6 +624,8 @@ def build_viewer_config(record, user_roles, user=None, session=False):
 
     viewer_cfg['printing']['groups'] = []
     for grp in sorted(record.print_group_assoc, key=lambda x: x.order or 1):
+        if not is_active_flag(grp.print_group.is_active):
+            continue
         group_roles = get_roles_names(grp.print_group.roles, False)
         if len(group_roles) == 0 or constants.ROLE_ADMIN in user_roles or len(
                 set(user_roles).intersection(group_roles)) > 0:
@@ -716,29 +783,114 @@ def get_data_layer(layer_id):
     return data, status
 
 
-def get_app_viewer_print_generate(viewer_id, print_code):
-    user = None
-    data = None
-    status = 200
+def viewer_print_paths(viewer, prt):
+    """Role lists of each path from the viewer to the print: listed, in a group, or named by a component."""
+    print_roles = get_roles_names(prt.roles, False)
+    paths = []
+    if any(assoc.print_id == prt.id for assoc in viewer.print_assoc):
+        paths.append([print_roles])
+    for group, chain in viewer_print_group_paths(viewer):
+        if any(assoc.print_id == prt.id for assoc in group.print_assoc):
+            paths.append(chain + [print_roles])
+    for chain in viewer_component_print_roles(viewer, prt.code):
+        paths.append(chain + [print_roles])
+    return paths
 
+
+def viewer_component_print_roles(viewer, print_code):
+    """Role lists of each component of the viewer config, or a child of one, whose config_json names print_code."""
+    try:
+        config = json.loads(viewer.config_json or '{}')
+    except (TypeError, ValueError):
+        return []
+    if not isinstance(config, dict):
+        return []
+    found = []
+    stack = [(cmp, []) for cmp in (config.get('components') or []) if isinstance(cmp, dict)]
+    while stack:
+        cmp, chain = stack.pop()
+        chain = chain + [cmp.get('roles') or []]
+        cmp_config = cmp.get('config_json')
+        if isinstance(cmp_config, dict) and cmp_config.get('print_code') == print_code:
+            found.append(chain)
+        for child in cmp.get('children') or []:
+            if isinstance(child, dict):
+                stack.append((child, chain))
+    return found
+
+
+def check_viewer_print(viewer_id, print_code, user):
+    """Returns (status, reason) for a print request on a viewer. Status 200 lets the print go on."""
+    viewer = db.session.query(Viewer).filter(Viewer.id == viewer_id).one_or_none()
+    if viewer is None:
+        return 404, 'viewer not found'
+    if viewer_hidden(viewer, user):
+        return 404, 'viewer is inactive'
+    has_permission, status, viewer_roles, user_roles = check_viewer_permissions(viewer, user)
+    if not has_permission:
+        return status, 'viewer roles'
+    prt = db.session.query(Print).filter(Print.code == print_code).first()
+    if prt is None:
+        return 404, 'print not found'
+    if not is_active_flag(prt.is_active):
+        return 404, 'print is inactive'
+    if constants.ROLE_ADMIN in user_roles:
+        return 200, None
+    paths = viewer_print_paths(viewer, prt)
+    if not paths:
+        return 404, 'viewer does not reach the print'
+    if any(all(roles_allow(roles, user_roles) for roles in path) for path in paths):
+        return 200, None
+    return (403 if user and user.is_authenticated else 401), 'print roles'
+
+
+def print_request_refusal(viewer_id, print_code, user):
+    """Returns (body, status) when the print request is refused, else None. PRINT_GENERATE_CHECK sets the mode."""
+    mode = print_check_mode()
+    if mode == 'off':
+        return None
+    status, reason = check_viewer_print(viewer_id, print_code, user)
+    if status == 200:
+        return None
+    logger.warning('Print request refused ({0}): viewer {1}, print {2}, user {3}, mode {4}'.format(
+        reason, viewer_id, print_code, user.id if user else None, mode))
+    if mode == 'log':
+        return None
+    message = PRINT_NOT_CONFIGURED if status == 404 else 'Sem permissão para emitir a planta solicitada.'
+    return {"Success": False, "Message": message, "Data": None}, status
+
+
+def print_request_user():
+    """The caller of a print request: the X-API-KEY user, else the session user."""
+    user = get_user(request)
+    if user is None and current_user and current_user.is_authenticated:
+        user = current_user
+    return user
+
+
+def get_app_viewer_print_generate(viewer_id, print_code):
     from app.modules.print.controllers import viewer_generate_pdf
 
-    user = get_user(request)
+    refusal = print_request_refusal(viewer_id, print_code, print_request_user())
+    if refusal:
+        return refusal
 
-    data = viewer_generate_pdf(print_code, user)
+    data = viewer_generate_pdf(print_code, get_user(request))
 
-    return data, status
+    return data, 200
 
 
 def start_app_viewer_print_job(viewer_id, print_code):
     from app.modules.print import jobs as print_jobs
 
     if db.session.query(Print.id).filter(Print.code == print_code).first() is None:
-        return {"Success": False, "Message": "A planta solicitada não está configurada.", "Data": None}, 404
+        return {"Success": False, "Message": PRINT_NOT_CONFIGURED, "Data": None}, 404
 
-    user = get_user(request)
-    if user is None and current_user and current_user.is_authenticated:
-        user = current_user
+    user = print_request_user()
+
+    refusal = print_request_refusal(viewer_id, print_code, user)
+    if refusal:
+        return refusal
 
     job_id = print_jobs.start_print_planta(request, print_code, user)
 
@@ -765,7 +917,7 @@ def get_viewer_translations(viewer_id):
 
     viewer = get_viewer_record(viewer_id)
 
-    if not viewer:
+    if not viewer or viewer_hidden(viewer, get_user(request)):
         return data, 404
 
     record = SiteSettings.query.\
