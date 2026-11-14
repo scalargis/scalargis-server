@@ -5,92 +5,97 @@ import os.path
 
 from flask import current_app, request, jsonify, url_for
 from flask_security import current_user
-from sqlalchemy import text
+from sqlalchemy import text, func
 from geoalchemy2 import shape
 from shapely import force_2d
 from shapely.wkt import loads
 
 from app.database import db
-from app.database.schema import get_db_schema
+from app.database.schema import PRINT_NUMBER_LOCK_KEY
 from app.utils import pdf_layout, auditoria
-from app.models.portal import Print, PrintLayout, PrintGroup, PrintOutput, CoordinateSystems
+from app.models.portal import Print, PrintLayout, PrintGroup, PrintOutput, PrintOutputNumber, CoordinateSystems
 from app.utils import constants, geo, utc_now, local_now
 from app.utils.files import contained_path
 from instance import settings
 
 
+PRINT_STARTED = 'started'
+PRINT_DONE = 'done'
+PRINT_FAILED = 'failed'
+
+
+def take_print_number(year=None):
+    """Take the next print number of the year in the open transaction, under a lock that the commit releases."""
+    year = year or local_now().year
+    if db.session.get_bind().dialect.name == 'postgresql':
+        db.session.execute(text('SELECT pg_advisory_xact_lock(:k)'), {'k': PRINT_NUMBER_LOCK_KEY})
+    last = db.session.query(func.max(PrintOutputNumber.output_number)).filter(
+        PrintOutputNumber.output_year == year).scalar()
+    number = (last or 0) + 1
+    db.session.add(PrintOutputNumber(output_number=number, output_year=year))
+    db.session.flush()
+    return number, year
+
+
 def generate_print_output_number():
-    logger = logging.getLogger(__name__)
-
-    numero = None
-
+    """Take and commit the next print number of the current year."""
     try:
-        sql = 'select {schema}.generate_print_output_number()'.format(schema=get_db_schema())
-        record = db.session.execute(text(sql)).first()
-
-        if record:
-            numero = record[0]
-
-            db.session.commit()
-    except Exception as e:
+        number, _ = take_print_number()
+        db.session.commit()
+    except Exception:
         db.session.rollback()
+        logging.getLogger(__name__).exception(constants.RECORDS_INSERT_ERROR)
+        raise
+    return number
 
-        logger.error(constants.RECORDS_INSERT_ERROR)
 
-    return numero
+def save_print_output(print, group, viewer_id, scale, title, user_reference_number, user_reference_name, geom_wkt,
+                      srid, output_date, user_id):
+    """Take a print number and save its output row as started, in one transaction."""
+    record = PrintOutput()
+    if print:
+        record.print_id = print.id
+        record.print_name = print.name
+        record.title = title or print.title
+    else:
+        record.title = title
+    if group:
+        record.print_group_id = group.id
+        record.print_group_name = group.title
+    record.viewer_id = viewer_id
+    record.scale = scale
+    record.user_reference_number = user_reference_number
+    record.user_reference_name = user_reference_name
+    record.output_date = output_date
+    record.status = PRINT_STARTED
 
+    geom = None
+    if geom_wkt and len(geom_wkt) > 0:
+        source = geo.getGeometryFromWKT(geom_wkt) if isinstance(geom_wkt, list) else loads(geom_wkt)
+        ss = geo.transformGeom(force_2d(source), 'epsg:{0}'.format(srid),
+                               'epsg:{0}'.format(PrintOutput.geometry_srid))
+        geom = shape.from_shape(ss, srid=PrintOutput.geometry_srid)
+    record.geom = geom
 
-def save_print_output(print, group, viewer_id, output_number, output_year, scale, title,  user_reference_number,
-                      user_reference_name, geom_wkt, srid, output_date, user_id):
-
-    logger = logging.getLogger(__name__)
-
-    log_planta = None
+    record.idUserIns = user_id
+    record.dataIns = utc_now()
 
     try:
-        se = db.session
+        record.output_number, record.output_year = take_print_number()
+        db.session.add(record)
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
+        logging.getLogger(__name__).exception(constants.RECORDS_INSERT_ERROR)
+        raise
+    return record
 
-        record = PrintOutput()
 
-        record.output_number = output_number
-        record.output_year = output_year
-        if print:
-            record.print_id = print.id
-            record.print_name = print.name
-            record.title = title or print.title
-        else:
-            record.title = title
-        if group:
-            record.print_group_id = group.id
-            record.print_group_name = group.title
-        record.viewer_id = viewer_id
-        record.scale = scale
-        record.user_reference_number = user_reference_number
-        record.user_reference_name = user_reference_name
-        record.output_date = output_date
-
-        geom = None
-        if geom_wkt and len(geom_wkt) > 0:
-            source = geo.getGeometryFromWKT(geom_wkt) if isinstance(geom_wkt, list) else loads(geom_wkt)
-            ss = geo.transformGeom(force_2d(source), 'epsg:{0}'.format(srid),
-                                   'epsg:{0}'.format(PrintOutput.geometry_srid))
-            geom = shape.from_shape(ss, srid=PrintOutput.geometry_srid)
-        record.geom = geom
-
-        record.idUserIns = user_id
-        record.dataIns = utc_now()
-
-        se.add(record)
-
-        se.commit()
-
-        log_planta = record
-    except Exception as e:
-        se.rollback()
-
-        logger.error(constants.RECORDS_INSERT_ERROR + ': ' + str(e))
-
-    return log_planta
+def set_print_output_status(output_id, status):
+    """Write the status of a print output row and commit."""
+    db.session.rollback()
+    db.session.query(PrintOutput).filter(PrintOutput.id == output_id).update({PrintOutput.status: status})
+    db.session.commit()
 
 
 def output_title(title, form_fields):
@@ -230,11 +235,34 @@ def viewer_generate_pdf(code, user, request=request, output_id=None, on_output=N
 
     print_output = db.session.get(PrintOutput, output_id) if output_id else None
     if print_output is None:
-        print_output = save_print_output(print, group, viewer_id, generate_print_output_number(), local_now().year,
-                                         scale, output_title(title, form_fields), user_reference_number,
-                                         user_reference_name, geomWKT, srid, utc_now(), user_id)
-        if print_output is not None and on_output is not None:
+        print_output = save_print_output(print, group, viewer_id, scale, output_title(title, form_fields),
+                                         user_reference_number, user_reference_name, geomWKT, srid, utc_now(),
+                                         user_id)
+        if on_output is not None:
             on_output(print_output.id)
+    output_id = print_output.id
+
+    try:
+        data = draw_print_pdf(request, print, layout, scale, srid, geomWKT, extentWKT, drawing_features, drawings,
+                              print_output.print_output_number, title, form_fields, username, coordinate_system,
+                              user_reference_number, user_reference_name, address, postal_code, local,
+                              print_purpose, payment_reference, process_number)
+    except Exception:
+        set_print_output_status(output_id, PRINT_FAILED)
+        raise
+    set_print_output_status(output_id, PRINT_DONE)
+
+    auditoria.log_viewer_async(current_app._get_current_object(), viewer_id, print.id,
+                               auditoria.EnumAuditOperation.EmissaoPlanta, None, None, user.id if user else None)
+
+    return { "Success": True, "Message": None, "Data": data}
+
+
+def draw_print_pdf(request, print, layout, scale, srid, geomWKT, extentWKT, drawing_features, drawings,
+                   print_number, title, form_fields, username, coordinate_system, user_reference_number,
+                   user_reference_name, address, postal_code, local, print_purpose, payment_reference,
+                   process_number):
+    """Draw the PDF of a viewer print into APP_TMP_DIR. Returns the file data of the response."""
 
     page_size = print.format
     page_orientation = print.orientation.lower() if print.orientation else None
@@ -302,7 +330,7 @@ def viewer_generate_pdf(code, user, request=request, output_id=None, on_output=N
                           attribution=attribution)
 
     p.set_wkt_and_center(geomWKT, extentWKT)
-    p.populate_string("planta_id", print_output.print_output_number)
+    p.populate_string("planta_id", print_number)
 
     p.populate_string("nif_val", user_reference_number)
     p.populate_string("requerente_val", user_reference_name)
@@ -334,12 +362,7 @@ def viewer_generate_pdf(code, user, request=request, output_id=None, on_output=N
     with open(os.path.join(settings.APP_TMP_DIR, filename), 'wb') as f:
         f.write(pdf_file)
 
-    data = {"filename": filename, "url": url_for('file.get', filename=filename), "planta_id": print.id}
-
-    auditoria.log_viewer_async(current_app._get_current_object(), viewer_id, print.id,
-                               auditoria.EnumAuditOperation.EmissaoPlanta, None, None, user.id if user else None)
-
-    return { "Success": True, "Message": None, "Data": data}
+    return {"filename": filename, "url": url_for('file.get', filename=filename), "planta_id": print.id}
 
 
 def viewer_merge_pdf(user, request=request, trusted_paths=False):

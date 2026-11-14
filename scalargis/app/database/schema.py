@@ -38,6 +38,8 @@ def create_schema():
 
         db.session.commit()
 
+        ensure_print_outputs()
+
         created = True
 
     return created
@@ -86,6 +88,59 @@ def ensure_fs_uniquifier():
             conn.execute(text(statement.format(schema=db_schema)))
     logging.getLogger(__name__).info('fs_uniquifier column added to %s."user"', db_schema)
     return True
+
+
+PRINT_NUMBER_LOCK_KEY = 7286337503
+PRINT_OUTPUTS_LOCK_KEY = 7286337504
+
+PRINT_NUMBER_FUNCTION_SQL = """CREATE OR REPLACE FUNCTION {schema}.generate_print_output_number()
+RETURNS integer
+LANGUAGE plpgsql
+AS $function$
+DECLARE
+    new_output_number integer;
+    current_year integer := date_part('year', CURRENT_DATE);
+BEGIN
+    PERFORM pg_advisory_xact_lock({lock_key});
+
+    SELECT INTO new_output_number COALESCE(max(output_number) + 1, 1)
+    FROM {schema}.print_output_number
+    WHERE output_year = current_year;
+
+    INSERT INTO {schema}.print_output_number (output_number, output_year)
+    VALUES (new_output_number, current_year);
+
+    RETURN new_output_number;
+END;
+$function$"""
+
+
+def ensure_print_outputs():
+    """Add the status column of print_outputs and the locked print number function when they are missing."""
+    bind = db.session.get_bind()
+    engine = getattr(bind, 'engine', bind)
+    changed = False
+    with engine.begin() as conn:
+        if conn.dialect.name != 'postgresql':
+            return False
+        conn.execute(text('SELECT pg_advisory_xact_lock(:k)'), {'k': PRINT_OUTPUTS_LOCK_KEY})
+        column = conn.execute(text("SELECT 1 FROM information_schema.columns WHERE table_schema = :s "
+                                   "AND table_name = 'print_outputs' AND column_name = 'status'"),
+                              {'s': db_schema}).first()
+        if column is None:
+            conn.execute(text('ALTER TABLE {schema}.print_outputs ADD COLUMN status varchar(16)'.format(
+                schema=db_schema)))
+            changed = True
+        source = conn.execute(text("SELECT p.prosrc FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace "
+                                   "WHERE n.nspname = :s AND p.proname = 'generate_print_output_number'"),
+                              {'s': db_schema}).scalar()
+        if source is None or 'pg_advisory_xact_lock' not in source:
+            conn.execute(text(PRINT_NUMBER_FUNCTION_SQL.replace('{schema}', db_schema).replace(
+                '{lock_key}', str(PRINT_NUMBER_LOCK_KEY))))
+            changed = True
+    if changed:
+        logging.getLogger(__name__).info('print_outputs status and print number lock set in %s', db_schema)
+    return changed
 
 
 def load_data():

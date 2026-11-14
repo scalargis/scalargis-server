@@ -338,6 +338,7 @@ class PrintOutput(db.Model, PortalTable, PortalTableMixin):
     user_reference_number = db.Column(db.String())
     user_reference_name = db.Column(db.String())
     output_date = db.Column(db.DateTime())
+    status = db.Column(db.String(16))
     geom = db.Column(Geometry(geometry_type='GEOMETRY', srid=__srid__))
     geometry_wkt = column_property(geo_funcs.ST_AsText(geo_funcs.ST_Transform(geom, __srid__)))
 

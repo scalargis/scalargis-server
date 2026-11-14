@@ -102,23 +102,3 @@ $BODY$
   ROWS 1000;
 
 
-CREATE OR REPLACE FUNCTION {schema}.generate_print_output_number()
-RETURNS integer
-LANGUAGE plpgsql
-AS $function$
-DECLARE
-    new_output_number integer := null;
-BEGIN
-    SELECT INTO new_output_number COALESCE(max(output_number)+1, 1)
-	FROM {schema}.print_output_number
-	WHERE output_year= date_part('year', CURRENT_DATE);
-
-    INSERT INTO {schema}.print_output_number (output_number, output_year)
-		VALUES (new_output_number, date_part('year', CURRENT_DATE));
-
-
-    RETURN new_output_number;
-END;
-$function$
-;
-
