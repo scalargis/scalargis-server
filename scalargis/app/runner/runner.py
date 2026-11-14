@@ -48,6 +48,16 @@ def _env_int(name, default):
     return int(value) if value else default
 
 
+def max_run_seconds():
+    """RUNNER_JOB_MAX_RUN_SECONDS: the reaper fails a running job after this time."""
+    return _env_int('RUNNER_JOB_MAX_RUN_SECONDS', 600)
+
+
+def max_wait_seconds():
+    """RUNNER_JOB_MAX_WAIT_SECONDS: the reaper fails a queued job this long after its creation."""
+    return _env_int('RUNNER_JOB_MAX_WAIT_SECONDS', 600)
+
+
 def runner_mode():
     """RUNNER_MODE: 'external' keeps the runner out of the web process."""
     return (os.environ.get('RUNNER_MODE') or '').strip().lower()
@@ -145,6 +155,12 @@ class JobContext(object):
         path = os.path.join(job_files_root(), str(self.id))
         os.makedirs(path, exist_ok=True)
         return path
+
+    def remember(self, key, value):
+        """Store key in the job payload with its own commit, so a rerun of the job reads it."""
+        self.payload = dict(self.payload, **{key: value})
+        Job.query.filter(Job.id == self.id).update({'payload': self.payload}, synchronize_session=False)
+        db.session.commit()
 
 
 def job_files_root():
@@ -313,8 +329,22 @@ def run_periodic(name, wakes=(), beat=True, host=None):
     return True
 
 
+def transition(job_id, from_status, to_status, owner, attempts, values=None):
+    """Move a job from from_status to to_status when its status, runner and attempts still match. True when it moved."""
+    changes = dict(values or {})
+    changes['status'] = to_status
+    moved = (Job.query
+             .filter(Job.id == job_id, Job.status == from_status, Job.attempts == attempts,
+                     Job.runner.is_(None) if owner is None else Job.runner == owner)
+             .update(changes, synchronize_session=False)) == 1
+    if not moved:
+        logger.warning('runner: job %s not moved from %s to %s, its status, runner or attempts changed',
+                       job_id, from_status, to_status)
+    return moved
+
+
 def claim_job(host):
-    """Mark the oldest queued job of a known type as running for host. Returns its id or None."""
+    """Mark the oldest queued job of a known type as running for host. Returns (id, attempts) or None."""
     types = [stored_type(name) for name in _job_types]
     if not types:
         return None
@@ -328,25 +358,26 @@ def claim_job(host):
         if job is None:
             db.session.rollback()
             return None
-        job.status = STATUS_RUNNING
-        job.started_at = utc_now()
-        job.attempts = (job.attempts or 0) + 1
-        job.runner = host
-        job.error = None
-        job_id = job.id
+        job_id, attempts = job.id, job.attempts
+        if not transition(job_id, STATUS_QUEUED, STATUS_RUNNING, job.runner, attempts,
+                          {'started_at': utc_now(), 'attempts': attempts + 1, 'runner': host, 'error': None}):
+            db.session.rollback()
+            return None
         db.session.commit()
-        return job_id
+        return job_id, attempts + 1
     except Exception as claim_err:
         db.session.rollback()
         logger.warning('runner: job claim failed: %s', claim_err)
         return None
 
 
-def run_job(job_id):
-    """Run one claimed job and store its result or its error. Returns the final status."""
+def run_job(job_id, owner=None, attempts=None):
+    """Run one claimed job and store its result or its error. Returns the stored status, or None."""
     job = db.session.get(Job, job_id)
     if job is None:
         return None
+    if owner is None:
+        owner, attempts = job.runner, job.attempts
     ctx = JobContext(job)
     job_type = ctx.type
     fn = _job_types.get(job_type)
@@ -360,46 +391,56 @@ def run_job(job_id):
         logger.exception('runner: job %s (%s) failed', job_id, job_type)
         result, status, error = None, STATUS_FAILED, str(job_err)[:2000] or job_err.__class__.__name__
     try:
-        _finish(job_id, status, result, ctx.result_path, error)
+        moved = _finish(job_id, owner, attempts, status, result, ctx.result_path, error)
     except Exception as save_err:
         db.session.rollback()
         logger.exception('runner: job %s result not saved', job_id)
         status = STATUS_FAILED
-        _finish(job_id, status, None, None, 'result not saved: {0}'.format(save_err)[:2000])
-    return status
+        moved = _finish(job_id, owner, attempts, status, None, None,
+                        'result not saved: {0}'.format(save_err)[:2000])
+    return status if moved else None
 
 
-def _finish(job_id, status, result, result_path, error):
-    job = db.session.get(Job, job_id)
-    job.status = status
-    job.result = result
-    job.result_path = result_path
-    job.error = error
-    job.finished_at = utc_now()
+def _finish(job_id, owner, attempts, status, result, result_path, error):
+    moved = transition(job_id, STATUS_RUNNING, status, owner, attempts,
+                       {'result': result, 'result_path': result_path, 'error': error, 'finished_at': utc_now()})
     db.session.commit()
+    return moved
 
 
 def reap_lost_jobs(wakes=None):
-    """Requeue, or fail after the last attempt, running jobs whose runner stopped its heartbeat."""
-    stale_before = utc_now() - timedelta(seconds=max(6 * _env_int('RUNNER_POLL_SECONDS', 10), 60))
+    """Requeue or fail the running jobs of a stopped runner, and fail the jobs past their run or wait limit."""
+    now = utc_now()
+    stale_before = now - timedelta(seconds=max(6 * _env_int('RUNNER_POLL_SECONDS', 10), 60))
     live = {row.key[len(RUNNER_KEY_PREFIX):] for row in RunnerHeartbeat.query.filter(
         RunnerHeartbeat.key.like(RUNNER_KEY_PREFIX + '%'), RunnerHeartbeat.last_beat_at >= stale_before)}
     max_attempts = _env_int('RUNNER_JOB_MAX_ATTEMPTS', 2)
+    max_run, max_wait = max_run_seconds(), max_wait_seconds()
+    run_before = now - timedelta(seconds=max_run)
+    running = [(job.id, job.runner, job.attempts, job.started_at) for job in
+               Job.query.filter(Job.status == STATUS_RUNNING).with_for_update(skip_locked=True).all()]
+    waiting = [(job.id, job.attempts) for job in
+               Job.query.filter(Job.status == STATUS_QUEUED, Job.created_at < now - timedelta(seconds=max_wait))
+               .with_for_update(skip_locked=True).all()]
     requeued = 0
-    for job in Job.query.filter(Job.status == STATUS_RUNNING).with_for_update(skip_locked=True).all():
-        if job.runner in live:
-            continue
-        lost_by = job.runner
-        if (job.attempts or 0) < max_attempts:
-            job.status = STATUS_QUEUED
-            job.runner = None
-            job.started_at = None
-            requeued += 1
+    for job_id, owner, attempts, started_at in running:
+        if owner not in live and attempts < max_attempts:
+            to_status, values = STATUS_QUEUED, {'runner': None, 'started_at': None}
+        elif owner not in live:
+            to_status, values = STATUS_FAILED, {'error': 'the runner stopped during the job', 'finished_at': now}
+        elif started_at is not None and started_at < run_before:
+            to_status, values = STATUS_FAILED, {'error': 'the job ran longer than {0} s'.format(max_run),
+                                                'finished_at': now}
         else:
-            job.status = STATUS_FAILED
-            job.error = 'the runner stopped during the job'
-            job.finished_at = utc_now()
-        logger.warning('runner: job %s lost by %s, now %s', job.id, lost_by, job.status)
+            continue
+        if transition(job_id, STATUS_RUNNING, to_status, owner, attempts, values):
+            requeued += to_status == STATUS_QUEUED
+            logger.warning('runner: job %s of %s, now %s: %s', job_id, owner, to_status,
+                           values.get('error', 'requeued'))
+    for job_id, attempts in waiting:
+        error = 'no runner took the job in {0} s'.format(max_wait)
+        if transition(job_id, STATUS_QUEUED, STATUS_FAILED, None, attempts, {'error': error, 'finished_at': now}):
+            logger.warning('runner: job %s, now %s: %s', job_id, STATUS_FAILED, error)
     db.session.commit()
     if requeued and not _notify({'job': 'requeued'}):
         _job_event.set()
@@ -490,6 +531,9 @@ class Runner(object):
         self.pool = ThreadPoolExecutor(self.threads, thread_name_prefix='runner-job')
         self.started_periodics = set()
         self.last_runner_beat = 0.0
+        self.running = {}
+        self.reported_hung = set()
+        self.exit_on_hung = False
 
     def start(self):
         """Write the start heartbeat and start the threads."""
@@ -571,13 +615,29 @@ class Runner(object):
             if self.stop_event.is_set():
                 break
             self._beat_runner()
+            self._check_hung()
             while not self.stop_event.is_set() and self.free.acquire(blocking=False):
                 with self.app.app_context():
-                    job_id = claim_job(self.host)
-                if job_id is None:
+                    claimed = claim_job(self.host)
+                if claimed is None:
                     self.free.release()
                     break
-                self.pool.submit(self._run_job, job_id)
+                self.pool.submit(self._run_job, *claimed)
+
+    def _check_hung(self):
+        """Log a job thread past 2 x RUNNER_JOB_MAX_RUN_SECONDS. A worker process then exits, and its restart frees it."""
+        limit = 2 * max_run_seconds()
+        now = time.monotonic()
+        hung = [job_id for job_id, started in list(self.running.items())
+                if now - started > limit and job_id not in self.reported_hung]
+        if not hung:
+            return
+        self.reported_hung.update(hung)
+        logger.error('runner: job %s ran past %s s and holds its thread', ', '.join(str(j) for j in hung), limit)
+        if self.exit_on_hung:
+            logger.error('runner: %s exits, so that its restart frees the job threads', self.host)
+            logging.shutdown()
+            os._exit(1)
 
     def _beat_runner(self):
         now = time.monotonic()
@@ -588,13 +648,16 @@ class Runner(object):
             if _write_beat(RUNNER_KEY_PREFIX + self.host, self.host):
                 touch_beat_file()
 
-    def _run_job(self, job_id):
+    def _run_job(self, job_id, attempts):
+        self.running[job_id] = time.monotonic()
         try:
             with self.app.test_request_context('/'):
-                run_job(job_id)
+                run_job(job_id, self.host, attempts)
         except Exception:
             logger.exception('runner: job %s crashed', job_id)
         finally:
+            self.running.pop(job_id, None)
+            self.reported_hung.discard(job_id)
             self.free.release()
             _job_event.set()
 
@@ -638,6 +701,7 @@ def start_in_process(app):
 def run_forever(app):
     """Run the runner in the foreground until SIGTERM or SIGINT."""
     runner = start_in_process(app)
+    runner.exit_on_hung = True
     stopping = threading.Event()
     for sig in (signal.SIGTERM, signal.SIGINT):
         signal.signal(sig, lambda *_: stopping.set())

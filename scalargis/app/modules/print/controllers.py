@@ -122,7 +122,7 @@ def client_layer_attributions(request, layer_count):
     return [item if isinstance(item, str) else None for item in attributions]
 
 
-def viewer_generate_pdf(code, user, request=request):
+def viewer_generate_pdf(code, user, request=request, output_id=None, on_output=None):
     logger = logging.getLogger(__name__)
 
     print = db.session.query(Print).filter(Print.code == code).first()
@@ -208,9 +208,6 @@ def viewer_generate_pdf(code, user, request=request):
     if coord_sys is not None:
         coordinate_system = coord_sys.description
 
-    output_number = generate_print_output_number()
-    output_year = local_now().year
-
     drawing_features = json.loads(request.values['features']) if 'features' in request.values else None
 
     username = None
@@ -231,9 +228,13 @@ def viewer_generate_pdf(code, user, request=request):
         elif print and print.show_author:
                 username = user.username
 
-    print_output = save_print_output(print, group, viewer_id, output_number, output_year, scale,
-                                     output_title(title, form_fields), user_reference_number, user_reference_name,
-                                     geomWKT, srid, utc_now(), user_id)
+    print_output = db.session.get(PrintOutput, output_id) if output_id else None
+    if print_output is None:
+        print_output = save_print_output(print, group, viewer_id, generate_print_output_number(), local_now().year,
+                                         scale, output_title(title, form_fields), user_reference_number,
+                                         user_reference_name, geomWKT, srid, utc_now(), user_id)
+        if print_output is not None and on_output is not None:
+            on_output(print_output.id)
 
     page_size = print.format
     page_orientation = print.orientation.lower() if print.orientation else None

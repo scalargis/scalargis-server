@@ -2,14 +2,17 @@
 from app import runner
 
 JOB_TYPE = 'print.planta'
+OUTPUT_KEY = 'print_output_id'
 
 
 def run_print_planta(ctx):
-    """Generate the print of the captured request. The result has the body of the synchronous endpoint."""
+    """Generate the print of the captured request. A rerun keeps the number and the output row of the first try."""
     from app.modules.print.controllers import viewer_generate_pdf
     user = runner.job_user(ctx.created_by)
     with runner.replay_request(ctx.payload[runner.REQUEST_KEY], user):
-        return runner.plain_result(viewer_generate_pdf(ctx.payload['print_code'], user))
+        return runner.plain_result(viewer_generate_pdf(
+            ctx.payload['print_code'], user, output_id=ctx.payload.get(OUTPUT_KEY),
+            on_output=lambda output_id: ctx.remember(OUTPUT_KEY, output_id)))
 
 
 def start_print_planta(req, print_code, user):
