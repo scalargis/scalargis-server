@@ -55,7 +55,10 @@ LDAP_DEFAULTS = {
     'LDAP_BIND_AUTHENTICATION_TYPE': 'SIMPLE', 'LDAP_USER_SEARCH_SCOPE': 'LEVEL',
     'LDAP_USER_OBJECT_FILTER': '(objectclass=person)', 'LDAP_USER_LOGIN_ATTR': 'uid', 'LDAP_USER_RDN_ATTR': 'uid',
     'LDAP_GET_USER_ATTRIBUTES': ALL_ATTRIBUTES,
+    'LDAP_CONNECT_TIMEOUT': 10, 'LDAP_RECEIVE_TIMEOUT': 10,
 }
+
+LDAP_TRANSPORT_FAULTS = ('strongerAuthRequired', 'confidentialityRequired')
 
 authorizations = {
     'apikey': {
@@ -143,13 +146,15 @@ class LDAPLoginManager(LDAP3LoginManager):
             )
 
         try:
-            server = Server(host, port=port, use_ssl=use_ssl, tls=ldap_tls(self.config), get_info=ALL)
+            server = Server(host, port=port, use_ssl=use_ssl, tls=ldap_tls(self.config), get_info=ALL,
+                            connect_timeout=int(self.config.get('LDAP_CONNECT_TIMEOUT') or 0) or None)
             conn = Connection(
                 server,
                 user=user,
                 password=password,
                 authentication=SIMPLE,
                 auto_bind=AUTO_BIND_TLS_BEFORE_BIND if start_tls else AUTO_BIND_NO_TLS,
+                receive_timeout=int(self.config.get('LDAP_RECEIVE_TIMEOUT') or 0) or None,
             )
             logger.debug(
                 "[_direct_connection] bound OK — vendor: %s",
@@ -304,7 +309,8 @@ class LDAPLoginManager(LDAP3LoginManager):
                 username, bind_user, type(exc).__name__, exc,
             )
             response.status = AuthenticationResponseStatus.fail
-            response.outcome = LDAP_REFUSED if isinstance(exc, LDAPBindError) else LDAP_UNREACHABLE
+            refused = isinstance(exc, LDAPBindError) and not any(fault in str(exc) for fault in LDAP_TRANSPORT_FAULTS)
+            response.outcome = LDAP_REFUSED if refused else LDAP_UNREACHABLE
             response.exception = exc
         return response
 

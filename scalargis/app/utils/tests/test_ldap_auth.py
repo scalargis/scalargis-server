@@ -42,7 +42,7 @@ def ldap(monkeypatch):
             self.info = None
 
     class FakeConnection:
-        def __init__(self, server, user=None, password=None, authentication=None, auto_bind=None):
+        def __init__(self, server, user=None, password=None, authentication=None, auto_bind=None, receive_timeout=None):
             calls.binds.append((user, password, auto_bind))
             if not password or PASSWORDS.get(user) != password:
                 raise LDAPBindError('invalidCredentials')
