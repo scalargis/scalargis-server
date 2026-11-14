@@ -18,7 +18,7 @@ from app.utils.security import is_admin_or_manager, can_edit
 from app.models.portal import Print, PrintGroup, PrintElement, PrintLayout, PrintGroupPrint, \
     PrintGroupChild, PrintGroupLayout, Viewer, ViewerPrint, ViewerPrintGroup
 from ...endpoints import get_user
-from . import get_record_by_id
+from . import get_record_by_id, copy_fields
 
 
 logger = logging.getLogger(__name__)
@@ -239,12 +239,7 @@ def update(id, data):
 
         roles = db.session.query(Role).all()
 
-        for key in print_fields:
-            if hasattr(record, print_fields.get(key)):
-                if data.get(key) == '':
-                    setattr(record, print_fields.get(key), None)
-                else:
-                    setattr(record, print_fields.get(key), data.get(key))
+        copy_fields(record, data, print_fields, blank_to_none=True)
 
         if 'geom_filter' in data:
             geom = None
@@ -606,12 +601,7 @@ def update_print_group(id, data):
 
         roles = db.session.query(Role).all()
 
-        for key in print_group_fields:
-            if hasattr(record,  print_group_fields.get(key)):
-                if data.get(key) == '':
-                    setattr(record,  print_group_fields.get(key), None)
-                else:
-                    setattr(record,  print_group_fields.get(key), data.get(key))
+        copy_fields(record, data, print_group_fields, blank_to_none=True)
 
         if 'geom_filter' in data:
             geom = None
@@ -906,12 +896,7 @@ def update_print_element(id, data):
         #if not is_admin_or_manager(user) and record.owner_id != user.id:
         #    return None
 
-        for key in print_element_fields:
-            if hasattr(record, print_element_fields.get(key)):
-                if data.get(key) == '':
-                    setattr(record, print_element_fields.get(key), None)
-                else:
-                    setattr(record, print_element_fields.get(key), data.get(key))
+        copy_fields(record, data, print_element_fields, blank_to_none=True)
 
         #if 'owner_id' in data:
         #    record.owner_id = data.get('owner_id')

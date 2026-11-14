@@ -12,7 +12,7 @@ from ..parsers import *
 from app.models.security import Role
 from app.models.portal import *
 from ...endpoints import get_user
-from . import get_record_by_id
+from . import get_record_by_id, copy_fields
 from app.utils.constants import ROLE_ANONYMOUS, ROLE_AUTHENTICATED
 from app.utils.security import is_admin_or_manager, can_edit
 from ..dao.app import get_viewer_record
@@ -239,10 +239,8 @@ def update(id, data):
             if hasattr(record, field) and field in data:
                 setattr(record, field, data.get(field))
 
-        if 'manifest_json' in data and data['manifest_json'] is not None:
-            record.manifest_json = json.dumps(data['manifest_json'])
-        else:
-            record.manifest_json = None
+        if 'manifest_json' in data:
+            record.manifest_json = json.dumps(data['manifest_json']) if data['manifest_json'] is not None else None
 
         if 'config_json' in data:
             record.config_json = json.dumps(data['config_json'])
@@ -479,14 +477,12 @@ def app_update(viewer_id_or_slug, data):
     if user.id != record.owner_id:
         return response, 403
 
-    record.title = data.get('title')
-    record.name = data.get('name')
-    record.description = data.get('description')
+    copy_fields(record, data, ('title', 'name', 'description', 'allow_user_session'))
     record.config_version = '1.0'
-    record.allow_add_layers = data.get('allow_add_layers')
-    record.allow_user_session = data.get('allow_user_session')
 
-    config_json = json.loads(data['config_json']) if isinstance(data['config_json'], str) else data['config_json']
+    config_json = data.get('config_json') or record.config_json or '{}'
+    if isinstance(config_json, str):
+        config_json = json.loads(config_json)
     config_json['title'] = record.title
     config_json['name'] = record.name or record.uuid
     config_json['description'] = record.description
@@ -498,8 +494,8 @@ def app_update(viewer_id_or_slug, data):
     config_json.pop('description', None)
 
     # remove ThemeWizard component if add layers not allowed
-    if not record.allow_add_layers:
-        components = config_json['components']
+    if 'allow_add_layers' in data and not data['allow_add_layers']:
+        components = config_json.get('components') or []
         components[:] = [c for c in components if c.get('type') != 'ThemeWizard']
 
     record.config_json = json.dumps(config_json)

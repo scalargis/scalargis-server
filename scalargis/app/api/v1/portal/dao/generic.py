@@ -10,7 +10,7 @@ from app.database import db
 from ..parsers import *
 from app.models.portal import CoordinateSystems
 from app.api.v1.endpoints import get_user
-from . import refuse_read_only
+from . import refuse_read_only, copy_fields
 
 
 generic_models = {
@@ -115,10 +115,9 @@ def update_generic(entity_name, id, data):
     record = db.session.query(model).filter(model.id == id).one()
     refuse_read_only(record)
 
-    record.code = data['code'] if 'code' in data else None
-    record.name = data['name'] if 'name' in data else None
-    record.description = data['description'] if 'description' in data else None
-    record.config_json = json.dumps(data['config_json']) if 'config_json' in data else None
+    copy_fields(record, data, ('code', 'name', 'description'))
+    if 'config_json' in data:
+        record.config_json = json.dumps(data['config_json']) if data['config_json'] is not None else None
 
     # Update custom model fields
     mapper = inspect(model)

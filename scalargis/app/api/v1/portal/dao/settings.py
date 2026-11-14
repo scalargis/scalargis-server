@@ -12,7 +12,7 @@ from app.database import db
 from ..parsers import *
 from app.models.portal import SiteSettings
 from app.api.v1.endpoints import get_user
-from . import refuse_read_only
+from . import refuse_read_only, copy_fields
 
 settings_models = {
     "site": SiteSettings
@@ -99,12 +99,7 @@ def update(entity_name, id, data):
     record = db.session.query(model).filter(model.id == id).one()
     refuse_read_only(record)
 
-    #for key in data:
-    #    print(key)
-    record.code = data['code'] if 'code' in data  else None
-    record.name = data['name'] if 'code' in data  else None
-    record.notes = data['notes'] if 'notes' in data  else None
-    record.setting_value = data['setting_value'] if 'setting_value' in data  else None
+    copy_fields(record, data, ('code', 'name', 'notes', 'setting_value'))
 
     db.session.add(record)
     db.session.commit()

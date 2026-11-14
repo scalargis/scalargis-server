@@ -3,6 +3,7 @@ import sqlalchemy
 import uuid
 from app.utils import utc_now, to_utc_naive
 from flask import current_app, request, render_template, url_for
+from werkzeug.exceptions import BadRequest
 from werkzeug.local import LocalProxy
 from sqlalchemy import cast, or_, Integer, Boolean, func
 from flask_security.utils import hash_password
@@ -14,7 +15,7 @@ from ..parsers import *
 from app.models.portal import *
 from ...endpoints import check_user, get_user
 from ..serializers import account_api_model
-from . import get_record_by_id, refuse_read_only
+from . import get_record_by_id, refuse_read_only, copy_fields
 from sqlalchemy.exc import IntegrityError
 from app.utils.constants import ROLE_ANONYMOUS, ROLE_AUTHENTICATED
 from app.utils.mailing import send_mail
@@ -374,6 +375,13 @@ def apply_auth_key(record, data):
 
 AUTH_KEY_TAKEN_RESPONSE = ({'status': 409, 'error': True, 'message': 'auth_token_taken'}, 409)
 
+USER_PROFILE_FIELDS = ('first_name', 'last_name', 'name', 'username', 'email')
+
+
+def empties_username(data):
+    """True when the body sends username as null or blank."""
+    return 'username' in data and not (data['username'] or '').strip()
+
 
 def update_password(request):
 
@@ -421,20 +429,12 @@ def update_account(request):
         return {}, 401
 
 
+    data = request.json or {}
+    if empties_username(data):
+        return {'status': 400, 'error': True, 'message': 'username_required'}, 400
+
     try:
-        data = request.json
-
-        '''
-        model = User
-    
-        record = db.session.query(model).filter(model.id == id).one()
-        '''
-
-        user.first_name = data['first_name'] if 'first_name' in data  else None
-        user.last_name = data['last_name'] if 'last_name' in data else None
-        user.name = data['name'] if 'name' in data else None
-        user.username = data['username'] if 'username' in data else None
-        user.email = data['email'] if 'email' in data else None
+        copy_fields(user, data, USER_PROFILE_FIELDS)
         apply_auth_key(user, data)
 
         db.session.add(user)
@@ -584,10 +584,7 @@ def update_role(id, data):
     record = db.session.query(model).filter(model.id == id).one()
     refuse_read_only(record)
 
-    #for key in data:
-    #    print(key)
-    record.name = data['name'] if 'name' in data else None
-    record.description = data['description'] if 'description' in data else None
+    copy_fields(record, data, ('name', 'description'))
 
     db.session.add(record)
     db.session.commit()
@@ -750,10 +747,7 @@ def update_group(id, data):
     roles = db.session.query(Role).all()
     users = db.session.query(User).all()
 
-    #for key in data:
-    #    print(key)
-    record.name = data['name'] if 'name' in data else None
-    record.description = data['description'] if 'description' in data else None
+    copy_fields(record, data, ('name', 'description'))
 
     # Roles
     if 'roles' in data:
@@ -952,18 +946,16 @@ def update_user(id, data):
 
     record = db.session.query(model).filter(model.id == id).one()
 
+    if empties_username(data):
+        raise BadRequest('username_required')
+
     roles = db.session.query(Role).all()
     groups = db.session.query(Group).all()
 
-    #for key in data:
-    #    print(key)
-    record.first_name = data['first_name'] if 'first_name' in data  else None
-    record.last_name = data['last_name'] if 'last_name' in data else None
-    record.name = data['name'] if 'name' in data else None
-    record.username = data['username'] if 'username' in data else None
-    record.email = data['email'] if 'email' in data else None
+    copy_fields(record, data, USER_PROFILE_FIELDS)
     was_pending = is_pending(record)
-    record.active = data['active'] if 'active' in data else False
+    if 'active' in data:
+        record.active = bool(data['active'])
     if record.confirmed_at is None and (record.active or not was_pending):
         record.confirmed_at = utc_now()
     if 'password' in data and data['password'] is not None:
