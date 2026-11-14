@@ -358,6 +358,10 @@ class PrintOutputNumber(db.Model, PortalTable):
 
 class UserViewerSession(db.Model, PortalTable, PortalTableMixin):
     __tablename__ = "user_viewer_session"
+    __table_args__ = (
+        db.Index('user_viewer_session_viewer_user_key', 'viewer_id', 'user_id', unique=True),
+        PortalTable.__table_args__,
+    )
 
     id = db.Column(db.Integer(), primary_key=True)
     config_json = db.Column(db.Text())
@@ -367,6 +371,10 @@ class UserViewerSession(db.Model, PortalTable, PortalTableMixin):
 
 class UserDataLayer(db.Model, PortalTable, PortalTableMixin):
     __tablename__ = "user_data_layer"
+    __table_args__ = (
+        db.Index('user_data_layer_uuid_key', db.func.lower(db.text('uuid')), unique=True),
+        PortalTable.__table_args__,
+    )
 
     id = db.Column(db.Integer(), primary_key=True)
     uuid = db.Column(db.String(120))

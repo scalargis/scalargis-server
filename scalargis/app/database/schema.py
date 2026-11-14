@@ -40,6 +40,8 @@ def create_schema():
 
         ensure_print_outputs()
 
+        ensure_unique_rows()
+
         created = True
 
     return created
@@ -140,6 +142,44 @@ def ensure_print_outputs():
             changed = True
     if changed:
         logging.getLogger(__name__).info('print_outputs status and print number lock set in %s', db_schema)
+    return changed
+
+
+UNIQUE_ROWS_LOCK_KEY = 7286337506
+
+UNIQUE_ROWS = (
+    ('user_viewer_session', 'user_viewer_session_viewer_user_key',
+     'DELETE FROM {schema}.user_viewer_session s USING (SELECT id, row_number() OVER ('
+     'PARTITION BY viewer_id, user_id ORDER BY coalesce(updated_at, created_at) DESC NULLS LAST, id DESC) AS n '
+     'FROM {schema}.user_viewer_session) d WHERE s.id = d.id AND d.n > 1',
+     'CREATE UNIQUE INDEX user_viewer_session_viewer_user_key ON {schema}.user_viewer_session (viewer_id, user_id)'),
+    ('user_data_layer', 'user_data_layer_uuid_key',
+     'DELETE FROM {schema}.user_data_layer s USING (SELECT id, row_number() OVER ('
+     'PARTITION BY lower(uuid) ORDER BY id) AS n FROM {schema}.user_data_layer WHERE uuid IS NOT NULL) d '
+     'WHERE s.id = d.id AND d.n > 1',
+     'CREATE UNIQUE INDEX user_data_layer_uuid_key ON {schema}.user_data_layer (lower(uuid))'),
+)
+
+
+def ensure_unique_rows():
+    """Remove duplicate user session and data layer rows and add their unique indexes when they are missing."""
+    bind = db.session.get_bind()
+    engine = getattr(bind, 'engine', bind)
+    log = logging.getLogger(__name__)
+    changed = False
+    with engine.begin() as conn:
+        if conn.dialect.name != 'postgresql':
+            return False
+        conn.execute(text('SELECT pg_advisory_xact_lock(:k)'), {'k': UNIQUE_ROWS_LOCK_KEY})
+        for table, index, dedupe, create in UNIQUE_ROWS:
+            found = conn.execute(text('SELECT 1 FROM pg_indexes WHERE schemaname = :s AND tablename = :t '
+                                      'AND indexname = :i'), {'s': db_schema, 't': table, 'i': index}).first()
+            if found is not None:
+                continue
+            removed = conn.execute(text(dedupe.format(schema=db_schema))).rowcount
+            conn.execute(text(create.format(schema=db_schema)))
+            log.info('%s.%s: %s duplicate rows removed, unique index %s added', db_schema, table, removed, index)
+            changed = True
     return changed
 
 

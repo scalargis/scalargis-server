@@ -8,7 +8,8 @@ from app.utils import utc_now, iso_utc, local_today
 
 from flask import request, current_app, url_for, render_template, render_template_string
 from flask_security import current_user
-from sqlalchemy import func
+from sqlalchemy import func, literal_column
+from sqlalchemy.dialects.postgresql import insert as pg_insert
 from flask_restx import marshal
 from shapely.wkt import loads
 
@@ -146,17 +147,6 @@ def get_app_viewer(viewer_id_or_slug, session=False):
     return viewer_cfg, status
 
 
-def get_viewer_session_record(viewer_id, user_id):
-    status = 200
-    record = UserViewerSession.query.\
-        filter(UserViewerSession.viewer_id == viewer_id, UserViewerSession.user_id == user_id).one_or_none()
-
-    if not record:
-        return None, 404
-
-    return record, status
-
-
 def save_viewer_session(viewer_id_or_slug, data):
     status = 200
 
@@ -172,37 +162,27 @@ def save_viewer_session(viewer_id_or_slug, data):
     if not user or not user.is_authenticated or not user.is_active:
         return response, 401
 
-    record, status = get_viewer_session_record(viewer.id, user.id)
-
     date_session = utc_now()
-    if not record:
-        record = UserViewerSession()
-        record.user_id = user.id
-        record.viewer_id = viewer.id
-        record.created_at = date_session
-        record.id_user_create = user.id
-        status = 201
-    else:
-        record.id_user_update = user.id
-        record.updated_at = date_session
-        status = 200
-
-    record.config_version = '1.0'
     config_json = json.loads(data['config_json']) if isinstance(data['config_json'], str) else data['config_json']
     session_layers = data.get("session_layers", [])
     session_layers = json.loads(session_layers) if isinstance(session_layers, str) else session_layers
+    session_data = json.dumps({"session_layers": session_layers, "config_json": config_json})
 
-    session_data = {"session_layers": session_layers, "config_json": config_json}
-    record.config_json = json.dumps(session_data)
-
-    db.session.add(record)
+    table = UserViewerSession.__table__
+    statement = pg_insert(table).values(viewer_id=viewer.id, user_id=user.id, config_json=session_data,
+                                        created_at=date_session, id_user_create=user.id)
+    statement = statement.on_conflict_do_update(
+        index_elements=[table.c.viewer_id, table.c.user_id],
+        set_={'config_json': session_data, 'updated_at': date_session, 'id_user_update': user.id},
+    ).returning(table.c.id, literal_column('xmax = 0'))
+    session_id, inserted = db.session.execute(statement).one()
     db.session.commit()
-    db.session.refresh(record)
+    status = 201 if inserted else 200
 
     response = {
-            "id": record.id,
+            "id": session_id,
             "viewer_uuid": viewer.uuid,
-            "session": {"id": record.id, "date": iso_utc(date_session)},
+            "session": {"id": session_id, "date": iso_utc(date_session)},
             "success": True
         }
 
@@ -709,58 +689,67 @@ def build_viewer_config(record, user_roles, user=None, session=False):
     return viewer_cfg
 
 
+CONVERTED_LAYER_UUID = re.compile(r'[0-9a-f]{32}')
+
+
+def data_layer_record(layer_uuid):
+    """The user_data_layer row of layer_uuid, or None."""
+    return UserDataLayer.query.filter(func.lower(UserDataLayer.uuid) == layer_uuid).one_or_none()
+
+
+def materialize_data_layer(layer_uuid, user):
+    """Copy the converted tmp files of layer_uuid into its one user_data_layer row and remove them. Returns the row."""
+    filepath = os.path.join(settings.APP_TMP_DIR, layer_uuid + '.geojson')
+    metadata_filepath = os.path.join(settings.APP_TMP_DIR, layer_uuid + '.metadata')
+    try:
+        with open(filepath, encoding="utf8") as f:
+            data = json.load(f)
+    except FileNotFoundError:
+        return data_layer_record(layer_uuid)
+    metadata = None
+    try:
+        with open(metadata_filepath, encoding="utf8") as m:
+            metadata = json.load(m)
+    except FileNotFoundError:
+        pass
+
+    owner_id = user.id if user and user.is_authenticated else None
+    table = UserDataLayer.__table__
+    statement = pg_insert(table).values(
+        uuid=layer_uuid, data_geojson=json.dumps(data), metadata_geojson=json.dumps(metadata) if metadata else None,
+        is_private=False, allow_anonymous=True, is_active=True, created_at=utc_now(),
+        id_user_create=owner_id, owner_id=owner_id,
+    ).on_conflict_do_nothing(index_elements=[func.lower(table.c.uuid)])
+    db.session.execute(statement)
+    db.session.commit()
+
+    for path in (filepath, metadata_filepath):
+        try:
+            os.remove(path)
+        except OSError as e:
+            logging.getLogger(__name__).debug(e)
+
+    return data_layer_record(layer_uuid)
+
+
 def get_data_layer(layer_id):
-    record = None
     data = None
     status = 200
 
+    if not layer_id or layer_id.isdigit():
+        return {}, 404
+    layer_uuid = layer_id.lower()
+
     user = get_user(request)
 
-    if layer_id and layer_id.isdigit():
-        #By Id
-        record = get_record_by_id(UserDataLayer, int(layer_id))
-    elif isinstance(layer_id, str):
-        #By uuid
-        record = UserDataLayer.query.filter(func.lower(UserDataLayer.uuid) == layer_id.lower()).one_or_none()
-
+    record = data_layer_record(layer_uuid)
+    if not record and CONVERTED_LAYER_UUID.fullmatch(layer_uuid):
+        record = materialize_data_layer(layer_uuid, user)
     if not record:
-        filepath = os.path.join(settings.APP_TMP_DIR, layer_id + '.geojson')
-
-        if not os.path.isfile(filepath):
-            return {}, 404
-
-        data = None
-        metadata = None
-
-        with open(filepath, encoding="utf8") as f:
-            data = json.load(f)
-
-        metadata_filepath = os.path.join(settings.APP_TMP_DIR, layer_id + '.metadata')
-        if os.path.isfile(metadata_filepath):
-            with open(metadata_filepath, encoding="utf8") as m:
-                metadata = json.load(m)
-
-        record = UserDataLayer()
-        record.uuid = layer_id
-        record.data_geojson = json.dumps(data)
-        if metadata:
-            record.metadata_geojson = json.dumps(metadata)
-        record.is_private = False
-        record.allow_anonymous = True
-        record.is_active = True
-        record.created_at = utc_now()
-        if user and current_user.is_authenticated:
-            record.id_user_create = user.id
-            record.owner_id = user.id
-
-    if record:
-        record.last_access = utc_now()
-
-        db.session.add(record)
-        db.session.commit()
-        db.session.refresh(record)
-    else:
         return {}, 404
+
+    record.last_access = utc_now()
+    db.session.commit()
 
     if not record.is_active:
         return {}, 404

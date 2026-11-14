@@ -231,7 +231,7 @@ class AppPrintMerge(Resource):
 
 @ns.route('/data/layer/<string:layer_id>')
 @ns.response(404, 'Todo not found')
-@ns.param('layer_id', 'The layer identifier (id or uuid)')
+@ns.param('layer_id', 'The layer uuid')
 class AppDataLayer(Resource):
     def options(self, layer_id):
         return {'Allow': 'GET'}, 200, \

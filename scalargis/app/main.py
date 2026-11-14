@@ -47,7 +47,8 @@ def initialize_app(flask_app):
     from app.modules.print import jobs as print_jobs
     print_jobs.register()
 
-    from app.database.schema import create_schema, create_runner_tables, ensure_fs_uniquifier, ensure_print_outputs
+    from app.database.schema import create_schema, create_runner_tables, ensure_fs_uniquifier, ensure_print_outputs, \
+        ensure_unique_rows
 
     # -- Create database schema
     with app.app_context():
@@ -59,6 +60,7 @@ def initialize_app(flask_app):
             create_runner_tables()
             ensure_fs_uniquifier()
             ensure_print_outputs()
+            ensure_unique_rows()
         except Exception as e:
             log.error('Database Initialization error: {}'.format(str(e)))
             raise

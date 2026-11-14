@@ -143,49 +143,44 @@ def convert_to_geojson_create_layer(file, persist=True):
     filepath = os.path.join(settings.APP_TMP_DIR, filename)
 
     file.save(filepath)
-
-    metadata['size'] = os.stat(filepath).st_size
-
-    # KML fix- remove a blank line at the beginning of the file if it exists
-    if os.path.splitext(file.filename)[1].lower() == '.kml':
-        with open(filepath, "r+", encoding="utf-8") as f:
-            content = f.read().lstrip('\n')
-            f.seek(0)
-            f.write(content)
-            f.truncate()
-
-    #dd = open(filepath, 'rb').read()
-
-    if os.path.splitext(file.filename)[1].lower() == '.zip':
-        filepath = 'zip://' + filepath
-
-    file_uuid = str(uuid.uuid4().hex)
-
-    with fiona.open(filepath, 'r', encoding='utf-8') as source:
-        metadata['driver'] = source.driver
-        metadata['crs'] = source.meta.get('crs').get('init').upper() if 'init' in source.meta.get('crs')\
-            else fiona_crs.to_string(source.meta.get('crs'))
-        metadata['extent'] = source.bounds
-        metadata['schema'] = source.meta.get('schema')
-
-        out_filepath = os.path.join(settings.APP_TMP_DIR, file_uuid + '.geojson')
-        with fiona.open(
-                out_filepath,
-                'w',
-                encoding='utf-8',
-                driver='GeoJSON',
-                #crs=fiona.crs.from_epsg(4326),
-                #crs=fiona.crs.from_epsg(3763),
-                crs_wkt=source.crs_wkt,
-                schema={ 'geometry': 'Unknown', 'properties': source.schema['properties']}) as sink:
-            for rec in source:
-                sink.write(rec)
-
     try:
-        if os.path.exists(filepath.lstrip('zip://')):
-            os.remove(filepath.lstrip('zip://'))
-    except Exception as e:
-        logger.debug(e)
+        metadata['size'] = os.stat(filepath).st_size
+
+        if os.path.splitext(file.filename)[1].lower() == '.kml':
+            with open(filepath, "r+", encoding="utf-8") as f:
+                content = f.read().lstrip('\n')
+                f.seek(0)
+                f.write(content)
+                f.truncate()
+
+        source_path = filepath
+        if os.path.splitext(file.filename)[1].lower() == '.zip':
+            source_path = 'zip://' + filepath
+
+        file_uuid = str(uuid.uuid4().hex)
+
+        with fiona.open(source_path, 'r', encoding='utf-8') as source:
+            metadata['driver'] = source.driver
+            metadata['crs'] = source.meta.get('crs').get('init').upper() if 'init' in source.meta.get('crs')\
+                else fiona_crs.to_string(source.meta.get('crs'))
+            metadata['extent'] = source.bounds
+            metadata['schema'] = source.meta.get('schema')
+
+            out_filepath = os.path.join(settings.APP_TMP_DIR, file_uuid + '.geojson')
+            with fiona.open(
+                    out_filepath,
+                    'w',
+                    encoding='utf-8',
+                    driver='GeoJSON',
+                    crs_wkt=source.crs_wkt,
+                    schema={ 'geometry': 'Unknown', 'properties': source.schema['properties']}) as sink:
+                for rec in source:
+                    sink.write(rec)
+    finally:
+        try:
+            os.remove(filepath)
+        except OSError as e:
+            logger.debug(e)
 
     metadata_out_filepath = os.path.join(settings.APP_TMP_DIR, file_uuid + '.metadata')
     if metadata:
