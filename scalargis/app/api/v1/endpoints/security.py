@@ -3,7 +3,6 @@ from flask import request
 from flask_restx import Resource
 from app.utils.security import get_user_token
 from app.utils.security import get_user_from_token, get_user_from_auth_token
-from app.utils.login_blocking import check_ip_blocked, record_failure, record_success
 from app.utils.login_audit import log_login_attempt
 from app.utils import constants, utc_now
 from app.utils.password_policy import describe_policy
@@ -64,14 +63,6 @@ class SecurityToken(Resource):
         """Authenticates user and returns authentication token"""
 
         ip = request.remote_addr or "unknown"
-        is_blocked, retry_after = check_ip_blocked(ip)
-        if is_blocked:
-            return 'Too many failed login attempts', 429, {
-                'Access-Control-Allow-Origin': '*',
-                'Access-Control-Allow-Methods': 'POST',
-                'Access-Control-Allow-Headers': 'Origin, X-Requested-With, Content-Type, Accept',
-                'Retry-After': str(retry_after),
-            }
 
         authenticated = False
 
@@ -87,7 +78,6 @@ class SecurityToken(Resource):
 
         if token:
             authenticated = True
-            record_success(ip)
             log_login_attempt(ip, username, True)
             user = get_user_from_token(token)
 
@@ -97,7 +87,6 @@ class SecurityToken(Resource):
             user_roles.append(constants.ROLE_AUTHENTICATED)
 
         else:
-            record_failure(ip)
             log_login_attempt(ip, username, False)
             return 'Bad credentials', 401, {'Access-Control-Allow-Origin': '*',
                 'Access-Control-Allow-Methods': 'POST',
