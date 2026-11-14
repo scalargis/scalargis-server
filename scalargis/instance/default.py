@@ -39,6 +39,7 @@ SCALARGIS_LDAP_ROLE = 'LDAP'
 # -- Brute-force login protection --
 SCALARGIS_LOGIN_BLOCK_THRESHOLD = 20
 SCALARGIS_LOGIN_BLOCK_DURATION_MINUTES = 30
+SCALARGIS_API_TOKEN_MAX_AGE_DAYS = 150
 
 # -- Password complexity policy --
 # Enforced whenever a password is set (register, reset, admin user create/update).

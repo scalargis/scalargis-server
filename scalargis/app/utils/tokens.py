@@ -11,6 +11,8 @@ ACTIVATION_SALT = "confirm-salt"
 RESET_SALT = "reset-salt"
 ACTIVATION_WITHIN_KEY = "SECURITY_CONFIRM_EMAIL_WITHIN"
 RESET_WITHIN_KEY = "SECURITY_RESET_PASSWORD_WITHIN"
+API_TOKEN_MAX_AGE_KEY = "SCALARGIS_API_TOKEN_MAX_AGE_DAYS"
+API_TOKEN_MAX_AGE_DAYS = 150
 _DEFAULT_WITHIN = {ACTIVATION_WITHIN_KEY: timedelta(hours=24), RESET_WITHIN_KEY: timedelta(hours=2)}
 
 _hashing = CryptContext(schemes=["sha256_crypt", "hex_md5"], deprecated=["hex_md5"])
@@ -41,8 +43,19 @@ def auth_token(user):
     return _serializer(REMEMBER_SALT).dumps([str(user.id), _hashing.hash(user.password or "")])
 
 
+def api_token_max_age():
+    """Returns the API token lifetime in seconds from SCALARGIS_API_TOKEN_MAX_AGE_DAYS, default 150 days."""
+    try:
+        days = float(current_app.config.get(API_TOKEN_MAX_AGE_KEY, API_TOKEN_MAX_AGE_DAYS))
+    except (TypeError, ValueError):
+        days = API_TOKEN_MAX_AGE_DAYS
+    return int(days * 86400)
+
+
 def user_from_auth_token(token, max_age=None):
-    """Returns the active user for an API token, or None."""
+    """Returns the active user for an API token younger than max_age (default api_token_max_age()), or None."""
+    if max_age is None:
+        max_age = api_token_max_age()
     try:
         data = _serializer(REMEMBER_SALT).loads(token, max_age=max_age)
     except (BadData, TypeError, ValueError):

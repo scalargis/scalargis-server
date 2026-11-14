@@ -10,6 +10,7 @@ from app.utils.password_policy import describe_policy
 from ..portal.parsers import *
 from ..portal.serializers import *
 from ..portal.dao import security as dao_security
+from app.database import db
 from ..endpoints import check_user, ns_authentication, ns_security
 
 
@@ -583,7 +584,11 @@ class UsersList(Resource):
     def post(self):
         '''Create a new table record'''
         if (check_user(request, [constants.ROLE_ADMIN, constants.ROLE_MANAGER])):
-            item = dao_security.create_user(request.json)
+            try:
+                item = dao_security.create_user(request.json)
+            except dao_security.AuthKeyTaken:
+                db.session.rollback()
+                ns_security.abort(409, 'auth_token_taken')
             return item, 201, {'Access-Control-Allow-Origin': '*',
                                'Access-Control-Allow-Methods': 'POST',
                                'Access-Control-Allow-Headers': 'Origin, X-Requested-With, Content-Type, Accept'
@@ -662,7 +667,11 @@ class Users(Resource):
     def put(self, id):
         '''Update a record given its identifier'''
         if (check_user(request, [constants.ROLE_ADMIN, constants.ROLE_MANAGER])):
-            item = dao_security.update_user(id, request.json)
+            try:
+                item = dao_security.update_user(id, request.json)
+            except dao_security.AuthKeyTaken:
+                db.session.rollback()
+                ns_security.abort(409, 'auth_token_taken')
             return item, 200, {'Access-Control-Allow-Origin': '*',
                                'Access-Control-Allow-Methods': 'PUT',
                                'Access-Control-Allow-Headers': 'Origin, X-Requested-With, Content-Type, Accept'

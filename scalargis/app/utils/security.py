@@ -26,7 +26,7 @@ from ldap3.utils.conv import escape_filter_chars
 from ldap3.core.exceptions import LDAPBindError
 from ldap3.utils.dn import escape_rdn
 from sqlalchemy import func
-from . import constants, tokens
+from . import constants, tokens, utc_now
 
 logger = logging.getLogger(__name__)
 
@@ -613,10 +613,32 @@ def get_user_from_token(token):
 
 
 def get_user_from_auth_token(token):
-    user = _security.datastore.find_user(auth_token=token)
-    if user and user.is_active and user.is_authenticated:
+    """Returns the active user of an auth key that one user holds and that has not expired, or None."""
+    from app.models.security import User
+    if not token:
+        return None
+    users = User.query.filter(User.auth_token == token).limit(2).all()
+    if len(users) != 1:
+        if users:
+            logger.warning("[get_user_from_auth_token] auth key held by more than one user")
+        return None
+    user = users[0]
+    if user.auth_token_expire and user.auth_token_expire < utc_now():
+        return None
+    if user.is_active and user.is_authenticated:
         return user
     return None
+
+
+def auth_key_taken(key, user_id=None):
+    """True when another user holds the auth key."""
+    from app.models.security import User
+    if not key:
+        return False
+    qy = User.query.filter(User.auth_token == key)
+    if user_id is not None:
+        qy = qy.filter(User.id != user_id)
+    return qy.first() is not None
 
 
 def get_api_user(request):

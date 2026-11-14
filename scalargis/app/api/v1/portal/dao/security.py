@@ -22,7 +22,7 @@ from app.models.security import Role, Group, User, account_state, ACCOUNT_PENDIN
 from flask_security.utils import verify_password
 from instance import settings
 from app.utils import constants
-from app.utils.security import get_token, get_user_token
+from app.utils.security import get_token, get_user_token, auth_key_taken
 from app.utils.http import get_host_url, get_script_root, get_base_url
 
 
@@ -353,9 +353,32 @@ def set_password(request):
     return data, 200
 
 
+class AuthKeyTaken(Exception):
+    """Another user holds the auth key."""
+
+
+def apply_auth_key(record, data):
+    """Sets the auth key and its expiry from the body, keeps them when the body omits auth_token, and clears them on null or empty."""
+    if 'auth_token' not in data:
+        return
+    key = data['auth_token']
+    if not key:
+        record.auth_token = None
+        record.auth_token_expire = None
+        return
+    if auth_key_taken(key, record.id):
+        raise AuthKeyTaken()
+    record.auth_token = key
+    record.auth_token_expire = to_utc_naive(data.get('auth_token_expire'))
+
+
+AUTH_KEY_TAKEN_RESPONSE = ({'status': 409, 'error': True, 'message': 'auth_token_taken'}, 409)
+
+
 def update_password(request):
 
     password = request.json.get("password", None)
+    current_password = request.json.get("current_password", None)
 
     if not password:
         return {}, 400
@@ -364,6 +387,9 @@ def update_password(request):
 
     if not user or not user.is_authenticated or not user.is_active:
         return {}, 401
+
+    if not current_password or not user.password or not verify_password(current_password, user.password):
+        return {'status': 401, 'error': True, 'message': 'password_current_invalid'}, 401
 
     enforce_password_policy(password)
     user.password = hash_password(password)
@@ -409,12 +435,7 @@ def update_account(request):
         user.name = data['name'] if 'name' in data else None
         user.username = data['username'] if 'username' in data else None
         user.email = data['email'] if 'email' in data else None
-        if 'auth_token' in data and data['auth_token'] is not None:
-            user.auth_token = data['auth_token']
-            user.auth_token_expire = to_utc_naive(data.get('auth_token_expire'))
-        else:
-            user.auth_token = None
-            user.auth_token_expire = None
+        apply_auth_key(user, data)
 
         db.session.add(user)
         db.session.commit()
@@ -426,6 +447,9 @@ def update_account(request):
         item['token'] = token
 
         return item, 200
+    except AuthKeyTaken:
+        db.session.rollback()
+        return AUTH_KEY_TAKEN_RESPONSE
     except IntegrityError as e:
         return {'status': 409, 'error': True,
                 'message': 'registration_user_exists'}, 409
@@ -893,9 +917,7 @@ def create_user(data):
     if 'password' in data and data['password'] is not None:
         enforce_password_policy(data['password'])
         record.password = hash_password(data['password'])
-    if 'auth_token' in data and data['auth_token'] is not None:
-        record.auth_token = data['auth_token']
-        record.auth_token_expire = to_utc_naive(data.get('auth_token_expire'))
+    apply_auth_key(record, data)
 
     # Roles
     if 'roles' in data:
@@ -947,12 +969,7 @@ def update_user(id, data):
     if 'password' in data and data['password'] is not None:
         enforce_password_policy(data['password'])
         record.password = hash_password(data['password'])
-    if 'auth_token' in data and data['auth_token'] is not None:
-        record.auth_token = data['auth_token']
-        record.auth_token_expire = to_utc_naive(data.get('auth_token_expire'))
-    else:
-        record.auth_token = None
-        record.auth_token_expire = None
+    apply_auth_key(record, data)
 
     # Roles
     if 'roles' in data:
