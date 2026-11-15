@@ -58,8 +58,8 @@ class AppDefaultViewer(Resource):
     @ns.marshal_with(viewer_app_saved_api_model, code=201)
     def post(self):
         '''Create a new viewer'''
-        item = dao_viewer.app_create(request.json)
-        return item, 201, {'Access-Control-Allow-Origin': '*',
+        item, status = dao_viewer.app_create(request.json)
+        return item, status, {'Access-Control-Allow-Origin': '*',
                            'Access-Control-Allow-Methods': 'GET, POST',
                            'Access-Control-Allow-Headers': 'Origin, X-Requested-With, Content-Type, Accept'
                            }

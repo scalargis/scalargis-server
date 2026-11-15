@@ -1,4 +1,5 @@
 import json
+import logging
 import sqlalchemy
 import uuid
 from app.utils import utc_now
@@ -16,6 +17,8 @@ from . import get_record_by_id, copy_fields
 from app.utils.constants import ROLE_ANONYMOUS, ROLE_AUTHENTICATED
 from app.utils.security import is_admin_or_manager, can_edit
 from ..dao.app import get_viewer_record
+
+logger = logging.getLogger(__name__)
 
 
 viewer_fields = [
@@ -419,6 +422,7 @@ def app_create(data):
         record.is_active = True
 
         db.session.add(record)
+        db.session.flush()
 
         if parent:
             record.parent_id = parent.id
@@ -453,10 +457,16 @@ def app_create(data):
         response = {
             "id": record.id, "uuid": record.uuid, "name": record.name, "success": True
         }
-    except Exception as e:
-        pass
+    except (KeyError, TypeError, ValueError, AttributeError):
+        db.session.rollback()
+        logger.warning('Viewer create refused: bad request body', exc_info=True)
+        return response, 400
+    except Exception:
+        db.session.rollback()
+        logger.exception('Viewer create failed')
+        return response, 500
 
-    return response
+    return response, 201
 
 
 def app_update(viewer_id_or_slug, data):
