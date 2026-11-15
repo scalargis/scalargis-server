@@ -1,9 +1,16 @@
 """Core background runner. Extensions register job types and periodic tasks here."""
+import logging
+
 from .runner import (
     JOB_CHANNEL,
     LOCAL_QUEUE_PREFIX,
+    ENTRY_GUNICORN,
+    ENTRY_SERVER,
+    ENTRY_SERVICES,
+    ENTRY_WORKER,
     MODE_EXTERNAL,
     JobContext,
+    RoleError,
     configure,
     enqueue,
     job_types,
@@ -12,6 +19,7 @@ from .runner import (
     periodic_key,
     register_job_type,
     register_periodic,
+    role,
     run_forever,
     run_periodic,
     runner_mode,
@@ -20,6 +28,20 @@ from .runner import (
     wake,
 )
 from .requests import REQUEST_KEY, capture_request, job_user, plain_result, replay_request
+
+logger = logging.getLogger(__name__)
+
+
+def check_role(flask_app, entry):
+    """Read the runner settings and return the role of this process. Raises RoleError for a role that orphans jobs."""
+    configure(flask_app)
+    try:
+        name = role(entry)
+    except RoleError as role_err:
+        logger.error('runner: %s refuses to start: %s', entry, role_err)
+        raise
+    logger.info('runner: %s starts as %s', entry, name)
+    return name
 
 
 def init_app(flask_app, start_runner=True):

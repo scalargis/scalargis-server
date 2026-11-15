@@ -2,7 +2,6 @@ import logging
 import os
 
 from sqlalchemy import text
-from sqlalchemy.sql import exists, select
 from flask_security.utils import hash_password
 
 from app.models.common import *
@@ -16,35 +15,32 @@ from app.models.runner import *
 db_schema = get_db_schema()
 
 
+SCHEMA_LOCK_KEY = 7286337507
+
+
 def create_schema():
-    created = False
-
-    q = exists(select(text("schema_name")).select_from(text("information_schema.schemata")).
-               where(text("schema_name = '{schema}'".format(schema=db_schema))))
-    if not db.session.query(q).scalar():
+    """Create and seed the schema in one transaction under an advisory lock. True when it created the schema."""
+    try:
+        db.session.execute(text('SELECT pg_advisory_xact_lock(:k)'), {'k': SCHEMA_LOCK_KEY})
+        found = db.session.execute(text('SELECT 1 FROM pg_namespace WHERE nspname = :s'),
+                                   {'s': db_schema}).first()
+        if found is not None:
+            db.session.commit()
+            return False
         db.session.execute(text('CREATE EXTENSION IF NOT EXISTS postgis'))
-        db.session.execute(text('CREATE SCHEMA IF NOT EXISTS {schema}'.format(schema=db_schema)))
-
-        db.session.commit()
-
-        #db.drop_all()
-        db.create_all()
-
+        db.session.execute(text('CREATE SCHEMA {schema}'.format(schema=db_schema)))
+        db.metadata.create_all(bind=db.session.connection())
         load_data()
-
         config_admin_user()
-
         load_functions()
-
         db.session.commit()
+    except Exception:
+        db.session.rollback()
+        raise
 
-        ensure_print_outputs()
-
-        ensure_unique_rows()
-
-        created = True
-
-    return created
+    ensure_print_outputs()
+    ensure_unique_rows()
+    return True
 
 
 RUNNER_TABLES_LOCK_KEY = 7286337501

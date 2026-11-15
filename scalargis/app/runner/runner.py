@@ -93,6 +93,43 @@ def runner_queue():
     return str(value if value is not None else '').strip()
 
 
+ENTRY_SERVER = 'server'
+ENTRY_GUNICORN = 'gunicorn'
+ENTRY_WORKER = 'worker'
+ENTRY_SERVICES = 'services'
+
+
+class RoleError(RuntimeError):
+    """The runner settings of a process do not fit its entry point."""
+
+
+def in_container():
+    """True inside a Docker container."""
+    return os.path.exists('/.dockerenv')
+
+
+def role(entry):
+    """The runner role of a process from its entry point and settings. Raises RoleError for a role that orphans jobs."""
+    external = runner_mode() == MODE_EXTERNAL
+    declared = not local_mode()
+    if entry == ENTRY_GUNICORN and not external:
+        raise RoleError('gunicorn needs RUNNER_MODE=external and a worker service, because each gunicorn process '
+                        'would start a runner of its own')
+    if entry == ENTRY_WORKER:
+        if not declared and (external or in_container()):
+            raise RoleError('the worker declares no RUNNER_QUEUE, so it would take only the jobs of its own host. '
+                            'Declare RUNNER_QUEUE, empty for the main line')
+        return 'worker' if declared else 'local worker'
+    if external and not declared:
+        raise RoleError('RUNNER_MODE=external with no RUNNER_QUEUE declared queues jobs that no worker takes. '
+                        'Declare RUNNER_QUEUE, empty for the main line')
+    if entry == ENTRY_SERVICES:
+        return 'services'
+    if external:
+        return 'web'
+    return 'web with runner' if declared else 'local web with runner'
+
+
 def periodic_enabled():
     """RUNNER_PERIODIC: run the periodic tasks and take the leader lock. When it is empty, on unless in local mode."""
     declared, value = _setting('RUNNER_PERIODIC')
@@ -622,7 +659,25 @@ class Runner(object):
                 if claimed is None:
                     self.free.release()
                     break
-                self.pool.submit(self._run_job, *claimed)
+                if not self.stop_event.is_set():
+                    try:
+                        self.pool.submit(self._run_job, *claimed)
+                        continue
+                    except RuntimeError:
+                        pass
+                self._put_back(*claimed)
+                self.free.release()
+                break
+
+    def _put_back(self, job_id, attempts):
+        """Queue a claimed job again, with its attempt count before the claim."""
+        with self.app.app_context():
+            if transition(job_id, STATUS_RUNNING, STATUS_QUEUED, self.host, attempts,
+                          {'attempts': attempts - 1, 'runner': None, 'started_at': None}):
+                db.session.commit()
+                logger.info('runner: job %s queued again, the runner stopped', job_id)
+            else:
+                db.session.rollback()
 
     def _check_hung(self):
         """Log a job thread past 2 x RUNNER_JOB_MAX_RUN_SECONDS. A worker process then exits, and its restart frees it."""

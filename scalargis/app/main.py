@@ -143,6 +143,7 @@ def run(argv):
         os.chdir(os.path.join(os.getcwd(), '../'))
 
     try:
+        runner.check_role(app, runner.ENTRY_SERVER)
         initialize_app(app)
         load_plugins()
         load_extensions()
@@ -160,7 +161,8 @@ def run(argv):
         raise
 
 
-def init_wsgi(start_runner=True):
+def init_wsgi(start_runner=True, entry=runner.ENTRY_SERVER):
+    runner.check_role(app, entry)
     initialize_app(app)
     load_plugins()
     load_extensions()

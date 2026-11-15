@@ -4,6 +4,7 @@ import os
 
 from app import app as flask_app
 from app.main import init_wsgi
+from app.runner import ENTRY_GUNICORN
 from app.utils.wsgi import with_waitress_environ
 
 INIT_LOCK_FILE = os.environ.get('INIT_LOCK_FILE') or '/tmp/scalargis-init.lock'
@@ -14,7 +15,7 @@ def _init_once_at_a_time():
     with open(INIT_LOCK_FILE, 'w') as lock:
         fcntl.flock(lock, fcntl.LOCK_EX)
         try:
-            init_wsgi()
+            init_wsgi(entry=ENTRY_GUNICORN)
         finally:
             fcntl.flock(lock, fcntl.LOCK_UN)
 

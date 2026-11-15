@@ -4,6 +4,7 @@ import importlib
 
 from app import app, setup_security, setup_mail
 from app.database import db
+from app import runner
 
 
 service_name = os.environ.get('SERVICE_NAME') or 'services'
@@ -111,6 +112,7 @@ def configure_app(flask_app):
 
 
 def init_wsgi():
+    runner.check_role(app, runner.ENTRY_SERVICES)
     db.init_app(app)
 
     setup_security(app)
@@ -126,6 +128,7 @@ def run(argv):
     if os.path.basename(os.getcwd()).lower() == 'app':
         os.chdir(os.path.join(os.getcwd(), '../'))
 
+    runner.check_role(app, runner.ENTRY_SERVICES)
     db.init_app(app)
 
     setup_security(app)

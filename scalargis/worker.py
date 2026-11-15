@@ -11,5 +11,5 @@ os.chdir(this_files_dir)
 if __name__ == '__main__':
     from app.main import init_wsgi
 
-    init_wsgi(start_runner=False)
+    init_wsgi(start_runner=False, entry=runner.ENTRY_WORKER)
     runner.run_forever(app)
