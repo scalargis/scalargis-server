@@ -13,7 +13,7 @@ from ..parsers import *
 from app.models.security import Role
 from app.models.portal import *
 from ...endpoints import get_user
-from . import get_record_by_id, copy_fields
+from . import get_record_by_id, copy_fields, history
 from app.utils.constants import ROLE_ANONYMOUS, ROLE_AUTHENTICATED
 from app.utils.security import is_admin_or_manager, can_edit
 from ..dao.app import get_viewer_record
@@ -233,8 +233,12 @@ def update(id, data):
         if not can_edit(user, record):
             raise Forbidden()
 
+        history.check_stale(record, data)
+
         if 'slug' in data:
             check_slug(data.get('slug'), record.id)
+
+        before = history.snapshot('viewer', record)
 
         roles = db.session.query(Role).all()
 
@@ -289,6 +293,8 @@ def update(id, data):
         record.id_user_update = user.id
         record.updated_at = utc_now()
 
+        history.keep('viewer', record, before, history.ORIGIN_BACKOFFICE, user)
+
         db.session.add(record)
         db.session.commit()
         db.session.refresh(record)
@@ -307,6 +313,8 @@ def delete(id):
 
         # Delete user viewer sessions
         # db.session.query(UserViewerSession).filter(UserViewerSession.viewer_id == record.id).delete()
+
+        history.forget('viewer', [record.id])
 
         # Print Groups
         for print_group in reversed(record.print_group_assoc):
@@ -343,6 +351,8 @@ def delete_list(data):
                 record = db.session.query(model).filter(model.id == id).one()
 
                 if can_edit(user, record):
+                    history.forget('viewer', [record.id])
+
                     # Tipos Plantas (Child Groups)
                     for print_group in reversed(record.print_group_assoc):
                         db.session.delete(print_group)
@@ -487,6 +497,8 @@ def app_update(viewer_id_or_slug, data):
     if user.id != record.owner_id:
         return response, 403
 
+    before = history.snapshot('viewer', record)
+
     copy_fields(record, data, ('title', 'name', 'description', 'allow_user_session'))
     record.config_version = '1.0'
 
@@ -532,6 +544,8 @@ def app_update(viewer_id_or_slug, data):
 
     record.id_user_update = user.id
     record.updated_at = utc_now()
+
+    history.keep('viewer', record, before, history.ORIGIN_VIEWER, user)
 
     db.session.add(record)
     db.session.commit()

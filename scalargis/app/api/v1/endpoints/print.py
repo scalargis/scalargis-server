@@ -8,7 +8,9 @@ from ..portal.serializers.print import page_print, print_api_model, print_with_v
     print_element_api_model, page_print_element, \
     print_group_api_model, print_group_with_viewers_api_model, page_print_group
 from ..portal.dao import print as dao_print
-from ..endpoints import check_user, ns_portal as ns
+from ..portal.dao import history as dao_history
+from ..endpoints import check_user, get_user, ns_portal as ns
+from app.utils.security import can_edit
 from app.utils.constants import ROLE_AUTHENTICATED, ROLE_ADMIN, ROLE_MANAGER
 
 
@@ -141,6 +143,18 @@ class Print(Resource):
                 'Access-Control-Allow-Methods': 'GET, POST PUT, DELETE',
                 'Access-Control-Allow-Headers': 'Origin, X-Requested-With, Content-Type, Accept'
                 }
+
+
+@ns.route('/prints/<int:id>/history', defaults={'hid': None})
+@ns.route('/prints/<int:id>/history/<int:hid>')
+@ns.param('id', 'The print identifier')
+class PrintHistory(Resource):
+    def get(self, id, hid):
+        '''Returns the saved states of a print, or one state with its snapshot'''
+        if not check_user(request, [ROLE_AUTHENTICATED]):
+            return None, 401
+        record = dao_print.get_by_id(id)
+        return dao_history.respond('print', record, hid, record is not None and can_edit(get_user(request), record))
 
 
 @ns.route('/prints/<int:id>/viewers')
@@ -301,6 +315,19 @@ class PrintGroup(Resource):
                 }
 
 
+@ns.route('/prints/groups/<int:id>/history', defaults={'hid': None})
+@ns.route('/prints/groups/<int:id>/history/<int:hid>')
+@ns.param('id', 'The print group identifier')
+class PrintGroupHistory(Resource):
+    def get(self, id, hid):
+        '''Returns the saved states of a print group, or one state with its snapshot'''
+        if not check_user(request, [ROLE_AUTHENTICATED]):
+            return None, 401
+        record = dao_print.get_print_group_by_id(id)
+        return dao_history.respond('print_group', record, hid,
+                                   record is not None and can_edit(get_user(request), record))
+
+
 @ns.route('/groups/<int:id>/viewers')
 @ns.response(404, 'Todo not found')
 @ns.param('id', 'The print identifier')
@@ -456,3 +483,15 @@ class PrintElement(Resource):
                 'Access-Control-Allow-Methods': 'GET, POST PUT, DELETE',
                 'Access-Control-Allow-Headers': 'Origin, X-Requested-With, Content-Type, Accept'
                 }
+
+
+@ns.route('/prints/elements/<int:id>/history', defaults={'hid': None})
+@ns.route('/prints/elements/<int:id>/history/<int:hid>')
+@ns.param('id', 'The print element identifier')
+class PrintElementHistory(Resource):
+    def get(self, id, hid):
+        '''Returns the saved states of a print element, or one state with its snapshot'''
+        if not check_user(request, [ROLE_ADMIN, ROLE_MANAGER]):
+            return None, 401
+        record = dao_print.get_print_element_by_id(id)
+        return dao_history.respond('print_element', record, hid, True)

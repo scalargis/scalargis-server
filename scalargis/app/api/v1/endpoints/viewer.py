@@ -6,7 +6,9 @@ from flask_restx import Resource
 from ..portal.parsers import *
 from ..portal.serializers import *
 from ..portal.dao import viewer as dao_viewer
-from ..endpoints import check_user, ns_portal as ns
+from ..portal.dao import history as dao_history
+from ..endpoints import check_user, get_user, ns_portal as ns
+from app.utils.security import can_edit
 from app.utils.constants import ROLE_AUTHENTICATED, ROLE_ADMIN, ROLE_MANAGER
 
 logger = logging.getLogger(__name__)
@@ -170,3 +172,15 @@ class Viewer(Resource):
                 'Access-Control-Allow-Methods': 'GET, POST PUT, DELETE',
                 'Access-Control-Allow-Headers': 'Origin, X-Requested-With, Content-Type, Accept'
                 }
+
+
+@ns.route('/viewers/<int:id>/history', defaults={'hid': None})
+@ns.route('/viewers/<int:id>/history/<int:hid>')
+@ns.param('id', 'The viewer identifier')
+class ViewerHistory(Resource):
+    def get(self, id, hid):
+        '''Returns the saved states of a viewer, or one state with its snapshot'''
+        if not check_user(request, [ROLE_AUTHENTICATED]):
+            return None, 401
+        record = dao_viewer.get_by_id(id)
+        return dao_history.respond('viewer', record, hid, record is not None and can_edit(get_user(request), record))

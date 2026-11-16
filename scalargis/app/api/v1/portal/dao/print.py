@@ -18,7 +18,7 @@ from app.utils.security import is_admin_or_manager, can_edit
 from app.models.portal import Print, PrintGroup, PrintElement, PrintLayout, PrintGroupPrint, \
     PrintGroupChild, PrintGroupLayout, Viewer, ViewerPrint, ViewerPrintGroup
 from ...endpoints import get_user
-from . import get_record_by_id, copy_fields
+from . import get_record_by_id, copy_fields, history
 
 
 logger = logging.getLogger(__name__)
@@ -237,6 +237,9 @@ def update(id, data):
         if not can_edit(user, record):
             raise Forbidden()
 
+        history.check_stale(record, data)
+        before = history.snapshot('print', record)
+
         roles = db.session.query(Role).all()
 
         copy_fields(record, data, print_fields, blank_to_none=True)
@@ -297,6 +300,8 @@ def update(id, data):
         record.id_user_update = user.id
         record.updated_at = utc_now()
 
+        history.keep('print', record, before, history.ORIGIN_BACKOFFICE, user)
+
         db.session.add(record)
         db.session.commit()
         db.session.refresh(record)
@@ -313,6 +318,7 @@ def delete(id):
         if not can_edit(user, record):
             return 403
 
+        history.forget('print', [record.id])
         db.session.delete(record)
 
         try:
@@ -342,6 +348,7 @@ def delete_list(data):
                 return 404
             if not all(can_edit(user, rec) for rec in records):
                 return 403
+            history.forget('print', [rec.id for rec in records])
             for rec in records:
                 db.session.delete(rec)
 
@@ -599,6 +606,9 @@ def update_print_group(id, data):
         if not can_edit(user, record):
             raise Forbidden()
 
+        history.check_stale(record, data)
+        before = history.snapshot('print_group', record)
+
         roles = db.session.query(Role).all()
 
         copy_fields(record, data, print_group_fields, blank_to_none=True)
@@ -675,6 +685,8 @@ def update_print_group(id, data):
         record.id_user_update = user.id
         record.updated_at = utc_now()
 
+        history.keep('print_group', record, before, history.ORIGIN_BACKOFFICE, user)
+
         db.session.add(record)
         db.session.commit()
         db.session.refresh(record)
@@ -691,6 +703,7 @@ def delete_print_group(id):
         if not can_edit(user, record):
             return 403
 
+        history.forget('print_group', [record.id])
         db.session.delete(record)
 
         try:
@@ -720,6 +733,7 @@ def delete_print_group_list(data):
                 return 404
             if not all(can_edit(user, rec) for rec in records):
                 return 403
+            history.forget('print_group', [rec.id for rec in records])
             for rec in records:
                 db.session.delete(rec)
 
@@ -896,6 +910,9 @@ def update_print_element(id, data):
         #if not is_admin_or_manager(user) and record.owner_id != user.id:
         #    return None
 
+        history.check_stale(record, data)
+        before = history.snapshot('print_element', record)
+
         copy_fields(record, data, print_element_fields, blank_to_none=True)
 
         #if 'owner_id' in data:
@@ -903,6 +920,8 @@ def update_print_element(id, data):
 
         record.id_user_update = user.id
         record.updated_at = utc_now()
+
+        history.keep('print_element', record, before, history.ORIGIN_BACKOFFICE, user)
 
         db.session.add(record)
         db.session.commit()
@@ -920,6 +939,7 @@ def delete_print_element(id):
         #if not is_admin_or_manager(user) and record.owner_id != user.id:
         #    return 403
 
+        history.forget('print_element', [record.id])
         db.session.delete(record)
 
         try:
@@ -944,6 +964,7 @@ def delete_print_element_list(data):
         filter = json.loads(data or '{}')
         if 'id' in filter:
             values = filter['id']
+            history.forget('print_element', values)
             for id in values:
                 rec = db.session.query(model).filter(model.id == id).one()
 

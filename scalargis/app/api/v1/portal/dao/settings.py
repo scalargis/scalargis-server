@@ -12,7 +12,8 @@ from app.database import db
 from ..parsers import *
 from app.models.portal import SiteSettings
 from app.api.v1.endpoints import get_user
-from . import refuse_read_only, copy_fields
+from . import refuse_read_only, copy_fields, history
+from app.utils import utc_now
 
 settings_models = {
     "site": SiteSettings
@@ -98,8 +99,16 @@ def update(entity_name, id, data):
 
     record = db.session.query(model).filter(model.id == id).one()
     refuse_read_only(record)
+    history.check_stale(record, data)
+
+    before = history.snapshot('site_setting', record)
 
     copy_fields(record, data, ('code', 'name', 'notes', 'setting_value'))
+
+    record.id_user_update = user.id if user else None
+    record.updated_at = utc_now()
+
+    history.keep('site_setting', record, before, history.ORIGIN_BACKOFFICE, user)
 
     db.session.add(record)
     db.session.commit()
@@ -114,6 +123,7 @@ def delete(entity_name, id):
 
     record = db.session.query(model).filter(model.id == id).one()
     refuse_read_only(record)
+    history.forget('site_setting', [record.id])
     db.session.delete(record)
     try:
         db.session.commit()
@@ -136,6 +146,7 @@ def delete_list(entity_name, data):
             values = filter['id']
             recs = [db.session.query(model).filter(model.id == id).one() for id in values]
             refuse_read_only(*recs)
+            history.forget('site_setting', [rec.id for rec in recs])
             for rec in recs:
                 db.session.delete(rec)
 

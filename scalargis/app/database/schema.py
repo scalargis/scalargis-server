@@ -1,7 +1,7 @@
 import logging
 import os
 
-from sqlalchemy import text
+from sqlalchemy import inspect, text
 from flask_security.utils import hash_password
 
 from app.models.common import *
@@ -55,6 +55,23 @@ def create_runner_tables():
             conn.execute(text('SELECT pg_advisory_xact_lock(:k)'), {'k': RUNNER_TABLES_LOCK_KEY})
         for table in (Job.__table__, RunnerHeartbeat.__table__):
             table.create(bind=conn, checkfirst=True)
+
+
+RECORD_HISTORY_LOCK_KEY = 7286337508
+
+
+def ensure_record_history():
+    """Create the record_history table when it is missing. On PostgreSQL one process at a time does it."""
+    bind = db.session.get_bind()
+    engine = getattr(bind, 'engine', bind)
+    with engine.begin() as conn:
+        if conn.dialect.name == 'postgresql':
+            conn.execute(text('SELECT pg_advisory_xact_lock(:k)'), {'k': RECORD_HISTORY_LOCK_KEY})
+        if inspect(conn).has_table(RecordHistory.__tablename__, schema=db_schema):
+            return False
+        RecordHistory.__table__.create(bind=conn, checkfirst=True)
+    logging.getLogger(__name__).info('record_history table created in %s', db_schema)
+    return True
 
 
 FS_UNIQUIFIER_LOCK_KEY = 7286337502

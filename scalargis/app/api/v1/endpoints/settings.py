@@ -5,6 +5,7 @@ from flask_restx import Resource
 from ..portal.parsers import *
 from ..portal.serializers import *
 from ..portal.dao import settings as dao_settings
+from ..portal.dao import history as dao_history
 from app.utils import constants
 from ..endpoints import check_user, ns_portal as ns
 
@@ -136,3 +137,16 @@ class Settings(Resource):
                                'Access-Control-Allow-Methods': 'PUT',
                                'Access-Control-Allow-Headers': 'Origin, X-Requested-With, Content-Type, Accept'
                                }
+
+
+@ns.route('/settings/<string:table>/<int:id>/history', defaults={'hid': None})
+@ns.route('/settings/<string:table>/<int:id>/history/<int:hid>')
+@ns.param('id', 'The record identifier')
+class SettingsHistory(Resource):
+    def get(self, table, id, hid):
+        '''Returns the saved states of a setting, or one state with its snapshot'''
+        if not check_user(request, [constants.ROLE_ADMIN, constants.ROLE_MANAGER]):
+            return None, 401
+        model = dao_settings.settings_models.get(table.lower())
+        record = model.query.filter(model.id == id).one_or_none() if model else None
+        return dao_history.respond('site_setting', record, hid, True)

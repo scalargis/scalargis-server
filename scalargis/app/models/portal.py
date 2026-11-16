@@ -456,6 +456,21 @@ class AuditOperation(db.Model, PortalTable, TypeTableMixin):
     __tablename__ = "audit_operation"
 
 
+class RecordHistory(db.Model, PortalTable):
+    """State of a config record before one of its saves."""
+    __tablename__ = "record_history"
+    __table_args__ = (db.Index('record_history_entity_record_created_idx', 'entity', 'record_id', 'created_at'),
+                      {'schema': db_schema})
+
+    id = db.Column(db.Integer(), primary_key=True)
+    entity = db.Column(db.String(32), nullable=False)
+    record_id = db.Column(db.Integer(), nullable=False)
+    snapshot = db.Column(db.Text(), nullable=False)
+    origin = db.Column(db.String(16), nullable=False)
+    id_user = db.Column(db.Integer())
+    created_at = db.Column(db.DateTime(), nullable=False)
+
+
 class AuditLog(db.Model, PortalTable):
     __tablename__ = "audit_log"
 
