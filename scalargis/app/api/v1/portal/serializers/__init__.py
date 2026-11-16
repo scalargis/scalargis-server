@@ -136,6 +136,7 @@ viewer_simple_api_model = api.model('Viewer Simple Model', {
 
 viewer_api_model = api.model('Viewer Model', {
     'id': fields.Integer(readOnly=True, description='Identifier'),
+    'updated_at': UtcDateTime(readonly=True, description='Last update'),
     'name': fields.String(required=True, description='Name'),
     'title': fields.String(required=True, description='Title'),
     'description': fields.String(required=False, description='Description'),
@@ -261,6 +262,7 @@ page_generic = api.inherit('Pages Generic Table', pagination, {
 
 settings_api_model = api.model('Settings Model', {
     'id': fields.Integer(required=True, description='Id'),
+    'updated_at': UtcDateTime(readonly=True, description='Last update'),
     'code': fields.String(required=True, description='Code'),
     'name': fields.String(required=True, description='Name'),
     'notes': fields.String(required=False, description='Description'),

@@ -1,4 +1,5 @@
 from flask_restx import fields
+from app.utils import UtcDateTime
 from app.api.restx import api as api
 
 from ..serializers import pagination, ConfigJson, viewer_simple_api_model, user_simple_api_model
@@ -31,6 +32,7 @@ print_simple_api_model = api.model('Print Simple Model', {
 
 print_api_model = api.model('Print Model', {
     'id': fields.Integer(readOnly=True, description='Identifier'),
+    'updated_at': UtcDateTime(readonly=True, description='Last update'),
     'code': fields.String(required=True, description='Code'),
     'name': fields.String(required=True, description='Name'),
     'title': fields.String(required=False, description='Title'),
@@ -84,6 +86,7 @@ page_print = api.inherit('Print pages', pagination, {
 
 print_group_api_model = api.model('Print Model', {
     'id': fields.Integer(readOnly=True, description='Identifier'),
+    'updated_at': UtcDateTime(readonly=True, description='Last update'),
     'code': fields.String(required=True, description='Code'),
     'title': fields.String(required=False, description='Title'),
     'description': fields.String(required=False, description='Description'),
@@ -148,6 +151,7 @@ page_print_group = api.inherit('Print group pages', pagination, {
 
 print_element_api_model = api.model('Print Model', {
     'id': fields.Integer(readOnly=True, description='Identifier'),
+    'updated_at': UtcDateTime(readonly=True, description='Last update'),
     'code': fields.String(required=True, description='Code'),
     'name': fields.String(required=True, description='Name'),
     'config': fields.String(required=False, description='Configuration')
