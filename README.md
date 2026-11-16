@@ -6,7 +6,7 @@ This repo is the Python/Flask backend: REST API, PostGIS database, Waitress serv
 [![Build](https://img.shields.io/github/actions/workflow/status/scalargis/scalargis-server/docker-latest.yml?branch=main&label=build)](https://github.com/scalargis/scalargis-server/actions/workflows/docker-latest.yml)
 [![Release](https://img.shields.io/github/v/release/scalargis/scalargis-server?include_prereleases)](https://github.com/scalargis/scalargis-server/releases)
 
-[Website](https://scalargis.com) · [Docs](https://docs.scalargis.com) · [Demo](https://demo.scalargis.com) · [Client repo](https://github.com/scalargis/scalargis-client#readme)
+[Website](https://scalargis.com) · [Docs](https://docs.scalargis.com) · [Demo](https://demo.scalargis.com) · [Client repo](https://github.com/scalargis/scalargis-client#readme) · [Install with Docker](https://github.com/scalargis/scalargis-stack#readme)
 
 <img src=".github/assets/demo-viewer.png" alt="A ScalarGIS map viewer with Sentinel-2 imagery and the administrative boundaries of Portugal" width="600">
 
