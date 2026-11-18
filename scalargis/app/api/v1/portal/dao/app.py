@@ -28,6 +28,7 @@ from ..serializers.print import print_api_model, print_group_api_model
 from app.models.portal import *
 from ...endpoints import get_user
 from . import get_record_by_id
+from .shared_layer import merge_shared_layers, unmerge_shared_layers
 from.notification import get_new_notifications
 
 
@@ -164,6 +165,7 @@ def save_viewer_session(viewer_id_or_slug, data):
 
     date_session = utc_now()
     config_json = json.loads(data['config_json']) if isinstance(data['config_json'], str) else data['config_json']
+    config_json = unmerge_shared_layers(config_json)
     session_layers = data.get("session_layers", [])
     session_layers = json.loads(session_layers) if isinstance(session_layers, str) else session_layers
     session_data = json.dumps({"session_layers": session_layers, "config_json": config_json})
@@ -544,6 +546,8 @@ def build_viewer_config(record, user_roles, user=None, session=False):
                     else session_cfg
                 viewer_cfg['session_layers'] = session_cfg.get('session_layers', [])
                 viewer_cfg['is_session'] = True
+
+    merge_shared_layers(viewer_cfg.get('config_json'), record.id if record else None)
 
     '''
      Apply components permissions

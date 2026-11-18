@@ -17,6 +17,7 @@ from . import get_record_by_id, copy_fields, history
 from app.utils.constants import ROLE_ANONYMOUS, ROLE_AUTHENTICATED
 from app.utils.security import is_admin_or_manager, can_edit
 from ..dao.app import get_viewer_record
+from .shared_layer import unmerge_shared_layers
 
 logger = logging.getLogger(__name__)
 
@@ -520,7 +521,7 @@ def app_update(viewer_id_or_slug, data):
         components = config_json.get('components') or []
         components[:] = [c for c in components if c.get('type') != 'ThemeWizard']
 
-    record.config_json = json.dumps(config_json)
+    record.config_json = json.dumps(unmerge_shared_layers(config_json))
 
     if 'is_active' in data:
         record.is_active = data['is_active']

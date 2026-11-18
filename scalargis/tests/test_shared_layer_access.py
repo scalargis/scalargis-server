@@ -8,14 +8,17 @@ from sqlalchemy import event
 
 from app.database import db
 from app.models.security import Role, User
-from app.models.portal import SharedLayer
-from app.api.v1.endpoints import ns_portal
+from app.models.portal import SharedLayer, Viewer
+from app.api.v1.endpoints import ns_app, ns_portal
 from app.utils import security as app_security, tokens
-from app.utils.constants import ROLE_MANAGER
+from app.utils.constants import ROLE_ANONYMOUS, ROLE_MANAGER
 from tests.test_owner_gates import create_tables, geometry_functions
 
 
 LAYER = '{"type": "WMS", "title": "Base", "url": "https://example.org/wms", "layers": "base"}'
+SECRET = '{"type": "WMS", "title": "Secret", "url": "https://example.org/wms", "roles": ["Cadastro"]}'
+VIEWER = '{"layers": [{"id": "open", "shared": "base"}, {"id": "hidden", "shared": "secret"}], ' \
+         '"checked": ["open", "hidden"]}'
 
 
 @pytest.fixture
@@ -32,6 +35,7 @@ def client(tmp_path):
     Security(flask_app, datastore)
     blueprint = Blueprint('api', 'shared-layer-api', url_prefix='/api')
     api = Api(blueprint)
+    api.add_namespace(ns_app)
     api.add_namespace(ns_portal)
     flask_app.register_blueprint(blueprint)
     with flask_app.app_context():
@@ -39,12 +43,19 @@ def client(tmp_path):
         db.engine.dispose()
         create_tables()
         manager_role = datastore.create_role(name=ROLE_MANAGER)
-        for name in ('plain', 'boss'):
+        anonymous = datastore.create_role(name=ROLE_ANONYMOUS)
+        cadastro = datastore.create_role(name='Cadastro')
+        for name in ('plain', 'boss', 'surveyor'):
             datastore.create_user(username=name, email=name + '@example.org', password='x-' + name, active=True,
                                   fs_uniquifier=uuid.uuid4().hex)
         db.session.commit()
         datastore.add_role_to_user(User.query.filter_by(username='boss').one(), manager_role)
+        datastore.add_role_to_user(User.query.filter_by(username='surveyor').one(), cadastro)
         db.session.add(SharedLayer(id=1, code='base', title='Base', layer_json=LAYER))
+        db.session.add(SharedLayer(id=2, code='secret', title='Secret', layer_json=SECRET))
+        viewer = Viewer(id=1, name='mapa', uuid=uuid.uuid4().hex, title='Mapa', is_active=True, config_json=VIEWER)
+        viewer.roles.append(anonymous)
+        db.session.add(viewer)
         db.session.commit()
         yield flask_app.test_client()
         db.session.remove()
@@ -63,4 +74,22 @@ def test_library_writes_need_an_admin(client, username):
     assert client.delete('/api/portal/shared-layers/1', headers=key(username)).status_code == 403
 
     rows = SharedLayer.query.all()
-    assert [(r.code, r.title) for r in rows] == [('base', 'Base')]
+    assert [(r.code, r.title) for r in rows] == [('base', 'Base'), ('secret', 'Secret')]
+
+
+def served_layers(client, headers=None):
+    answer = client.get('/api/app/viewer/1', headers=headers or {})
+    assert answer.status_code == 200
+    config = answer.get_json()['config_json']
+    return {lyr['id']: lyr for lyr in config['layers']}, config['checked']
+
+
+@pytest.mark.parametrize('username', [None, 'plain'])
+def test_library_roles_hide_the_layer_after_the_merge(client, username):
+    layers, checked = served_layers(client, key(username) if username else None)
+    assert sorted(layers) == ['open']
+    assert checked == ['open']
+
+    layers, checked = served_layers(client, key('surveyor'))
+    assert sorted(layers) == ['hidden', 'open']
+    assert layers['hidden']['roles'] == ['Cadastro']

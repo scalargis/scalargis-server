@@ -73,6 +73,68 @@ def _pointer_codes(config_text):
             if isinstance(lyr, dict) and isinstance(lyr.get('shared'), str) and lyr['shared']}
 
 
+def _is_pointer(layer):
+    return isinstance(layer, dict) and isinstance(layer.get('shared'), str) and bool(layer['shared'])
+
+
+def _pointers(config_json):
+    layers = config_json.get('layers') if isinstance(config_json, dict) else None
+    if not isinstance(layers, list):
+        return None, set()
+    return layers, {lyr['shared'] for lyr in layers if _is_pointer(lyr)}
+
+
+def _library(codes):
+    rows = db.session.query(SharedLayer.code, SharedLayer.layer_json).filter(SharedLayer.code.in_(sorted(codes))).all()
+    return {code: text for code, text in rows if isinstance(_loads(text), dict)}
+
+
+def merge_shared_layers(config_json, viewer_id=None):
+    """Replaces each pointer in config_json.layers with its library layer and the viewer keys on top."""
+    layers, codes = _pointers(config_json)
+    if not codes:
+        return config_json
+    library = _library(codes)
+    merged = []
+    dropped = set()
+    for lyr in layers:
+        if not _is_pointer(lyr):
+            merged.append(lyr)
+        elif lyr['shared'] in library:
+            merged.append({**json.loads(library[lyr['shared']]), **lyr})
+        else:
+            logger.warning('Viewer %s names the shared layer code %s, which does not exist. The layer %s is dropped',
+                           viewer_id, lyr['shared'], lyr.get('id'))
+            dropped.add(lyr.get('id'))
+    config_json['layers'] = merged
+    for key in ('checked', 'opened'):
+        if dropped and isinstance(config_json.get(key), list):
+            config_json[key] = [i for i in config_json[key] if i not in dropped]
+    return config_json
+
+
+def _differs(a, b):
+    return json.dumps(a, sort_keys=True) != json.dumps(b, sort_keys=True)
+
+
+def unmerge_shared_layers(config_json):
+    """Strips each pointer in config_json.layers to id, shared, and the keys that differ from the library."""
+    layers, codes = _pointers(config_json)
+    if not codes:
+        return config_json
+    library = {code: json.loads(text) for code, text in _library(codes).items()}
+    stripped = []
+    for lyr in layers:
+        base = library.get(lyr['shared']) if _is_pointer(lyr) else None
+        if base is None:
+            stripped.append(lyr)
+        else:
+            stripped.append({k: v for k, v in lyr.items()
+                             if k in ('id', 'shared') or k not in base or _differs(base[k], v)})
+    config_json['layers'] = stripped
+    return config_json
+
+
 def _viewers_with_pointers():
     return db.session.query(Viewer.id, Viewer.name, Viewer.title, Viewer.config_json) \
         .filter(Viewer.config_json.contains('"shared"')).order_by(Viewer.id).all()
