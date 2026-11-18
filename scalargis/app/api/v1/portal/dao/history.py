@@ -34,6 +34,8 @@ PRINT_GROUP_FIELDS = PRINT_COMMON_FIELDS + ('select_prints', 'group_prints', 'sh
 
 PRINT_ELEMENT_FIELDS = ('id', 'code', 'name', 'config')
 
+SHARED_LAYER_FIELDS = ('id', 'code', 'title')
+
 
 def _json(value):
     if value is None or value == '' or not isinstance(value, str):
@@ -100,12 +102,19 @@ def _print_element(record):
     return _fields(record, PRINT_ELEMENT_FIELDS)
 
 
+def _shared_layer(record):
+    data = _fields(record, SHARED_LAYER_FIELDS)
+    data['layer_json'] = _json(record.layer_json)
+    return data
+
+
 BUILDERS = {
     'viewer': _viewer,
     'site_setting': _site_setting,
     'print': _print,
     'print_group': _print_group,
     'print_element': _print_element,
+    'shared_layer': _shared_layer,
 }
 
 

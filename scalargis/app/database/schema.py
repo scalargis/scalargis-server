@@ -74,6 +74,23 @@ def ensure_record_history():
     return True
 
 
+SHARED_LAYERS_LOCK_KEY = 7286337509
+
+
+def ensure_shared_layers():
+    """Create the shared_layers table when it is missing. On PostgreSQL one process at a time does it."""
+    bind = db.session.get_bind()
+    engine = getattr(bind, 'engine', bind)
+    with engine.begin() as conn:
+        if conn.dialect.name == 'postgresql':
+            conn.execute(text('SELECT pg_advisory_xact_lock(:k)'), {'k': SHARED_LAYERS_LOCK_KEY})
+        if inspect(conn).has_table(SharedLayer.__tablename__, schema=db_schema):
+            return False
+        SharedLayer.__table__.create(bind=conn, checkfirst=True)
+    logging.getLogger(__name__).info('shared_layers table created in %s', db_schema)
+    return True
+
+
 FS_UNIQUIFIER_LOCK_KEY = 7286337502
 
 FS_UNIQUIFIER_SQL = (

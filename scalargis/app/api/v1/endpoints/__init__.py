@@ -87,3 +87,4 @@ from .generic import *
 from .stats import *
 from .notifications import *
 from .jobs import *
+from .shared_layer import *

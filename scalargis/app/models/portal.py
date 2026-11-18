@@ -471,6 +471,16 @@ class RecordHistory(db.Model, PortalTable):
     created_at = db.Column(db.DateTime(), nullable=False)
 
 
+class SharedLayer(db.Model, PortalTable, PortalTableMixin):
+    """Library layer that a viewer layer names by its code."""
+    __tablename__ = "shared_layers"
+
+    id = db.Column(db.Integer(), primary_key=True)
+    code = db.Column(db.String(255), unique=True, nullable=False)
+    title = db.Column(db.Text())
+    layer_json = db.Column(db.Text(), nullable=False)
+
+
 class AuditLog(db.Model, PortalTable):
     __tablename__ = "audit_log"
 
