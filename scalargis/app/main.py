@@ -1,7 +1,9 @@
 import os
+import json
 import importlib
 import logging.config
 
+import click
 from flask import Blueprint, redirect, url_for
 
 from app import app, base_path, configure_app, setup_logging, setup_security, setup_mail
@@ -216,3 +218,53 @@ def load_sample_data():
     load_sample_data()
 
     print('Sample data successfully loaded!')
+
+
+@app.cli.command('convert-shared-layers')
+@click.option('--dry-run', 'dry_run', is_flag=True, help='Show the plan and write nothing (the default).')
+@click.option('--apply', 'apply', is_flag=True, help='Make the library layers and the pointers.')
+@click.option('--min-viewers', type=click.IntRange(min=1), default=2, show_default=True,
+              help='The number of viewers a layer copy must be in.')
+@click.option('--viewer', 'viewer_ids', type=int, multiple=True, help='Limit the run to this viewer id.')
+@click.option('--report', 'report_path', type=click.Path(dir_okay=False),
+              help='Write the JSON report and a text summary.')
+@click.option('--revert', 'revert_path', type=click.Path(exists=True, dir_okay=False),
+              help='Put back the viewers of this apply report.')
+def convert_shared_layers(dry_run, apply, min_viewers, viewer_ids, report_path, revert_path):
+    """Turns the layer copies that repeat across viewers into shared layer pointers."""
+    if sum(1 for flag in (dry_run, apply, bool(revert_path)) if flag) > 1:
+        raise click.UsageError('Use one of --dry-run, --apply, --revert.')
+    if apply and not report_path:
+        raise click.UsageError('--apply needs --report, because --revert reads it.')
+
+    db.init_app(app)
+    setup_security(app)
+    initialize_api(app)
+
+    from app.database.schema import ensure_record_history, ensure_shared_layers
+    from app.api.v1.portal.dao import shared_layer
+    ensure_record_history()
+    ensure_shared_layers()
+
+    if revert_path:
+        with open(revert_path, encoding='utf-8') as f:
+            report = json.load(f)
+        if report.get('command') != 'convert-shared-layers' or report.get('mode') != 'apply':
+            raise click.UsageError('The file is not the report of an apply.')
+        result = shared_layer.revert_conversion(report)
+        for key, value in result.items():
+            print('%s: %d %s' % (key, len(value), value))
+        if result['changed_since_apply'] or result['missing']:
+            raise SystemExit(1)
+        return
+
+    if apply:
+        report = shared_layer.apply_conversion(min_viewers, viewer_ids, report_path)
+    else:
+        report = shared_layer.plan_conversion(min_viewers, viewer_ids)
+        if report_path:
+            shared_layer.write_report(report, report_path)
+    print(shared_layer.conversion_summary(report), end='')
+    if report.get('differences'):
+        print('Rolled back: a served config changed.')
+        raise SystemExit(1)
