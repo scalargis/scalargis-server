@@ -13,6 +13,7 @@ from shapely.wkt import loads
 from app.database import db
 from app.database.schema import PRINT_NUMBER_LOCK_KEY
 from app.utils import pdf_layout, auditoria
+from app.utils.print_layers import client_layer_url_params
 from app.models.portal import Print, PrintLayout, PrintGroup, PrintOutput, PrintOutputNumber, CoordinateSystems
 from app.utils import constants, geo, utc_now, local_now
 from app.utils.files import contained_path
@@ -307,7 +308,7 @@ def draw_print_pdf(request, print, layout, scale, srid, geomWKT, extentWKT, draw
             wms_style = None
             wms_format = None
             opacity = 1
-            url_params = []
+            url_params = client_layer_url_params(l)
             if len(l.split(';')) > 4:
                 min_scale = float(l.split(';')[4])
                 max_scale = float(l.split(';')[5])
@@ -320,9 +321,6 @@ def draw_print_pdf(request, print, layout, scale, srid, geomWKT, extentWKT, draw
 
             if len(l.split(';')) > 3:
                 opacity = float(l.split(';')[3])
-
-            if len(l.split(';')) > 9:
-                url_params.append(['authkey', l.split(';')[9]])
 
             if (min_scale == 0 or scale <= min_scale) and (max_scale == 0 or scale >= max_scale):
                 p.add_map(l.split(';')[0], l.split(';')[1], l.split(';')[2], page_id=100, cql_filter=l.split(';')[6],
