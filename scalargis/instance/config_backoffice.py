@@ -9,7 +9,9 @@ backoffice_cfg = {
             { "label": "Novo", "icon": "pi pi-fw pi-id-card", "to": "/viewers/create",
               "roles": ["Admin", "Manager", "Authenticated"] },
             { "label": "Lista", "icon":  "pi pi-fw pi-check-square", "to": "/viewers/list",
-              "roles": ["Admin", "Manager", "Authenticated"] }
+              "roles": ["Admin", "Manager", "Authenticated"] },
+            { "label": "Camadas partilhadas", "icon": "pi pi-fw pi-clone", "to": "/shared-layers/list",
+              "roles": ["Admin"] }
           ],
           "roles": ["Admin", "Manager"],
         },
