@@ -11,9 +11,11 @@ declare
 	x integer;
 begin
 	f = lower(unaccent(_filter));
-	fts = replace(f,' ','&');
-	fts = rtrim(fts,'&');
-	fts = ltrim(fts,'&');
+	fts = btrim(regexp_replace(f, '[^[:alnum:]]+', '&', 'g'), '&');
+
+	if coalesce(fts, '') = '' then
+		return;
+	end if;
 
 	Begin
 	    x = $1::Integer;
