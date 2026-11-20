@@ -81,3 +81,9 @@ docker exec scalargis-local-db psql -U postgres -d scalargis -c "DROP SCHEMA IF 
 ## Extend it
 
 Server extensions add routes, models, and jobs. See the [components and extensions guide](https://docs.scalargis.com/development/components-extensions/).
+
+---
+
+## Contribute
+
+Read the [contribution rules](https://docs.scalargis.com/contributing/) before you open a pull request. Coding agents read [`AGENTS.md`](AGENTS.md).
