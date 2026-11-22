@@ -612,7 +612,6 @@ class Pdf:
                             except KeyError:
                                 logger.debug('No Logo defined for this layer... ')
 
-
                     elif serv_type == 'esri_rest':
                         url = item["url"]
                         layers = item["layers"]
@@ -737,6 +736,11 @@ class Pdf:
 
                     elif dmap[0] == 'esri_rest':
                         if self.insert_map('esri_rest', scale, srid, mapcenter[0], mapcenter[1], width, height,
+                                           dmap[4], ll_x, ll_y, dmap[1], dmap[2], dmap[5], dmap[6], None, None, dmap[9]):
+                            self.keep_attribution(dmap)
+
+                    elif dmap[0] == 'ogcapi':
+                        if self.insert_map('ogcapi', scale, srid, mapcenter[0], mapcenter[1], width, height,
                                            dmap[4], ll_x, ll_y, dmap[1], dmap[2], dmap[5], dmap[6], None, None, dmap[9]):
                             self.keep_attribution(dmap)
 
@@ -1663,6 +1667,11 @@ class Pdf:
             img = self.esri_rest_getmap(url, layers, [xmin, ymin, xmax, ymax], width * mm, height * mm, srid,
                                         img_format, transparent, quality, opacity=opacity,
                                         timeout=timeout, strict=self.strict)
+        elif serv_type == 'ogcapi':
+            img = self.ogcapi_getmap(url, layers, [xmin, ymin, xmax, ymax],
+                                  quality * width * mm, quality * height * mm, srid, img_format, style,
+                                  cql_filter=cql_filter, opacity=opacity, url_params=url_params,
+                                  timeout=timeout, strict=self.strict)
         elif self.strict:
             raise ValueError('Service type not supported: {0}'.format(serv_type))
         else:
@@ -2057,6 +2066,48 @@ class Pdf:
                 img = get_image(url, timeout)
             else:
                 img = get_image_with_opacity(url, opacity, timeout)
+        except Exception as err:
+            if strict:
+                raise PrintServiceError(url.split('?')[0], err) from err
+            img = None
+            logger.warning(err)
+        return img
+
+    @staticmethod
+    def ogcapi_getmap(server_url, layers, bbox, width, height, srs, img_format='png', styles=None, version='1.1.1',
+                   cql_filter=None, opacity=1, url_params=[], timeout=None, strict=False):
+        if styles is None:
+            styles = ''
+
+        url = replace_geoserver_url(server_url)
+
+        if (url[:7] == 'http://') or (url[:8] == 'https://'):
+            url = url + "?"
+        else:
+            url = 'http://%s?' % url
+
+        #url += '&layers=%s' % urllib.parse.quote(layers)  # cm_faro:municipal_ln
+        #url += '&styles=%s' % styles
+        url += '&bbox=%s,%s,%s,%s' % (bbox[0], bbox[1], bbox[2], bbox[3])
+        url += '&width=%s' % int(width)  # 658
+        url += '&height=%s' % int(height)  # 768
+        url += '&crs=http://www.opengis.net/def/crs/EPSG/0/%s' % srs
+        url += '&bbox-crs=http://www.opengis.net/def/crs/EPSG/0/%s' % srs
+        url += '&f=%s' % (img_format or 'png')  # image/png
+        if cql_filter:
+            url += '&cql_filter=%s' % urllib.parse.quote_plus(cql_filter)
+        if url_params and len(url_params) > 0:
+            for p in url_params:
+                url += '&{0}={1}'.format(p[0], p[1])
+
+        logger.info("OGCAPI: " + url)
+        try:
+            #For performance reasons, only change alpha pixel value if opacity is lower than one (changed by user)
+            if opacity == 1:
+                img = get_image(url, timeout)
+            else:
+                img = get_image_with_opacity(url, opacity, timeout)
+
         except Exception as err:
             if strict:
                 raise PrintServiceError(url.split('?')[0], err) from err
