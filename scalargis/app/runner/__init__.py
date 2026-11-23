@@ -28,6 +28,7 @@ from .runner import (
     wake,
 )
 from .requests import REQUEST_KEY, capture_request, job_user, plain_result, replay_request
+from . import tmp_sweep
 
 logger = logging.getLogger(__name__)
 
