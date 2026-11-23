@@ -1,0 +1,1 @@
+import"./vendor-react-CbgzrkF3.js";import{T as r,r as e}from"./index-BRisxZ_2.js";import"./vendor-mantine-QN-10HLj.js";import"./vendor-ol-DU6IsaDh.js";import"./vendor-jsts-CFXZjDHx.js";const s=e("red").theme;export{r as default,s as mantineTheme};

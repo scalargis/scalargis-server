@@ -1,0 +1,1 @@
+import"./vendor-react-CbgzrkF3.js";import{T as i,i as e}from"./index-BRisxZ_2.js";import"./vendor-mantine-QN-10HLj.js";import"./vendor-ol-DU6IsaDh.js";import"./vendor-jsts-CFXZjDHx.js";const m=["#FEF8F4","#FDF3EB","#FBECDF","#F7D5B9","#EC9A56","#E46C0A","#B65608","#884006","#6E3405","#442003"],F=e({primary:m,primaryShade:7});export{i as default,F as mantineTheme};
