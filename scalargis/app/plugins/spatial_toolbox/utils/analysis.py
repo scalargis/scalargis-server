@@ -551,6 +551,8 @@ def create_map_image(geom_ewkt, map_config):
 
     if map_config.get('scale', None):
         scale = map_config.get('scale')
+    elif not scale:
+        scale = map_config.get('point_scale', 1000)
 
     bbox = calculate_bbox(scale, center.x, center.y, img_width, img_height)
 
